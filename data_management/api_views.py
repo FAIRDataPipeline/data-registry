@@ -63,6 +63,21 @@ class ProvReportView(views.APIView):
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ***List of users that have authenticated against the data registry, only users listed here are valid for the
+    `responsible_person` field of other tables.***
+
+    ### Read-only Fields:
+    `url`: Reference to the instance of the `User`, final integer is the `User` id
+
+    `username`: github username of the `User`
+
+    `full_name`: full name as read from github
+
+    `email`: email address as read from github
+
+    `orgs`: organisations as read from github
+    """
     authentication_classes = [SessionAuthentication, BasicAuthentication, TokenAuthentication]
     queryset = get_user_model().objects.all().order_by('-date_joined')
     serializer_class = serializers.UserSerializer
@@ -72,6 +87,10 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class GroupViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    *TODO: update this with more information, not clear what the use is*
+    ***List of groups that users can belong to?***
+    """
     authentication_classes = [SessionAuthentication, BasicAuthentication, TokenAuthentication]
     queryset = Group.objects.all()
     serializer_class = serializers.GroupSerializer
