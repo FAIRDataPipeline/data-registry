@@ -54,6 +54,7 @@ class CodeRunSerializer(BaseSerializer):
 
     class Meta(BaseSerializer.Meta):
         model = models.CodeRun
+        read_only_fields = model.EXTRA_DISPLAY_FIELDS
 
     uuid = serializers.UUIDField(initial=uuid4, default=uuid4)
 
