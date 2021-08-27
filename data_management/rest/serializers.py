@@ -51,22 +51,16 @@ class IssueSerializer(BaseSerializerUUID):
 
 
 class CodeRunSerializer(BaseSerializer):
-    prov_report = serializers.SerializerMethodField()
 
     class Meta(BaseSerializer.Meta):
         model = models.CodeRun
 
     uuid = serializers.UUIDField(initial=uuid4, default=uuid4)
 
-    def get_prov_report(self, obj):
-        request = self.context.get('request')
-        if request:
-            return request.build_absolute_uri(obj.prov_report())
-        return obj.prov_report()
-
 
 class DataProductSerializer(BaseSerializer):
     internal_format = serializers.SerializerMethodField()
+    prov_report = serializers.SerializerMethodField()
 
     class Meta(BaseSerializer.Meta):
         model = models.DataProduct
@@ -77,6 +71,12 @@ class DataProductSerializer(BaseSerializer):
         internal_format = serializers.BooleanField()
         internal_format = any([component.whole_object == False for component in obj.object.components.all()])
         return internal_format
+
+    def get_prov_report(self, obj):
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.prov_report())
+        return obj.prov_report()
 
 
 for name, cls in models.all_models.items():

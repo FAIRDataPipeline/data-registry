@@ -70,7 +70,7 @@ class ProvnRenderer(renderers.BaseRenderer):
     """
     Custom renderer for returning PROV-N data (as defined in https://www.w3.org/TR/2013/REC-prov-n-20130430/).
     """
-    media_type = 'text/plain'
+    media_type = 'text/provenance-notation'
     format = 'provn'
     charset = 'utf8'
     render_style = 'text'
@@ -92,20 +92,27 @@ class TextRenderer(renderers.BaseRenderer):
         return data['text']
 
 
-@renderer_classes([
-    renderers.BrowsableAPIRenderer, renderers.JSONRenderer, JPEGRenderer, SVGRenderer, XMLRenderer, ProvnRenderer
-])
 class ProvReportView(views.APIView):
     """
-    API view for returning a PROV report for a CodeRun.
+    API view for returning a PROV report for a DataProduct.
 
-    This report can be returned as JSON (default) or JPEG, SVG, XML or PROV-N using the custom renderers.
+    This report can be returned as JSON (default) or JPEG, SVG, XML or PROV-N
+    using the custom renderers.
     """
+    renderer_classes = [renderers.BrowsableAPIRenderer, renderers.JSONRenderer,
+                        JPEGRenderer, SVGRenderer, XMLRenderer, ProvnRenderer]
 
-    def get(self, request, pk, format=None):
-        code_run = get_object_or_404(models.CodeRun, pk=pk)
-        doc = generate_prov_document(code_run)
-        value = serialize_prov_document(doc, request.accepted_renderer.format)
+    def get(self, request, pk):
+        data_product = get_object_or_404(models.DataProduct, pk=pk)
+        doc = generate_prov_document(data_product)
+        show_attributes = request.query_params.get('attributes', True)
+        if show_attributes == "False":
+            show_attributes = False
+        value = serialize_prov_document(
+            doc,
+            request.accepted_renderer.format,
+            show_attributes=bool(show_attributes)
+        )
         return Response(value)
 
 
@@ -292,17 +299,17 @@ class DataProductViewSet(BaseViewSet, mixins.UpdateModelMixin):
     filterset_fields = models.DataProduct.FILTERSET_FIELDS
     __doc__ = models.DataProduct.__doc__
 
+    def create(self, request, *args, **kwargs):
+        if 'prov_report' not in request.data:
+            request.data['prov_report'] = []
+        return super().create(request, *args, **kwargs)
+
 
 class CodeRunViewSet(BaseViewSet, mixins.UpdateModelMixin, mixins.DestroyModelMixin):
     model = models.CodeRun
     serializer_class = serializers.CodeRunSerializer
     filterset_fields = models.CodeRun.FILTERSET_FIELDS
     __doc__ = models.CodeRun.__doc__
-
-    def create(self, request, *args, **kwargs):
-        if 'prov_report' not in request.data:
-            request.data['prov_report'] = []
-        return super().create(request, *args, **kwargs)
 
 
 for name, cls in models.all_models.items():

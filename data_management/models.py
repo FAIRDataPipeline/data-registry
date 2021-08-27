@@ -393,7 +393,6 @@ class CodeRun(BaseModel):
 
     `updated_by`: Reference to the user that updated this record
     """
-    EXTRA_DISPLAY_FIELDS = ('prov_report',)
     ADMIN_LIST_FIELDS = ('description',)
 
     code_repo = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='code_repo_of', null=True, blank=True)
@@ -405,9 +404,6 @@ class CodeRun(BaseModel):
     outputs = models.ManyToManyField(ObjectComponent, related_name='outputs_of', blank=True)
     uuid = models.UUIDField(default=uuid4, editable=True, unique=True)
 
-    def prov_report(self):
-        url = reverse('prov_report', kwargs={'pk': self.id})
-        return url
 
     def __str__(self):
         if self.code_repo:
@@ -560,6 +556,7 @@ class DataProduct(BaseModel):
 
     EXTRA_DISPLAY_FIELDS = (
         'external_object',
+        'prov_report',
     )
 
     object = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='data_products')
@@ -573,6 +570,10 @@ class DataProduct(BaseModel):
                 fields=('namespace', 'name', 'version'),
                 name='unique_data_product'),
         ]
+
+    def prov_report(self):
+        url = reverse('prov_report', kwargs={'pk': self.id})
+        return url
 
     def __str__(self):
         return '%s:%s version %s' % (self.namespace, self.name, self.version)
