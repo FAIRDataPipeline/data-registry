@@ -30,7 +30,7 @@ def data_product_table_data(request):
         'rows': [
             {
                 'namespace': str(obj.namespace),
-                'name': '<a href="/data_product/%d">%s</a>' % (obj.object.id, obj.name),
+                'name': '<a href="/data_product/%d">%s</a>' % (obj.id, obj.name),
                 'version': obj.version,
             } for obj in page_objects
         ],
