@@ -105,15 +105,19 @@ class ProvReportView(views.APIView):
     def get(self, request, pk):
         data_product = get_object_or_404(models.DataProduct, pk=pk)
         doc = generate_prov_document(data_product, request)
+
         show_attributes = request.query_params.get('attributes', True)
         if show_attributes == "False":
             show_attributes = False
-        value = serialize_prov_document(
-            doc,
-            request.accepted_renderer.format,
-            show_attributes=bool(show_attributes)
-        )
-        return Response(value)
+        try:
+            value = serialize_prov_document(
+                doc,
+                request.accepted_renderer.format,
+                show_attributes=bool(show_attributes)
+            )
+            return Response(value)
+        except FileNotFoundError:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
