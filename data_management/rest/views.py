@@ -104,7 +104,7 @@ class ProvReportView(views.APIView):
 
     def get(self, request, pk):
         data_product = get_object_or_404(models.DataProduct, pk=pk)
-        doc = generate_prov_document(data_product)
+        doc = generate_prov_document(data_product, request)
         show_attributes = request.query_params.get('attributes', True)
         if show_attributes == "False":
             show_attributes = False

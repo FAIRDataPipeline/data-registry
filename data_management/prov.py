@@ -234,7 +234,7 @@ def get_whole_object_component(components):
             return component
 
 
-def generate_prov_document(data_product):
+def generate_prov_document(data_product, request):
     """
     Generate a PROV document for a DataProduct detailing all the input and outputs and
     how they were generated.
@@ -246,7 +246,7 @@ def generate_prov_document(data_product):
     :return: A PROV-O document
 
     """
-    url = ''.join(['http://', get_current_site(None).domain, '/'])
+    url = request.build_absolute_uri('/')
 
     doc = prov.model.ProvDocument()
     doc.set_default_namespace(url)
