@@ -1078,7 +1078,7 @@ class ProvAPITests(TestCase):
         result_end = result_bits[1].split("xsd:dateTime, ", 1)[1]
         result = result_bits[0] + result_end
         expected_result = """document
-  default <http://example.com/>
+  default <http://testserver/>
   
   entity(api/data_product/1, [prov:type="file", storage="https://data.scrc.uk/api/text_file/input/1", description="input 1 object", namespace="prov", name="this/is/cr/test/input/1", version="0.2.0"])
   agent(api/author/1, [prov:type="prov:Person", name="Ivana Valenti"])
