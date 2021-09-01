@@ -48,7 +48,7 @@ fi
 chmod 600 "$FAIR_HOME"/token
 echo An access token for the REST API is available in the file "$FAIR_HOME"/token
 
-type -P "dota" &> /dev/null
+type -P "dot" &> /dev/null
 retVal=$?
 if [ $retVal -ne 0 ]; then
     echo WARNING: Graphviz is not installed, so provenance report images are not available
