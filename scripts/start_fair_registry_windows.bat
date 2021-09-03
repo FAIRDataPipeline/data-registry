@@ -54,4 +54,3 @@ call %FAIR_HOME:"=%\venv\Scripts\python %FAIR_HOME:"=%\manage.py get_token > %FA
 echo Token available at %FAIR_HOME:"=%\token
 
 cd %prevwd%
-@pause
