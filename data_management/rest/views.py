@@ -117,7 +117,7 @@ class ProvReportView(views.APIView):
             )
             return Response(value)
         except FileNotFoundError:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response(status=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
