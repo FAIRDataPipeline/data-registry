@@ -14,6 +14,7 @@ from collections import namedtuple
 from . import models
 from . import object_storage
 from . import settings
+from . import version
 
 
 def index(request):
@@ -37,6 +38,7 @@ def index(request):
         'external_objects': external_objects,
         'code_repo_release': code_repo_release,
         'remote_registry': settings.REMOTE_REGISTRY,
+        'registry_version': version.get_version()
     }
     return render(request, os.path.join('data_management', 'index.html'), ctx)
 
