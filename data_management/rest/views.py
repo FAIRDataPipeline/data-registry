@@ -8,6 +8,7 @@ from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework import viewsets, permissions, views, renderers, mixins, exceptions, status, filters as rest_filters
 from rest_framework.response import Response
+from pydot import Dot
 from django.db import IntegrityError
 from django_filters.rest_framework import DjangoFilterBackend, filterset
 from django_filters import constants, filters
@@ -96,11 +97,20 @@ class ProvReportView(views.APIView):
     """
     API view for returning a PROV report for a DataProduct.
 
-    This report can be returned as JSON (default) or JPEG, SVG, XML or PROV-N
-    using the custom renderers.
+    This report can be returned as JSON (default) or XML or PROV-N using the custom
+    renderers. In addition if GraphViz is installed then JPEG and SVG renderers are also
+    available.
+
     """
-    renderer_classes = [renderers.BrowsableAPIRenderer, renderers.JSONRenderer,
-                        JPEGRenderer, SVGRenderer, XMLRenderer, ProvnRenderer]
+    try:
+        Dot(prog='dot').create()
+        # GraphViz is installed so the JPEG and SVG renderers are made available.
+        renderer_classes = [renderers.BrowsableAPIRenderer, renderers.JSONRenderer,
+                            JPEGRenderer, SVGRenderer, XMLRenderer, ProvnRenderer]
+    except FileNotFoundError:
+        # GraphViz is not installed so the JPEG and SVG renderers are NOT available.
+        renderer_classes = [renderers.BrowsableAPIRenderer, renderers.JSONRenderer,
+                            XMLRenderer, ProvnRenderer]
 
     def get(self, request, pk):
         data_product = get_object_or_404(models.DataProduct, pk=pk)
@@ -109,15 +119,12 @@ class ProvReportView(views.APIView):
         show_attributes = request.query_params.get('attributes', True)
         if show_attributes == "False":
             show_attributes = False
-        try:
-            value = serialize_prov_document(
-                doc,
-                request.accepted_renderer.format,
-                show_attributes=bool(show_attributes)
-            )
-            return Response(value)
-        except FileNotFoundError:
-            return Response(status=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+        value = serialize_prov_document(
+            doc,
+            request.accepted_renderer.format,
+            show_attributes=bool(show_attributes)
+        )
+        return Response(value)
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
