@@ -25,6 +25,13 @@ jobs:
           path: "local-requirements.txt"
       - name: Run Tests
         run: python manage.py test --settings drams.test-settings
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          env_vars: OS,PYTHON
+          files: ./coverage.xml
+          flags: unittests
+          verbose: true
   deploy-local-registry:
     name: Deploy local registry on ${{ matrix.os }} with Python ${{ matrix.python }}
     runs-on: ${{ matrix.os }}
