@@ -10,6 +10,7 @@ jobs:
         python: ["3.7", "3.9"]
     steps:
       - uses: actions/checkout@v2
+        run: git fetch --prune --unshallow
       - name: Set up Python
         uses: actions/setup-python@v2
       - name: Install graphviz on ubuntu
