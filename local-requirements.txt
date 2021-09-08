@@ -1,5 +1,6 @@
 certifi==2020.4.5.1
 chardet==3.0.4
+coverage==5.5
 decorator==4.4.2
 defusedxml==0.6.0
 Django==3.1.12
@@ -37,3 +38,6 @@ Markdown==3.2.2
 django-nose==1.4.6
 setuptools~=54.2.0
 whitenoise==5.2.0
+pytest==6.2.4
+pytest-cov==2.12.1
+pytest-django==4.4.0
