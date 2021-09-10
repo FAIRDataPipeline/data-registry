@@ -1,7 +1,6 @@
 import io
 import json
 
-from django.contrib.sites.shortcuts import get_current_site
 from prov.constants import PROV_ROLE, PROV_TYPE
 import prov.dot
 import prov.model
@@ -44,14 +43,22 @@ def _add_author_agents(authors, doc, entity):
 
     """
     for author in authors:
-        author_agent = doc.agent(
-            f'api/author/{author.id}',
-            {
-                PROV_TYPE: 'prov:Person',
-                'name': author.name,
-                'identifier': author.identifier,
-            },
-        )
+        agent_id = f'api/author/{author.id}'
+        agent = doc.get_record(agent_id)
+        # check to see if we have already created an agent for this author
+        if len(agent) > 0:
+            # The prov documentation says a ProvRecord is returned, but actually a
+            # list of ProvRecord is returned
+            author_agent = agent[0]
+        else:
+            author_agent = doc.agent(
+                agent_id,
+                {
+                    PROV_TYPE: 'prov:Person',
+                    'name': author.name,
+                    'identifier': author.identifier,
+                },
+            )
         doc.wasAttributedTo(entity, author_agent, None, {PROV_ROLE: 'author'})
 
 

@@ -934,11 +934,7 @@ class ProvAPITests(TestCase):
         self.assertEqual(results["activity"], expected_result)
 
         expected_result = {
-            "api/author/3": [
-                {"prov:type": "prov:Person", "name": "Rosanna Massabeti"},
-                {"prov:type": "prov:Person", "name": "Rosanna Massabeti"},
-                {"prov:type": "prov:Person", "name": "Rosanna Massabeti"},
-            ],
+            "api/author/3": {"prov:type": "prov:Person", "name": "Rosanna Massabeti"},
             "api/user/1": {"prov:type": "prov:Person", "name": "User Not Found"},
             "api/author/1": {"prov:type": "prov:Person", "name": "Ivana Valenti"},
             "api/author/2": {"prov:type": "prov:Person", "name": "Maria Cipriani"},
