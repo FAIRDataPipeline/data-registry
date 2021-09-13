@@ -1,0 +1,33 @@
+abstract: "The FAIR data registry is a Django website and REST API which is used by the data-pipeline to store metadata about code runs and their inputs and outputs."
+authors:
+  - family-names: Blackwell
+    given-names: Richard
+  - family-names: Brett
+    given-names: Alys
+  - family-names: Cook
+    given-names: James
+  - family-names: Cummings
+    given-names: Nathan
+  - family-names: Field
+    given-names: Ryan
+  - family-names: "Gonzalez-Beltran"
+    given-names: Alejandra
+    orcid: "http://orcid.org/0000-0003-3499-8262"
+  - family-names: Hollocombe
+    given-names: Jonathan
+  - family-names: Lahiff
+    given-names: Andrew
+  - family-names: Richard
+    given-names: Reeve
+  - family-names: Wilson
+    given-names: Antony
+    orcid: "https://orcid.org/0000-0001-7336-4823"
+  - family-names: Zarębski
+    given-names: Kristian
+cff-version: 1.2.0
+license: "BSD-2-Clause"
+message: "If you use this software, please cite it using these metadata."
+repository-code: "https://github.com/FAIRDataPipeline/data-registry/"
+title: "The FAIR Data Registry"
+version: "v1.0-rc4"
+date-released: "2021-09-01"
