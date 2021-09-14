@@ -100,6 +100,12 @@ REST_FRAMEWORK = {
 
 TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
 
+# Tell nose to measure coverage on the 'custom_user' and 'data_management' apps
+NOSE_ARGS = [
+    '--with-coverage',
+    '--cover-package=custom_user,data_management',
+    '--cover-xml',
+]
 # Database
 # https://docs.djangoproject.com/en/3.0/ref/settings/#databases
 
