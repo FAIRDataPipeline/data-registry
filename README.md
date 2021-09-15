@@ -10,13 +10,12 @@ The *FAIR data registry* is implemented as a [Django](https://www.djangoproject.
 
 ### Documentation
 
-User documentation is available [here](docs/index.md).
 
 Information on how to run the local registry is available at [the local registry section in the project website](https://fairdatapipeline.github.io/docs/local_registry/).
 
 Alternatively, you can run the local registry in a local VM using [Vagrant](https://www.vagrantup.com) with the included Vagrantfile.
 
-Installation, development and maintenance guides are available in the [Wiki](https://github.com/FAIRDataPipeline/data-registry/wiki).
+Installation, development and maintenance guides, especially for the remote registry, are available in the [Wiki](https://github.com/FAIRDataPipeline/data-registry/wiki). User documentation for the remote registry is also available [here](docs/index.md).
 
 [travis-master-img]: https://img.shields.io/travis/com/ScottishCovidResponse/data-registry/master?label=build-master
 [travis-master-url]: https://travis-ci.com/ScottishCovidResponse/data-registry?branch=master
