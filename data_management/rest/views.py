@@ -119,9 +119,18 @@ class ProvReportView(views.APIView):
         show_attributes = request.query_params.get('attributes', True)
         if show_attributes == "False":
             show_attributes = False
+
+        default_aspect_ratio = 0.71
+        aspect_ratio = request.query_params.get('aspect_ratio', default_aspect_ratio)
+        try:
+            aspect_ratio = float(aspect_ratio)
+        except ValueError:
+            aspect_ratio = default_aspect_ratio
+
         value = serialize_prov_document(
             doc,
             request.accepted_renderer.format,
+            aspect_ratio,
             show_attributes=bool(show_attributes)
         )
         return Response(value)
