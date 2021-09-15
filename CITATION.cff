@@ -17,8 +17,11 @@ authors:
     given-names: Jonathan
   - family-names: Lahiff
     given-names: Andrew
+<<<<<<< HEAD
   - family-names: Richard
     given-names: Reeve
+=======
+>>>>>>> 36535ba (Add a citation file)
   - family-names: Wilson
     given-names: Antony
     orcid: "https://orcid.org/0000-0001-7336-4823"
