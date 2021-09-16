@@ -1,5 +1,3 @@
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
 from django.core.management.base import BaseCommand
 from django.db.utils import OperationalError
 
@@ -27,13 +25,11 @@ class Command(BaseCommand):
         force = options["force"]
 
         try:
-            user = get_user_model().objects.all()
-            group = Group.objects.all()
             objects = Object.objects.all()
 
-            if (len(user) > 0 or len(group) > 0 or len(objects) > 0) and not force:
+            if len(objects) > 0 and not force:
                 self.stderr.write(
-                    "This command will only run if the database is empty. "
+                    "This command will only run if the database contains no 'Objects'. "
                     "Use the '--force' option to override this behaviour."
                 )
                 return
