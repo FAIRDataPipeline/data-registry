@@ -334,14 +334,17 @@ def generate_prov_document(data_product, request):
     return doc
 
 
-def serialize_prov_document(doc, format_, aspect_ratio, show_attributes=True):
+def serialize_prov_document(
+    doc, format_, aspect_ratio, dpi=None, show_attributes=True
+):
     """
     Serialise a PROV document as either a JPEG or SVG image or an XML or PROV-N report.
 
     :param doc: A PROV-O document
     :param format_: The format to generate: jpg, svg, xml or provn
     :param aspect_ratio: a float used to define the ratio for images
-    :param show_attributes: a boolean
+    :param dpi:  a float used to define the dpi for images
+    :param show_attributes: a boolean, shows attributes of elements when True
 
     :return: The PROV report in the specified format
 
@@ -349,6 +352,7 @@ def serialize_prov_document(doc, format_, aspect_ratio, show_attributes=True):
     if format_ in ('jpg', 'svg'):
         dot = prov.dot.prov_to_dot(doc, show_element_attributes=show_attributes)
         dot.set_ratio(aspect_ratio)
+        dot.set_dpi(dpi)
         with io.BytesIO() as buf:
             if format_ == 'jpg':
                 buf.write(dot.create_jpg())

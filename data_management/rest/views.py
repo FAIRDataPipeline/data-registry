@@ -101,6 +101,11 @@ class ProvReportView(views.APIView):
     renderers. In addition if GraphViz is installed then JPEG and SVG renderers are also
     available.
 
+    This method makes use of the following optional query parameters:
+        aspect_ratio: a float used to define the ratio for images
+        dpi:  a float used to define the dpi for images
+        show_attributes: a boolean, shows attributes of elements when True
+
     """
     try:
         Dot(prog='dot').create()
@@ -127,10 +132,17 @@ class ProvReportView(views.APIView):
         except ValueError:
             aspect_ratio = default_aspect_ratio
 
+        dpi = request.query_params.get('dpi', None)
+        try:
+            dpi = float(dpi)
+        except (TypeError, ValueError):
+            dpi = None
+
         value = serialize_prov_document(
             doc,
             request.accepted_renderer.format,
             aspect_ratio,
+            dpi,
             show_attributes=bool(show_attributes)
         )
         return Response(value)
