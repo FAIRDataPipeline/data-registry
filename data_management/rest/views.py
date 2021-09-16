@@ -67,6 +67,19 @@ class XMLRenderer(renderers.BaseRenderer):
         return data
 
 
+class JSONLDRenderer(renderers.BaseRenderer):
+    """
+    Custom renderer for returning JSON-LD data.
+    """
+    media_type = 'application/ld+json'
+    format = 'json-ld'
+    charset = 'utf8'
+    render_style = 'text'
+
+    def render(self, data, media_type=None, renderer_context=None):
+        return data
+
+
 class ProvnRenderer(renderers.BaseRenderer):
     """
     Custom renderer for returning PROV-N data (as defined in https://www.w3.org/TR/2013/REC-prov-n-20130430/).
@@ -111,11 +124,12 @@ class ProvReportView(views.APIView):
         Dot(prog='dot').create()
         # GraphViz is installed so the JPEG and SVG renderers are made available.
         renderer_classes = [renderers.BrowsableAPIRenderer, renderers.JSONRenderer,
-                            JPEGRenderer, SVGRenderer, XMLRenderer, ProvnRenderer]
+                            JSONLDRenderer, JPEGRenderer, SVGRenderer, XMLRenderer,
+                            ProvnRenderer]
     except FileNotFoundError:
         # GraphViz is not installed so the JPEG and SVG renderers are NOT available.
         renderer_classes = [renderers.BrowsableAPIRenderer, renderers.JSONRenderer,
-                            XMLRenderer, ProvnRenderer]
+                            JSONLDRenderer, XMLRenderer, ProvnRenderer]
 
     def get(self, request, pk):
         data_product = get_object_or_404(models.DataProduct, pk=pk)

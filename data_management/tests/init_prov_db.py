@@ -12,6 +12,7 @@ from data_management.models import (
     StorageRoot,
     Issue,
     Namespace,
+    UserAuthor,
 )
 from django.contrib.auth import get_user_model
 
@@ -23,13 +24,11 @@ def reset_db():
     Namespace.objects.all().delete()
 
 
-def init_db(test=True):
+def init_db():
     user = get_user_model().objects.first()
-
-    if test:
-        get_user_model().objects.create(username="testusera")
-        get_user_model().objects.create(username="testuserb")
-        get_user_model().objects.create(username="testuserc")
+    usera = get_user_model().objects.create(username="testusera")
+    get_user_model().objects.create(username="testuserb")
+    get_user_model().objects.create(username="testuserc")
 
     sr_github = StorageRoot.objects.create(
         updated_by=user,
@@ -132,6 +131,7 @@ def init_db(test=True):
     a1 = Author.objects.create(updated_by=user, name="Ivana Valenti")
     a2 = Author.objects.create(updated_by=user, name="Maria Cipriani")
     a3 = Author.objects.create(updated_by=user, name="Rosanna Massabeti")
+    UserAuthor.objects.get_or_create(updated_by=user, user=usera, author=a1)
 
     o_code = Object.objects.create(updated_by=user, storage_location=sl_code)
     o_code_2 = Object.objects.create(updated_by=user, storage_location=sl_code)
@@ -295,7 +295,7 @@ def init_db(test=True):
     cr2.outputs.set([o_output_3.components.first()])
 
     cr3 = CodeRun.objects.create(
-        updated_by=user,
+        updated_by=usera,
         run_date="2021-07-17T19:21:11Z",
         submission_script=o_script,
     )
@@ -306,5 +306,4 @@ def init_db(test=True):
 
 
 if __name__ == "__main__":
-    # reset_db()
-    init_db(test=False)
+    init_db()
