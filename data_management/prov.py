@@ -15,6 +15,7 @@ from . import models
 
 
 DCAT_VOCAB_PREFIX = 'dcat'
+DCMITYPE_VOCAB_PREFIX = 'dcmitype'
 DCTERMS_VOCAB_PREFIX = 'dcterms'
 FAIR_VOCAB_PREFIX = 'fair'
 FOAF_VOCAB_PREFIX = 'foaf'
@@ -105,7 +106,7 @@ def _add_author_agents(authors, doc, entity, reg_uri_prefix, vocab_namespaces):
                         vocab_namespaces[FOAF_VOCAB_PREFIX], 'name'
                     ): author.name,
                     QualifiedName(
-                        vocab_namespaces[FAIR_VOCAB_PREFIX], 'identifier'
+                        vocab_namespaces[DCTERMS_VOCAB_PREFIX], 'identifier'
                     ): author.identifier,
                 },
             )
@@ -144,6 +145,10 @@ def _add_code_repo_release(
         code_release_entity = doc.entity(
             f'{reg_uri_prefix}:api/code_repo_release/{code_repo_release.id}',
             (
+                (
+                    PROV_TYPE,
+                    QualifiedName(vocab_namespaces[DCMITYPE_VOCAB_PREFIX], 'Software')
+                ),
                 *_generate_object_meta(code_repo, vocab_namespaces),
                 (
                     QualifiedName(vocab_namespaces[DCTERMS_VOCAB_PREFIX], 'title'),
@@ -172,7 +177,7 @@ def _add_code_repo_release(
         code_release_entity,
         None,
         None,
-        {PROV_ROLE: QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], 'software')},
+        {PROV_ROLE: QualifiedName(vocab_namespaces[DCMITYPE_VOCAB_PREFIX], 'Software')},
     )
 
 
@@ -210,21 +215,32 @@ def _add_code_run(dp_entity, doc, code_run, reg_uri_prefix, vocab_namespaces):
             {
                 PROV_TYPE: QualifiedName(PROV, 'Person'),
                 QualifiedName(
-                    vocab_namespaces[DCTERMS_VOCAB_PREFIX], 'creator'
+                    vocab_namespaces[FOAF_VOCAB_PREFIX], 'name'
                 ): code_run.updated_by.full_name(),
             },
         )
     else:
         # we have an author linked to the user
-        run_agent = doc.agent(
-            f'{reg_uri_prefix}:api/author/{user_authors[0].author.id}',
-            {
-                PROV_TYPE: QualifiedName(PROV, 'Person'),
-                QualifiedName(
-                    vocab_namespaces[DCTERMS_VOCAB_PREFIX], 'creator'
-                ): code_run.updated_by.full_name(),
-            },
-        )
+        agent_id = f'{reg_uri_prefix}:api/author/{user_authors[0].author.id}'
+        agent = doc.get_record(agent_id)
+        # check to see if we have already created an agent for this author
+        if len(agent) > 0:
+            # The prov documentation says a ProvRecord is returned, but actually a
+            # list of ProvRecord is returned
+            run_agent = agent[0]
+        else:
+            run_agent = doc.agent(
+                agent_id,
+                {
+                    PROV_TYPE: QualifiedName(PROV, 'Person'),
+                    QualifiedName(
+                        vocab_namespaces[FOAF_VOCAB_PREFIX], 'name'
+                    ): user_authors[0].author.name,
+                    QualifiedName(
+                        vocab_namespaces[FAIR_VOCAB_PREFIX], 'identifier'
+                    ): user_authors[0].author.identifier,
+                },
+            )
 
     doc.wasStartedBy(
         cr_activity,
@@ -284,7 +300,7 @@ def _add_external_object(
     if external_object.identifier:
         data.append(
             (
-                QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], 'identifier'),
+                QualifiedName(vocab_namespaces[DCTERMS_VOCAB_PREFIX], 'identifier'),
                 external_object.identifier,
             )
         )
@@ -456,7 +472,12 @@ def _add_submission_script(
     """
     submission_script_entity = doc.entity(
         f'{reg_uri_prefix}:api/object/{submission_script.id}',
-        (*_generate_object_meta(submission_script, vocab_namespaces),),
+        (
+            (
+                PROV_TYPE,
+                QualifiedName(vocab_namespaces[DCMITYPE_VOCAB_PREFIX], 'Software')
+            ),
+            *_generate_object_meta(submission_script, vocab_namespaces),),
     )
 
     _add_author_agents(
@@ -516,6 +537,7 @@ def generate_prov_document(data_product, request):
     # the vocab namespace is always the main registry
     doc.add_namespace(FAIR_VOCAB_PREFIX, f'{cenral_registry_url}vocab/#')
     doc.add_namespace(DCAT_VOCAB_PREFIX, 'http://www.w3.org/ns/dcat#')
+    doc.add_namespace(DCMITYPE_VOCAB_PREFIX, 'http://purl.org/dc/dcmitype/')
     doc.add_namespace(DCTERMS_VOCAB_PREFIX, 'http://purl.org/dc/terms/')
     doc.add_namespace(FOAF_VOCAB_PREFIX, 'http://xmlns.com/foaf/spec/#')
 

@@ -889,7 +889,7 @@ class ProvAPITests(TestCase):
             "fair:alternate_identifier": "this_is_cr_test_output_1",
             "fair:alternate_identifier_type": "text",
             "dcterms:description": "this is code run test output 1",
-            "fair:identifier": "this_is_cr_test_output_1_id",
+            "dcterms:identifier": "this_is_cr_test_output_1_id",
         }
         self.assertEqual(results["entity"]["lreg:api/external_object/2"], expected_result)
 
@@ -898,7 +898,7 @@ class ProvAPITests(TestCase):
             "dcterms:title": "this is cr test output 2",
             "fair:release_date": {"$": "2021-07-10T18:38:00+00:00", "type": "xsd:dateTime"},
             "dcat:hasVersion": "0.2.0",
-            "fair:identifier": "this_is_cr_test_output_2",
+            "dcterms:identifier": "this_is_cr_test_output_2",
         }
         self.assertEqual(results["entity"]["lreg:api/external_object/3"], expected_result)
 
@@ -907,6 +907,7 @@ class ProvAPITests(TestCase):
             "dcterms:title": "ScottishCovidResponse/SCRCdata",
             "dcat:hasVersion": "0.1.0",
             "fair:website": "https://github.com/ScottishCovidResponse/SCRCdata",
+            'prov:type': {'$': 'dcmitype:Software', 'type': 'prov:QUALIFIED_NAME'}
         }
         prov_out = results["entity"]["lreg:api/code_repo_release/1"]
         del prov_out["fair:last_updated"]
@@ -922,6 +923,7 @@ class ProvAPITests(TestCase):
         expected_result = {
             "fair:file_type": "text file",
             "fair:storage": "https://data.scrc.uk/api/text_file/16/?format=text",
+            'prov:type': {'$': 'dcmitype:Software', 'type': 'prov:QUALIFIED_NAME'}
         }
         prov_out = results["entity"]["lreg:api/object/4"]
         del prov_out["fair:last_updated"]
@@ -937,7 +939,7 @@ class ProvAPITests(TestCase):
         self.assertEqual(results["activity"], expected_result)
         expected_result = {
             "lreg:api/author/3": {"prov:type": {'$': 'prov:Person', 'type': 'prov:QUALIFIED_NAME'}, "foaf:name": "Rosanna Massabeti"},
-            "lreg:api/user/1": {"prov:type": {'$': 'prov:Person', 'type': 'prov:QUALIFIED_NAME'}, "dcterms:creator": "User Not Found"},
+            "lreg:api/user/1": {"prov:type": {'$': 'prov:Person', 'type': 'prov:QUALIFIED_NAME'}, "foaf:name": "User Not Found"},
             "lreg:api/author/1": {"prov:type": {'$': 'prov:Person', 'type': 'prov:QUALIFIED_NAME'}, "foaf:name": "Ivana Valenti"},
             "lreg:api/author/2": {"prov:type": {'$': 'prov:Person', 'type': 'prov:QUALIFIED_NAME'}, "foaf:name": "Maria Cipriani"},
         }
@@ -963,7 +965,7 @@ class ProvAPITests(TestCase):
             "_:id5": {
                 "prov:activity": "lreg:api/code_run/1",
                 "prov:entity": "lreg:api/code_repo_release/1",
-                "prov:role": {'$': 'fair:software', 'type': 'prov:QUALIFIED_NAME'},
+                "prov:role": {'$': 'dcmitype:Software', 'type': 'prov:QUALIFIED_NAME'},
             },
             "_:id6": {
                 "prov:activity": "lreg:api/code_run/1",
@@ -1079,6 +1081,7 @@ class ProvAPITests(TestCase):
   prefix lreg <http://testserver/>
   prefix fair <https://data.scrc.uk/vocab/#>
   prefix dcat <http://www.w3.org/ns/dcat#>
+  prefix dcmitype <http://purl.org/dc/dcmitype/>
   prefix dcterms <http://purl.org/dc/terms/>
   prefix foaf <http://xmlns.com/foaf/spec/#>
   
