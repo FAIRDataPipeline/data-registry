@@ -13,6 +13,12 @@ class UsersAPITests(TestCase):
         self.user = get_user_model().objects.create(username='Test User')
         init_db()
 
+    def test_full_name(self):
+        self.assertEqual(self.user.full_name(), 'User Not Found')
+
+    def test_user_orgs(self):
+        self.assertEqual(self.user.orgs(), [])
+
     # def _get_token(self):
     #     request = self.factory.get(reverse('get_token'))
     #     request.user = self.user
