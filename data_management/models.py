@@ -667,6 +667,8 @@ class QualityControlled(BaseModel):
     ### Writable Fields:
     `object`: API URL of the associated `Object`
 
+    `field`: API URL of the `Object` representing the quality control document
+
     ### Read-only Fields:
     `url`: Reference to the instance of the `QualityControlled`, final integer is the `QualityControlled` id
 
@@ -674,9 +676,10 @@ class QualityControlled(BaseModel):
 
     `updated_by`: Reference to the user that updated this record
     """
-    ADMIN_LIST_FIELDS = ('object',)
+    ADMIN_LIST_FIELDS = ('object', 'field')
 
     object = models.OneToOneField(Object, on_delete=models.PROTECT, related_name='quality_control')
+    field = models.OneToOneField(Object, on_delete=models.PROTECT, related_name='quality_control_document')
 
 
 class Keyword(BaseModel):

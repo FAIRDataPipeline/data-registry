@@ -251,10 +251,10 @@ def external_object(request, alternate_identifier, title, version):
         return HttpResponseNotFound()
 
     # Use storage location if it exists and user has not requested the original_store
-    if external_object.object.storage_location and 'original' not in request.GET:
+    if external_object.data_product.object.storage_location and 'original' not in request.GET:
         if 'root' in request.GET:
-            return HttpResponse(external_object.object.storage_location.storage_root.root)
-        return redirect(external_object.object.storage_location.full_uri())
+            return HttpResponse(external_object.data_product.object.storage_location.storage_root.root)
+        return redirect(external_object.data_product.object.storage_location.full_uri())
 
     # Use original_store if it exists
     if external_object.original_store:

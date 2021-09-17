@@ -55,6 +55,11 @@ def init_db(test=True):
         root='https://raw.githubusercontent.com/ScottishCovidResponse/temporary_data/master/',
     )
 
+    scl_repo = StorageRoot.objects.create(
+        updated_by=user,
+        root='https://raw.githubusercontent.com/ScottishCovidResponse/modelling-software-checklist',
+    )
+
     sl_repo_prob = StorageLocation.objects.create(
         updated_by=user,
         path='master/SCRC/human/infection/SARS-CoV-2/symptom-probability/0.1.0.toml',
@@ -102,6 +107,13 @@ def init_db(test=True):
         path='human/infection/SARS-CoV-2/scotland/cases_and_management/v0.1.0.csv',
         hash='9c1eb0ff807a0cd73aaec297ffc780cba00b443d',
         storage_root=sr_boydorr,
+    )
+
+    scl_repo_checklist = StorageLocation.objects.create(
+        updated_by=user,
+        path='main/software-checklist.md',
+        hash='f250b8dff4783cb59ee537d375a9420e3fbe66c2',
+        storage_root=scl_repo,
     )
 
     StorageLocation.objects.create(
@@ -423,9 +435,13 @@ def init_db(test=True):
     cr.inputs.set([oc_prob, oc_infect, oc_latent])
     cr.outputs.set([oc_prob, oc_infect, oc_latent])
 
-    QualityControlled.objects.create(updated_by=user, object=o_code)
-    QualityControlled.objects.create(updated_by=user, object=o_boy_cases_h5)
-    QualityControlled.objects.create(updated_by=user, object=o_boy_mort_h5)
+    o_scl_1 = Object.objects.create(updated_by=user, storage_location=scl_repo_checklist)
+    o_scl_2 = Object.objects.create(updated_by=user, storage_location=scl_repo_checklist)
+    o_scl_3 = Object.objects.create(updated_by=user, storage_location=scl_repo_checklist)
+
+    QualityControlled.objects.create(updated_by=user, object=o_code, field=o_scl_1)
+    QualityControlled.objects.create(updated_by=user, object=o_boy_cases_h5, field=o_scl_2)
+    QualityControlled.objects.create(updated_by=user, object=o_boy_mort_h5, field=o_scl_3)
 
     Licence.objects.create(updated_by=user, object=o_code, licence_info='''
     Copyright 2020 SCRC
