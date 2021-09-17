@@ -98,7 +98,7 @@ class StorageRootAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
         results = response.json()['results']
-        self.assertEqual(len(results), 7)
+        self.assertEqual(len(results), 8)
 
     def test_get_detail(self):
         client = APIClient()
@@ -137,7 +137,7 @@ class StorageLocationAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
         results = response.json()['results']
-        self.assertEqual(len(results), 18)
+        self.assertEqual(len(results), 19)
 
     def test_get_detail(self):
         client = APIClient()
@@ -189,7 +189,7 @@ class ObjectAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
         results = response.json()['results']
-        self.assertEqual(len(results), 16)
+        self.assertEqual(len(results), 19)
 
     def test_get_detail(self):
         client = APIClient()
@@ -229,7 +229,7 @@ class ObjectComponentAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
         results = response.json()['results']
-        self.assertEqual(len(results), 48)
+        self.assertEqual(len(results), 51)
 
     def test_get_detail_whole_object(self):
         client = APIClient()
