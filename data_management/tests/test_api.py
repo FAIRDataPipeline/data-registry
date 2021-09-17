@@ -201,23 +201,23 @@ class ObjectAPITests(TestCase):
         client = APIClient()
         client.force_authenticate(user=self.user)
         url = reverse('object-detail', kwargs={'pk': 3})
-        response = client.get(url, format='json')
+        response = client.get(url, format='json', HTTP_HOST='localhost')
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['storage_location'], 'http://testserver/api/storage_location/2/')
+        self.assertEqual(response.json()['storage_location'], 'http://localhost/api/storage_location/2/')
 
     def test_filter_by_storage_location(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
         url = reverse('object-list')
-        response = client.get(url, data={'storage_location': '3'}, format='json')
+        response = client.get(url, data={'storage_location': '3'}, format='json', HTTP_HOST='localhost')
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
         results = response.json()['results']
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['storage_location'], 'http://testserver/api/storage_location/3/')
+        self.assertEqual(results[0]['storage_location'], 'http://localhost/api/storage_location/3/')
 
 
 class ObjectComponentAPITests(TestCase):
@@ -433,12 +433,12 @@ class QualityControlledAPITests(TestCase):
         client = APIClient()
         client.force_authenticate(user=self.user)
         url = reverse('qualitycontrolled-detail', kwargs={'pk': 1})
-        response = client.get(url, format='json')
+        response = client.get(url, format='json', HTTP_HOST='localhost')
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['object'], 'http://testserver/api/object/15/')
-        self.assertEqual(response.json()['field'], 'http://testserver/api/object/17/')
+        self.assertEqual(response.json()['object'], 'http://localhost/api/object/15/')
+        self.assertEqual(response.json()['field'], 'http://localhost/api/object/17/')
 
 
 class KeywordAPITests(TestCase):
@@ -1070,7 +1070,7 @@ class ProvAPITests(TestCase):
         client.force_authenticate(user=self.user)
         url = reverse("prov_report", kwargs={"pk": 1})
         response = client.get(
-            url, format="provn", HTTP_ACCEPT="text/provenance-notation"
+            url, format="provn", HTTP_ACCEPT="text/provenance-notation", HTTP_HOST='localhost'
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
@@ -1081,7 +1081,7 @@ class ProvAPITests(TestCase):
         result_end = result_bits[1].split("xsd:dateTime, ", 1)[1]
         result = result_bits[0] + result_end
         expected_result = """document
-  default <http://testserver/>
+  default <http://localhost/>
   
   entity(api/data_product/1, [prov:type="file", storage="https://data.scrc.uk/api/text_file/input/1", description="input 1 object", namespace="prov", name="this/is/cr/test/input/1", version="0.2.0"])
   agent(api/author/1, [prov:type="prov:Person", name="Ivana Valenti"])
