@@ -179,6 +179,29 @@ class StorageLocationAPITests(TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]['path'], 'human/infection/SARS-CoV-2/scotland/cases_and_management/v0.1.0.h5')
 
+class StorageAPITests(TestCase):
+
+    def setUp(self):
+        self.user = get_user_model().objects.create(username='Test User')
+        init_db()
+
+    def test_get_data(self):
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse("get_data_product", kwargs={"data_product_name": "human/infection/SARS-CoV-2/symptom-probability", "namespace": "FAIR", "version": "0.1.0"})
+        response = client.get(url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, 'https://raw.githubusercontent.com/ScottishCovidResponse/DataRepository/master/SCRC/human/infection/SARS-CoV-2/symptom-probability/0.1.0.toml')
+
+    def test_get_external_object(self):
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse("get_external_object", kwargs={"alternate_identifier": "scottish deaths-involving-coronavirus-covid-19", "title": "scottish deaths-involving-coronavirus-covid-19", "version": "0.1.0"})
+        response = client.get(url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, 'ftp://boydorr.gla.ac.uk/scrc/human/infection/SARS-CoV-2/scotland/mortality/v0.1.0.csv')
 
 class ObjectAPITests(TestCase):
 
