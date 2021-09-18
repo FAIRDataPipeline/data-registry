@@ -201,7 +201,6 @@ class StorageAPITests(TestCase):
         response = client.get(url)
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, 'ftp://boydorr.gla.ac.uk/scrc/human/infection/SARS-CoV-2/scotland/mortality/v0.1.0.csv')
 
 class ObjectAPITests(TestCase):
 
