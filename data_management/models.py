@@ -667,7 +667,7 @@ class QualityControlled(BaseModel):
     ### Writable Fields:
     `object`: API URL of the associated `Object`
 
-    `field`: API URL of the `Object` representing the quality control document
+    `document`: API URL of the `Object` representing the quality control document
 
     ### Read-only Fields:
     `url`: Reference to the instance of the `QualityControlled`, final integer is the `QualityControlled` id
