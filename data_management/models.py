@@ -676,7 +676,7 @@ class QualityControlled(BaseModel):
 
     `updated_by`: Reference to the user that updated this record
     """
-    ADMIN_LIST_FIELDS = ('object', 'field')
+    ADMIN_LIST_FIELDS = ('object', 'document')
 
     object = models.OneToOneField(Object, on_delete=models.PROTECT, related_name='quality_control')
     document = models.OneToOneField(Object, on_delete=models.PROTECT, related_name='quality_control_document')
