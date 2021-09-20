@@ -439,9 +439,10 @@ def init_db(test=True):
     o_scl_2 = Object.objects.create(updated_by=user, storage_location=scl_repo_checklist)
     o_scl_3 = Object.objects.create(updated_by=user, storage_location=scl_repo_checklist)
 
-    QualityControlled.objects.create(updated_by=user, object=o_code, field=o_scl_1)
-    QualityControlled.objects.create(updated_by=user, object=o_boy_cases_h5, field=o_scl_2)
-    QualityControlled.objects.create(updated_by=user, object=o_boy_mort_h5, field=o_scl_3)
+    QualityControlled.objects.create(updated_by=user, object=o_code, document=o_scl_1)
+    QualityControlled.objects.create(updated_by=user, object=o_boy_cases_h5, document=o_scl_2)
+    QualityControlled.objects.create(updated_by=user, object=o_boy_mort_h5, document=o_scl_3)
+```
 
     Licence.objects.create(updated_by=user, object=o_code, licence_info='''
     Copyright 2020 SCRC
