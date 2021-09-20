@@ -460,7 +460,7 @@ class QualityControlledAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
         self.assertEqual(response.json()['object'], 'http://localhost/api/object/15/')
-        self.assertEqual(response.json()['field'], 'http://localhost/api/object/17/')
+        self.assertEqual(response.json()['document'], 'http://localhost/api/object/17/')
 
 
 class KeywordAPITests(TestCase):
