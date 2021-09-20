@@ -26,7 +26,7 @@ def _generate_object_meta(obj, vocab_namespaces):
 
     data.append(
         (
-            QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], 'last_updated'),
+            QualifiedName(vocab_namespaces[DCTERMS_VOCAB_PREFIX], 'modified'),
             obj.last_updated,
         )
     )
@@ -34,7 +34,7 @@ def _generate_object_meta(obj, vocab_namespaces):
     if obj.storage_location:
         data.append(
             (
-                QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], 'storage'),
+                QualifiedName(PROV, 'atLocation'),
                 str(obj.storage_location),
             )
         )
@@ -70,7 +70,7 @@ def _generate_object_meta(obj, vocab_namespaces):
     if obj.file_type is not None:
         data.append(
             (
-                QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], 'file_type'),
+                QualifiedName(vocab_namespaces[DCTERMS_VOCAB_PREFIX], 'format'),
                 str(obj.file_type.name),
             )
         )
@@ -114,7 +114,8 @@ def _add_author_agents(authors, doc, entity, reg_uri_prefix, vocab_namespaces):
             entity,
             author_agent,
             None,
-            {PROV_ROLE: QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], 'author')},
+            {PROV_ROLE: QualifiedName(
+                vocab_namespaces[DCTERMS_VOCAB_PREFIX], 'creator')},
         )
 
 
@@ -177,7 +178,7 @@ def _add_code_repo_release(
         code_release_entity,
         None,
         None,
-        {PROV_ROLE: QualifiedName(vocab_namespaces[DCMITYPE_VOCAB_PREFIX], 'Software')},
+        {PROV_ROLE: QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], 'software')},
     )
 
 
@@ -199,7 +200,7 @@ def _add_code_run(dp_entity, doc, code_run, reg_uri_prefix, vocab_namespaces):
         str(code_run.run_date),
         None,
         {
-            PROV_TYPE: QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], 'run'),
+            PROV_TYPE: QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], 'Run'),
             QualifiedName(
                 vocab_namespaces[DCTERMS_VOCAB_PREFIX], 'description'
             ): code_run.description,
@@ -286,7 +287,7 @@ def _add_external_object(
     )
     data.append(
         (
-            QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], 'release_date'),
+            QualifiedName(vocab_namespaces[DCTERMS_VOCAB_PREFIX], 'issued'),
             external_object.release_date,
         )
     )
@@ -336,7 +337,7 @@ def _add_external_object(
     if external_object.original_store:
         data.append(
             (
-                QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], 'original_store'),
+                QualifiedName(PROV, 'atLocation'),
                 str(external_object.original_store),
             )
         )

@@ -809,139 +809,166 @@ class ProvAPITests(TestCase):
         results = response.json()
 
         expected_result = {
-            "prov:type": {'$': 'dcat:Dataset', 'type': 'prov:QUALIFIED_NAME'},
-            "fair:storage": "https://data.scrc.uk/api/text_file/input/1",
+            "prov:type": {"$": "dcat:Dataset", "type": "prov:QUALIFIED_NAME"},
+            "prov:atLocation": "https://data.scrc.uk/api/text_file/input/1",
             "dcterms:description": "input 1 object",
             "fair:namespace": "prov",
             "dcterms:title": "this/is/cr/test/input/1",
             "dcat:hasVersion": "0.2.0",
         }
         prov_out = results["entity"]["lreg:api/data_product/1"]
-        del prov_out["fair:last_updated"]
+        del prov_out["dcterms:modified"]
         self.assertEqual(prov_out, expected_result)
 
         expected_result = {
-            "prov:type": {'$': 'dcat:Dataset', 'type': 'prov:QUALIFIED_NAME'},
-            "fair:storage": "https://data.scrc.uk/api/text_file/output/1",
+            "prov:type": {"$": "dcat:Dataset", "type": "prov:QUALIFIED_NAME"},
+            "prov:atLocation": "https://data.scrc.uk/api/text_file/output/1",
             "dcterms:description": "output 1 object",
             "fair:namespace": "prov",
             "dcterms:title": "this/is/cr/test/output/1",
             "dcat:hasVersion": "0.2.0",
         }
         prov_out = results["entity"]["lreg:api/data_product/2"]
-        del prov_out["fair:last_updated"]
+        del prov_out["dcterms:modified"]
         self.assertEqual(prov_out, expected_result)
 
         expected_result = {
-            "prov:type": {'$': 'dcat:Dataset', 'type': 'prov:QUALIFIED_NAME'},
-            "fair:storage": "https://data.scrc.uk/api/text_file/output/2",
+            "prov:type": {"$": "dcat:Dataset", "type": "prov:QUALIFIED_NAME"},
+            "prov:atLocation": "https://data.scrc.uk/api/text_file/output/2",
             "dcterms:description": "output 2 object",
             "fair:namespace": "prov",
             "dcterms:title": "this/is/cr/test/output/2",
             "dcat:hasVersion": "0.2.0",
         }
         prov_out = results["entity"]["lreg:api/data_product/3"]
-        del prov_out["fair:last_updated"]
+        del prov_out["dcterms:modified"]
         self.assertEqual(prov_out, expected_result)
 
         expected_result = {
-            "prov:type": {'$': 'dcat:Dataset', 'type': 'prov:QUALIFIED_NAME'},
-            "fair:storage": "https://data.scrc.uk/api/text_file/input/2",
+            "prov:type": {"$": "dcat:Dataset", "type": "prov:QUALIFIED_NAME"},
+            "prov:atLocation": "https://data.scrc.uk/api/text_file/input/2",
             "dcterms:description": "input 2 object",
             "fair:namespace": "prov",
             "dcterms:title": "this/is/cr/test/input/2",
             "dcat:hasVersion": "0.2.0",
         }
         prov_out = results["entity"]["lreg:api/data_product/4"]
-        del prov_out["fair:last_updated"]
+        del prov_out["dcterms:modified"]
         self.assertEqual(prov_out, expected_result)
 
         expected_result = {
-            "prov:type": {'$': 'dcat:Dataset', 'type': 'prov:QUALIFIED_NAME'},
-            "fair:storage": "https://data.scrc.uk/api/text_file/input/3",
+            "prov:type": {"$": "dcat:Dataset", "type": "prov:QUALIFIED_NAME"},
+            "prov:atLocation": "https://data.scrc.uk/api/text_file/input/3",
             "dcterms:description": "input 3 object",
             "fair:namespace": "prov",
             "dcterms:title": "this/is/cr/test/input/3",
             "dcat:hasVersion": "0.2.0",
         }
         prov_out = results["entity"]["lreg:api/data_product/5"]
-        del prov_out["fair:last_updated"]
+        del prov_out["dcterms:modified"]
         self.assertEqual(prov_out, expected_result)
 
         expected_result = {
-            "prov:type": {'$': 'dcat:Dataset', 'type': 'prov:QUALIFIED_NAME'},
+            "prov:type": {"$": "dcat:Dataset", "type": "prov:QUALIFIED_NAME"},
             "dcterms:title": "this is cr test input 1",
-            "fair:release_date": {"$": "2020-07-10T18:38:00+00:00", "type": "xsd:dateTime"},
-            "fair:original_store": "https://example.org/file_strore/1.txt",
+            "dcterms:issued": {
+                "$": "2020-07-10T18:38:00+00:00",
+                "type": "xsd:dateTime",
+            },
+            "prov:atLocation": "https://example.org/file_strore/1.txt",
             "dcat:hasVersion": "0.2.0",
             "fair:alternate_identifier": "this_is_cr_test_input_1",
             "fair:alternate_identifier_type": "text",
             "dcterms:description": "this is code run test input 1",
         }
-        self.assertEqual(results["entity"]["lreg:api/external_object/1"], expected_result)
+        self.assertEqual(
+            results["entity"]["lreg:api/external_object/1"], expected_result
+        )
 
         expected_result = {
-            "prov:type": {'$': 'dcat:Dataset', 'type': 'prov:QUALIFIED_NAME'},
+            "prov:type": {"$": "dcat:Dataset", "type": "prov:QUALIFIED_NAME"},
             "dcterms:title": "this is cr test output 1",
-            "fair:release_date": {"$": "2021-07-10T18:38:00+00:00", "type": "xsd:dateTime"},
-            "fair:original_store": "https://example.org/file_strore/2.txt",
+            "dcterms:issued": {
+                "$": "2021-07-10T18:38:00+00:00",
+                "type": "xsd:dateTime",
+            },
+            "prov:atLocation": "https://example.org/file_strore/2.txt",
             "dcat:hasVersion": "0.2.0",
             "fair:alternate_identifier": "this_is_cr_test_output_1",
             "fair:alternate_identifier_type": "text",
             "dcterms:description": "this is code run test output 1",
             "dcterms:identifier": "this_is_cr_test_output_1_id",
         }
-        self.assertEqual(results["entity"]["lreg:api/external_object/2"], expected_result)
+        self.assertEqual(
+            results["entity"]["lreg:api/external_object/2"], expected_result
+        )
 
         expected_result = {
-            "prov:type": {'$': 'dcat:Dataset', 'type': 'prov:QUALIFIED_NAME'},
+            "prov:type": {"$": "dcat:Dataset", "type": "prov:QUALIFIED_NAME"},
             "dcterms:title": "this is cr test output 2",
-            "fair:release_date": {"$": "2021-07-10T18:38:00+00:00", "type": "xsd:dateTime"},
+            "dcterms:issued": {
+                "$": "2021-07-10T18:38:00+00:00",
+                "type": "xsd:dateTime",
+            },
             "dcat:hasVersion": "0.2.0",
             "dcterms:identifier": "this_is_cr_test_output_2",
         }
-        self.assertEqual(results["entity"]["lreg:api/external_object/3"], expected_result)
+        self.assertEqual(
+            results["entity"]["lreg:api/external_object/3"], expected_result
+        )
 
         expected_result = {
-            "fair:storage": "https://github.comScottishCovidResponse/SCRCdata repository",
+            "prov:atLocation": "https://github.comScottishCovidResponse/SCRCdata repository",
             "dcterms:title": "ScottishCovidResponse/SCRCdata",
             "dcat:hasVersion": "0.1.0",
             "fair:website": "https://github.com/ScottishCovidResponse/SCRCdata",
-            'prov:type': {'$': 'dcmitype:Software', 'type': 'prov:QUALIFIED_NAME'}
+            "prov:type": {"$": "dcmitype:Software", "type": "prov:QUALIFIED_NAME"},
         }
         prov_out = results["entity"]["lreg:api/code_repo_release/1"]
-        del prov_out["fair:last_updated"]
+        del prov_out["dcterms:modified"]
         self.assertEqual(prov_out, expected_result)
 
         expected_result = {
-            "fair:storage": "https://data.scrc.uk/api/text_file/15/?format=text"
+            "prov:atLocation": "https://data.scrc.uk/api/text_file/15/?format=text"
         }
         prov_out = results["entity"]["lreg:api/object/3"]
-        del prov_out["fair:last_updated"]
+        del prov_out["dcterms:modified"]
         self.assertEqual(prov_out, expected_result)
 
         expected_result = {
-            "fair:file_type": "text file",
-            "fair:storage": "https://data.scrc.uk/api/text_file/16/?format=text",
-            'prov:type': {'$': 'dcmitype:Software', 'type': 'prov:QUALIFIED_NAME'}
+            "dcterms:format": "text file",
+            "prov:atLocation": "https://data.scrc.uk/api/text_file/16/?format=text",
+            "prov:type": {"$": "dcmitype:Software", "type": "prov:QUALIFIED_NAME"},
         }
         prov_out = results["entity"]["lreg:api/object/4"]
-        del prov_out["fair:last_updated"]
+        del prov_out["dcterms:modified"]
         self.assertEqual(prov_out, expected_result)
 
         expected_result = {
             "lreg:api/code_run/1": {
                 "prov:startTime": "2021-07-17T18:21:11+00:00",
-                "prov:type": {'$': 'fair:run', 'type': 'prov:QUALIFIED_NAME'},
+                "prov:type": {"$": "fair:Run", "type": "prov:QUALIFIED_NAME"},
                 "dcterms:description": "Test run",
             }
         }
         self.assertEqual(results["activity"], expected_result)
         expected_result = {
-            "lreg:api/author/3": {"prov:type": {'$': 'prov:Person', 'type': 'prov:QUALIFIED_NAME'}, "foaf:name": "Rosanna Massabeti"},
-            "lreg:api/user/1": {"prov:type": {'$': 'prov:Person', 'type': 'prov:QUALIFIED_NAME'}, "foaf:name": "User Not Found"},
-            "lreg:api/author/1": {"prov:type": {'$': 'prov:Person', 'type': 'prov:QUALIFIED_NAME'}, "foaf:name": "Ivana Valenti"},
-            "lreg:api/author/2": {"prov:type": {'$': 'prov:Person', 'type': 'prov:QUALIFIED_NAME'}, "foaf:name": "Maria Cipriani"},
+            "lreg:api/author/3": {
+                "prov:type": {"$": "prov:Person", "type": "prov:QUALIFIED_NAME"},
+                "foaf:name": "Rosanna Massabeti",
+            },
+            "lreg:api/user/1": {
+                "prov:type": {"$": "prov:Person", "type": "prov:QUALIFIED_NAME"},
+                "foaf:name": "User Not Found",
+            },
+            "lreg:api/author/1": {
+                "prov:type": {"$": "prov:Person", "type": "prov:QUALIFIED_NAME"},
+                "foaf:name": "Ivana Valenti",
+            },
+            "lreg:api/author/2": {
+                "prov:type": {"$": "prov:Person", "type": "prov:QUALIFIED_NAME"},
+                "foaf:name": "Maria Cipriani",
+            },
         }
         self.assertEqual(results["agent"], expected_result)
 
@@ -965,32 +992,38 @@ class ProvAPITests(TestCase):
             "_:id5": {
                 "prov:activity": "lreg:api/code_run/1",
                 "prov:entity": "lreg:api/code_repo_release/1",
-                "prov:role": {'$': 'dcmitype:Software', 'type': 'prov:QUALIFIED_NAME'},
+                "prov:role": {"$": "fair:software", "type": "prov:QUALIFIED_NAME"},
             },
             "_:id6": {
                 "prov:activity": "lreg:api/code_run/1",
                 "prov:entity": "lreg:api/object/3",
-                "prov:role": {'$': 'fair:model_configuration', 'type': 'prov:QUALIFIED_NAME'},
+                "prov:role": {
+                    "$": "fair:model_configuration",
+                    "type": "prov:QUALIFIED_NAME",
+                },
             },
             "_:id7": {
                 "prov:activity": "lreg:api/code_run/1",
                 "prov:entity": "lreg:api/object/4",
-                "prov:role": {'$': 'fair:submission_script', 'type': 'prov:QUALIFIED_NAME'},
+                "prov:role": {
+                    "$": "fair:submission_script",
+                    "type": "prov:QUALIFIED_NAME",
+                },
             },
             "_:id10": {
                 "prov:activity": "lreg:api/code_run/1",
                 "prov:entity": "lreg:api/data_product/1",
-                "prov:role": {'$': 'fair:input_data', 'type': 'prov:QUALIFIED_NAME'},
+                "prov:role": {"$": "fair:input_data", "type": "prov:QUALIFIED_NAME"},
             },
             "_:id13": {
                 "prov:activity": "lreg:api/code_run/1",
                 "prov:entity": "lreg:api/data_product/4",
-                "prov:role": {'$': 'fair:input_data', 'type': 'prov:QUALIFIED_NAME'},
+                "prov:role": {"$": "fair:input_data", "type": "prov:QUALIFIED_NAME"},
             },
             "_:id16": {
                 "prov:activity": "lreg:api/code_run/1",
                 "prov:entity": "lreg:api/data_product/5",
-                "prov:role": {'$': 'fair:input_data', 'type': 'prov:QUALIFIED_NAME'},
+                "prov:role": {"$": "fair:input_data", "type": "prov:QUALIFIED_NAME"},
             },
         }
         self.assertEqual(results["used"], expected_result)
@@ -999,27 +1032,27 @@ class ProvAPITests(TestCase):
             "_:id1": {
                 "prov:entity": "lreg:api/data_product/2",
                 "prov:agent": "lreg:api/author/3",
-                "prov:role": {'$': 'fair:author', 'type': 'prov:QUALIFIED_NAME'},
+                "prov:role": {"$": "dcterms:creator", "type": "prov:QUALIFIED_NAME"},
             },
             "_:id9": {
                 "prov:entity": "lreg:api/data_product/1",
                 "prov:agent": "lreg:api/author/1",
-                "prov:role": {'$': 'fair:author', 'type': 'prov:QUALIFIED_NAME'},
+                "prov:role": {"$": "dcterms:creator", "type": "prov:QUALIFIED_NAME"},
             },
             "_:id12": {
                 "prov:entity": "lreg:api/data_product/4",
                 "prov:agent": "lreg:api/author/2",
-                "prov:role": {'$': 'fair:author', 'type': 'prov:QUALIFIED_NAME'},
+                "prov:role": {"$": "dcterms:creator", "type": "prov:QUALIFIED_NAME"},
             },
             "_:id15": {
                 "prov:entity": "lreg:api/data_product/5",
                 "prov:agent": "lreg:api/author/3",
-                "prov:role": {'$': 'fair:author', 'type': 'prov:QUALIFIED_NAME'},
+                "prov:role": {"$": "dcterms:creator", "type": "prov:QUALIFIED_NAME"},
             },
             "_:id19": {
                 "prov:entity": "lreg:api/data_product/3",
                 "prov:agent": "lreg:api/author/3",
-                "prov:role": {'$': 'fair:author', 'type': 'prov:QUALIFIED_NAME'},
+                "prov:role": {"$": "dcterms:creator", "type": "prov:QUALIFIED_NAME"},
             },
         }
         self.assertEqual(results["wasAttributedTo"], expected_result)
@@ -1057,7 +1090,7 @@ class ProvAPITests(TestCase):
                 "prov:activity": "lreg:api/code_run/1",
                 "prov:trigger": "lreg:api/user/1",
                 "prov:time": "2021-07-17T18:21:11+00:00",
-                "prov:role": {'$': 'fair:code_runner', 'type': 'prov:QUALIFIED_NAME'}
+                "prov:role": {"$": "fair:code_runner", "type": "prov:QUALIFIED_NAME"},
             }
         }
         self.assertEqual(results["wasStartedBy"], expected_result)
@@ -1074,7 +1107,7 @@ class ProvAPITests(TestCase):
             response["Content-Type"], "text/provenance-notation; charset=utf8"
         )
 
-        result_bits = response.data.split("fair:last_updated")
+        result_bits = response.data.split("dcterms:modified")
         result_end = result_bits[1].split("xsd:dateTime, ", 1)[1]
         result = result_bits[0] + result_end
         expected_result = """document
@@ -1085,10 +1118,10 @@ class ProvAPITests(TestCase):
   prefix dcterms <http://purl.org/dc/terms/>
   prefix foaf <http://xmlns.com/foaf/spec/#>
   
-  entity(lreg:api/data_product/1, [prov:type='dcat:Dataset', fair:storage="https://data.scrc.uk/api/text_file/input/1", dcterms:description="input 1 object", fair:namespace="prov", dcterms:title="this/is/cr/test/input/1", dcat:hasVersion="0.2.0"])
+  entity(lreg:api/data_product/1, [prov:type='dcat:Dataset', prov:atLocation="https://data.scrc.uk/api/text_file/input/1", dcterms:description="input 1 object", fair:namespace="prov", dcterms:title="this/is/cr/test/input/1", dcat:hasVersion="0.2.0"])
   agent(lreg:api/author/1, [prov:type='prov:Person', foaf:name="Ivana Valenti"])
-  wasAttributedTo(lreg:api/data_product/1, lreg:api/author/1, [prov:role='fair:author'])
-  entity(lreg:api/external_object/1, [prov:type='dcat:Dataset', dcterms:title="this is cr test input 1", fair:release_date="2020-07-10T18:38:00+00:00" %% xsd:dateTime, dcat:hasVersion="0.2.0", fair:alternate_identifier="this_is_cr_test_input_1", fair:alternate_identifier_type="text", dcterms:description="this is code run test input 1", fair:original_store="https://example.org/file_strore/1.txt"])
+  wasAttributedTo(lreg:api/data_product/1, lreg:api/author/1, [prov:role='dcterms:creator'])
+  entity(lreg:api/external_object/1, [prov:type='dcat:Dataset', dcterms:title="this is cr test input 1", dcterms:issued="2020-07-10T18:38:00+00:00" %% xsd:dateTime, dcat:hasVersion="0.2.0", fair:alternate_identifier="this_is_cr_test_input_1", fair:alternate_identifier_type="text", dcterms:description="this is code run test input 1", prov:atLocation="https://example.org/file_strore/1.txt"])
   specializationOf(lreg:api/external_object/1, lreg:api/data_product/1)
 endDocument"""
         self.assertEqual(result, expected_result)
