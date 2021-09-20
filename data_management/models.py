@@ -679,7 +679,7 @@ class QualityControlled(BaseModel):
     ADMIN_LIST_FIELDS = ('object', 'field')
 
     object = models.OneToOneField(Object, on_delete=models.PROTECT, related_name='quality_control')
-    field = models.OneToOneField(Object, on_delete=models.PROTECT, related_name='quality_control_document')
+    document = models.OneToOneField(Object, on_delete=models.PROTECT, related_name='quality_control_document')
 
 
 class Keyword(BaseModel):
