@@ -139,7 +139,7 @@ def _add_code_repo_release(
 
     if code_repo_release is None:
         code_release_entity = doc.entity(
-            f'{reg_uri_prefix}:api/code_repo/{code_repo.id}',
+            f'{reg_uri_prefix}:api/object/{code_repo.id}',
             (*_generate_object_meta(code_repo, vocab_namespaces),),
         )
     else:

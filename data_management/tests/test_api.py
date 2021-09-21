@@ -1173,4 +1173,4 @@ endDocument"""
         url = reverse("prov_report", kwargs={"pk": 6})
         response = client.get(url, format="xml", HTTP_ACCEPT="text/xml")
         self.assertEqual(response["Content-Type"], "text/xml; charset=utf8")
-        self.assertContains(response, "lreg:api/code_repo/", status_code=200)
+        self.assertContains(response, "lreg:api/object/", status_code=200)
