@@ -116,8 +116,8 @@ class ProvReportView(views.APIView):
 
     This method makes use of the following optional query parameters:
         aspect_ratio: a float used to define the ratio for images
+        attributes: a boolean, shows attributes of elements when True (default)
         dpi:  a float used to define the dpi for images
-        show_attributes: a boolean, shows attributes of elements when True
 
     """
     try:
