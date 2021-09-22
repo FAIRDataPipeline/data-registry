@@ -30,17 +30,17 @@ https://data.scrc.uk/api/prov-report/3/
 
 * aspect_ratio
 
-  * **\<float>**: a float used to define the ratio for images. The default is
-0.71, which is equivalent to A4 landscape.
+  * **\<float>**: a float used to define the ratio for the `JPEG` and
+    `SVG` images. The default is 0.71, which is equivalent to A4 landscape.
 
 * attributes
 
-  * **True** (default): show the attributes associated with an object
-  * **False**: hide the attributes associated with an object
+  * **True** (default): show the attributes associated with an object on the image
+  * **False**: hide the attributes associated with an object on the image
 
 * dpi
 
-    * **\<float>**: a float used to define the dpi for images
+    * **\<float>**: a float used to define the dpi for the `JPEG` and `SVG` images
 
 ## Prefixes
 

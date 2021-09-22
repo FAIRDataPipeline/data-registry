@@ -108,16 +108,20 @@ class TextRenderer(renderers.BaseRenderer):
 
 class ProvReportView(views.APIView):
     """
-    API view for returning a PROV report for a DataProduct.
+    ***The provenance report for a `DataProduct`.***
 
-    This report can be returned as JSON (default) or XML or PROV-N using the custom
-    renderers. In addition if GraphViz is installed then JPEG and SVG renderers are also
-    available.
+    The provenance report can be generated as `JSON`, `JSON-LD`, `XML` or `PROV-N`.
+    Optionally `JPEG` and `SVG` versions of the provenance may be available.
 
-    This method makes use of the following optional query parameters:
-        aspect_ratio: a float used to define the ratio for images
-        attributes: a boolean, shows attributes of elements when True (default)
-        dpi:  a float used to define the dpi for images
+    ### Query parameters:
+
+    `attributes` (optional): A boolean, when `True` (default) show additional
+    attributes of the objects on the image
+
+    `aspect_ratio` (optional): A float used to define the ratio for the `JPEG` and
+    `SVG` images. The default is 0.71, which is equivalent to A4 landscape.
+
+    `dpi` (optional): A float used to define the dpi for the `JPEG` and `SVG` images
 
     """
     try:
