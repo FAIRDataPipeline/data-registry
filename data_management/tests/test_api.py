@@ -13,6 +13,12 @@ class UsersAPITests(TestCase):
         self.user = get_user_model().objects.create(username='Test User')
         init_db()
 
+    def test_full_name(self):
+        self.assertEqual(self.user.full_name(), 'User Not Found')
+
+    def test_user_orgs(self):
+        self.assertEqual(self.user.orgs(), [])
+
     # def _get_token(self):
     #     request = self.factory.get(reverse('get_token'))
     #     request.user = self.user
@@ -98,7 +104,7 @@ class StorageRootAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
         results = response.json()['results']
-        self.assertEqual(len(results), 7)
+        self.assertEqual(len(results), 8)
 
     def test_get_detail(self):
         client = APIClient()
@@ -137,7 +143,7 @@ class StorageLocationAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
         results = response.json()['results']
-        self.assertEqual(len(results), 18)
+        self.assertEqual(len(results), 19)
 
     def test_get_detail(self):
         client = APIClient()
@@ -173,6 +179,28 @@ class StorageLocationAPITests(TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]['path'], 'human/infection/SARS-CoV-2/scotland/cases_and_management/v0.1.0.h5')
 
+class StorageAPITests(TestCase):
+
+    def setUp(self):
+        self.user = get_user_model().objects.create(username='Test User')
+        init_db()
+
+    def test_get_data(self):
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse("get_data_product", kwargs={"data_product_name": "human/infection/SARS-CoV-2/symptom-probability", "namespace": "FAIR", "version": "0.1.0"})
+        response = client.get(url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, 'https://raw.githubusercontent.com/ScottishCovidResponse/DataRepository/master/SCRC/human/infection/SARS-CoV-2/symptom-probability/0.1.0.toml')
+
+    def test_get_external_object(self):
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse("get_external_object", kwargs={"alternate_identifier": "scottish deaths-involving-coronavirus-covid-19", "title": "scottish deaths-involving-coronavirus-covid-19", "version": "0.1.0"})
+        response = client.get(url)
+
+        self.assertEqual(response.status_code, 302)
 
 class ObjectAPITests(TestCase):
 
@@ -189,29 +217,29 @@ class ObjectAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
         results = response.json()['results']
-        self.assertEqual(len(results), 16)
+        self.assertEqual(len(results), 19)
 
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
         url = reverse('object-detail', kwargs={'pk': 3})
-        response = client.get(url, format='json')
+        response = client.get(url, format='json', HTTP_HOST='localhost')
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['storage_location'], 'http://testserver/api/storage_location/2/')
+        self.assertEqual(response.json()['storage_location'], 'http://localhost/api/storage_location/2/')
 
     def test_filter_by_storage_location(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
         url = reverse('object-list')
-        response = client.get(url, data={'storage_location': '3'}, format='json')
+        response = client.get(url, data={'storage_location': '3'}, format='json', HTTP_HOST='localhost')
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
         results = response.json()['results']
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['storage_location'], 'http://testserver/api/storage_location/3/')
+        self.assertEqual(results[0]['storage_location'], 'http://localhost/api/storage_location/3/')
 
 
 class ObjectComponentAPITests(TestCase):
@@ -229,7 +257,7 @@ class ObjectComponentAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
         results = response.json()['results']
-        self.assertEqual(len(results), 48)
+        self.assertEqual(len(results), 51)
 
     def test_get_detail_whole_object(self):
         client = APIClient()
@@ -427,11 +455,12 @@ class QualityControlledAPITests(TestCase):
         client = APIClient()
         client.force_authenticate(user=self.user)
         url = reverse('qualitycontrolled-detail', kwargs={'pk': 1})
-        response = client.get(url, format='json')
+        response = client.get(url, format='json', HTTP_HOST='localhost')
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['object'], 'http://testserver/api/object/15/')
+        self.assertEqual(response.json()['object'], 'http://localhost/api/object/15/')
+        self.assertEqual(response.json()['document'], 'http://localhost/api/object/17/')
 
 
 class KeywordAPITests(TestCase):
@@ -1100,7 +1129,7 @@ class ProvAPITests(TestCase):
         client.force_authenticate(user=self.user)
         url = reverse("prov_report", kwargs={"pk": 1})
         response = client.get(
-            url, format="provn", HTTP_ACCEPT="text/provenance-notation"
+            url, format="provn", HTTP_ACCEPT="text/provenance-notation", HTTP_HOST='localhost'
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
@@ -1111,7 +1140,7 @@ class ProvAPITests(TestCase):
         result_end = result_bits[1].split("xsd:dateTime, ", 1)[1]
         result = result_bits[0] + result_end
         expected_result = """document
-  prefix lreg <http://testserver/>
+  prefix lreg <http://localhost/>
   prefix fair <https://data.scrc.uk/vocab/#>
   prefix dcat <http://www.w3.org/ns/dcat#>
   prefix dcmitype <http://purl.org/dc/dcmitype/>
