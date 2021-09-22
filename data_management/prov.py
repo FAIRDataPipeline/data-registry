@@ -537,10 +537,11 @@ def generate_prov_document(data_product, request):
 
     # the vocab namespace is always the main registry
     doc.add_namespace(FAIR_VOCAB_PREFIX, f'{cenral_registry_url}vocab/#')
-    doc.add_namespace(DCAT_VOCAB_PREFIX, 'http://www.w3.org/ns/dcat#')
-    doc.add_namespace(DCMITYPE_VOCAB_PREFIX, 'http://purl.org/dc/dcmitype/')
-    doc.add_namespace(DCTERMS_VOCAB_PREFIX, 'http://purl.org/dc/terms/')
-    doc.add_namespace(FOAF_VOCAB_PREFIX, 'http://xmlns.com/foaf/spec/#')
+    # we need to tell SONAR to ignore 'http' in the vocab URLs
+    doc.add_namespace(DCAT_VOCAB_PREFIX, 'http://www.w3.org/ns/dcat#')  # NOSONAR
+    doc.add_namespace(DCMITYPE_VOCAB_PREFIX, 'http://purl.org/dc/dcmitype/')  # NOSONAR
+    doc.add_namespace(DCTERMS_VOCAB_PREFIX, 'http://purl.org/dc/terms/')  # NOSONAR
+    doc.add_namespace(FOAF_VOCAB_PREFIX, 'http://xmlns.com/foaf/spec/#')  # NOSONAR
 
     vocab_namespaces = {}
     for namespace in doc.get_registered_namespaces():
