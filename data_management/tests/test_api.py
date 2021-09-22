@@ -1166,15 +1166,15 @@ class ProvAPITests(TestCase):
         expected_result = {
             "_:id11": {
                 self.PROV_GENERATED_ENTITY: f"{self.LREG_DATA_PRODUCT}2",
-                "prov:usedEntity": f"{self.LREG_DATA_PRODUCT}1",
+                self.PROV_USED_ENTITY: f"{self.LREG_DATA_PRODUCT}1",
             },
             "_:id14": {
                 self.PROV_GENERATED_ENTITY: f"{self.LREG_DATA_PRODUCT}2",
-                "prov:usedEntity": f"{self.LREG_DATA_PRODUCT}4",
+                self.PROV_USED_ENTITY: f"{self.LREG_DATA_PRODUCT}4",
             },
             "_:id17": {
                 self.PROV_GENERATED_ENTITY: f"{self.LREG_DATA_PRODUCT}2",
-                "prov:usedEntity": f"{self.LREG_DATA_PRODUCT}5",
+                self.PROV_USED_ENTITY: f"{self.LREG_DATA_PRODUCT}5",
             },
         }
         self.assertEqual(results["wasDerivedFrom"], expected_result)
