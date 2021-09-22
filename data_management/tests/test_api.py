@@ -847,7 +847,7 @@ class ProvAPITests(TestCase):
     PROV_GENERAL_ENTITY = "prov:generalEntity"
     PROV_GENERATED_ENTITY = "prov:generatedEntity"
     PROV_SPECIFIC_ENTITY = "prov:specificEntity"
-    PROV_PERSON = "prov:person"
+    PROV_PERSON = "prov:Person"
     PROV_ROLE = "prov:role"
     PROV_TYPE = "prov:type"
     PROV_USED_ENTITY = "prov:usedEntity"
