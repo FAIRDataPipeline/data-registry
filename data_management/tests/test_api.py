@@ -838,15 +838,21 @@ class ProvAPITests(TestCase):
     LREG_DATA_PRODUCT = "lreg:api/data_product/"
     LREG_OBJECT = "lreg:api/object/"
     LREG_USER = "lreg:api/user/"
+    FAIR_INPUT_DATA = "fair:input_data"
     FAIR_NAMESPACE = "fair:namespace"
     PROV_AGENT = "prov:agent"
     PROV_ACTIVITY = "prov:activity"
+    PROV_AT_LOCATION = "prov:atLocation"
     PROV_ENTITY = "prov:entity"
+    PROV_GENERAL_ENTITY = "prov:generalEntity"
+    PROV_GENERATED_ENTITY = "prov:generatedEntity"
+    PROV_SPECIFIC_ENTITY = "prov:specificEntity"
     PROV_PERSON = "prov:person"
     PROV_ROLE = "prov:role"
     PROV_TYPE = "prov:type"
+    PROV_USED_ENTITY = "prov:usedEntity"
     PROV_QUALIFIED_NAME = "prov:QUALIFIED_NAME"
-
+    XSD_DATE_TIME = "xsd:dateTime"
 
     def setUp(self):
         self.user = get_user_model().objects.create(username="Test User")
@@ -928,7 +934,7 @@ class ProvAPITests(TestCase):
             self.DCTERMS_TITLE: "this is cr test input 1",
             self.DCTERMS_ISSUED: {
                 "$": "2020-07-10T18:38:00+00:00",
-                "type": "xsd:dateTime",
+                "type": self.XSD_DATE_TIME,
             },
             self.PROV_AT_LOCATION: "https://example.org/file_strore/1.txt",
             self.DCAT_HAS_VERSION: "0.2.0",
@@ -945,7 +951,7 @@ class ProvAPITests(TestCase):
             self.DCTERMS_TITLE: "this is cr test output 1",
             self.DCTERMS_ISSUED: {
                 "$": "2021-07-10T18:38:00+00:00",
-                "type": "xsd:dateTime",
+                "type": self.XSD_DATE_TIME,
             },
             self.PROV_AT_LOCATION: "https://example.org/file_strore/2.txt",
             self.DCAT_HAS_VERSION: "0.2.0",
@@ -963,7 +969,7 @@ class ProvAPITests(TestCase):
             self.DCTERMS_TITLE: "this is cr test output 2",
             self.DCTERMS_ISSUED: {
                 "$": "2021-07-10T18:38:00+00:00",
-                "type": "xsd:dateTime",
+                "type": self.XSD_DATE_TIME,
             },
             self.DCAT_HAS_VERSION: "0.2.0",
             self.DCTERMS_IDENTIFIER: "this_is_cr_test_output_2",
@@ -977,7 +983,10 @@ class ProvAPITests(TestCase):
             self.DCTERMS_TITLE: "ScottishCovidResponse/SCRCdata",
             self.DCAT_HAS_VERSION: "0.1.0",
             "fair:website": "https://github.com/ScottishCovidResponse/SCRCdata",
-            self.PROV_TYPE: {"$": "dcmitype:Software", "type": self.PROV_QUALIFIED_NAME},
+            self.PROV_TYPE: {
+                "$": "dcmitype:Software",
+                "type": self.PROV_QUALIFIED_NAME,
+            },
         }
         prov_out = results["entity"]["lreg:api/code_repo_release/1"]
         del prov_out[self.DCTERMS_MODIFIED]
@@ -993,7 +1002,10 @@ class ProvAPITests(TestCase):
         expected_result = {
             self.DCTERMS_FORMAT: "text file",
             self.PROV_AT_LOCATION: "https://data.scrc.uk/api/text_file/16/?format=text",
-            self.PROV_TYPE: {"$": "dcmitype:Software", "type": self.PROV_QUALIFIED_NAME},
+            self.PROV_TYPE: {
+                "$": "dcmitype:Software",
+                "type": self.PROV_QUALIFIED_NAME,
+            },
         }
         prov_out = results["entity"][f"{self.LREG_OBJECT}4"]
         del prov_out[self.DCTERMS_MODIFIED]
@@ -1009,19 +1021,31 @@ class ProvAPITests(TestCase):
         self.assertEqual(results["activity"], expected_result)
         expected_result = {
             f"{self.LREG_AUTHOR}3": {
-                self.PROV_TYPE: {"$": self.PROV_PERSON, "type": self.PROV_QUALIFIED_NAME},
+                self.PROV_TYPE: {
+                    "$": self.PROV_PERSON,
+                    "type": self.PROV_QUALIFIED_NAME,
+                },
                 self.FOAF_NAME: "Rosanna Massabeti",
             },
             f"{self.LREG_USER}1": {
-                self.PROV_TYPE: {"$": self.PROV_PERSON, "type": self.PROV_QUALIFIED_NAME},
+                self.PROV_TYPE: {
+                    "$": self.PROV_PERSON,
+                    "type": self.PROV_QUALIFIED_NAME,
+                },
                 self.FOAF_NAME: "User Not Found",
             },
             f"{self.LREG_AUTHOR}1": {
-                self.PROV_TYPE: {"$": self.PROV_PERSON, "type": self.PROV_QUALIFIED_NAME},
+                self.PROV_TYPE: {
+                    "$": self.PROV_PERSON,
+                    "type": self.PROV_QUALIFIED_NAME,
+                },
                 self.FOAF_NAME: "Ivana Valenti",
             },
             f"{self.LREG_AUTHOR}2": {
-                self.PROV_TYPE: {"$": self.PROV_PERSON, "type": self.PROV_QUALIFIED_NAME},
+                self.PROV_TYPE: {
+                    "$": self.PROV_PERSON,
+                    "type": self.PROV_QUALIFIED_NAME,
+                },
                 self.FOAF_NAME: "Maria Cipriani",
             },
         }
@@ -1029,16 +1053,16 @@ class ProvAPITests(TestCase):
 
         expected_result = {
             "_:id2": {
-                "prov:specificEntity": "lreg:api/external_object/2",
-                "prov:generalEntity": f"{self.LREG_DATA_PRODUCT}2",
+                self.PROV_SPECIFIC_ENTITY: "lreg:api/external_object/2",
+                self.PROV_GENERAL_ENTITY: f"{self.LREG_DATA_PRODUCT}2",
             },
             "_:id8": {
-                "prov:specificEntity": "lreg:api/external_object/1",
-                "prov:generalEntity": f"{self.LREG_DATA_PRODUCT}1",
+                self.PROV_SPECIFIC_ENTITY: "lreg:api/external_object/1",
+                self.PROV_GENERAL_ENTITY: f"{self.LREG_DATA_PRODUCT}1",
             },
             "_:id18": {
-                "prov:specificEntity": "lreg:api/external_object/3",
-                "prov:generalEntity": f"{self.LREG_DATA_PRODUCT}3",
+                self.PROV_SPECIFIC_ENTITY: "lreg:api/external_object/3",
+                self.PROV_GENERAL_ENTITY: f"{self.LREG_DATA_PRODUCT}3",
             },
         }
         self.assertEqual(results["specializationOf"], expected_result)
@@ -1047,7 +1071,10 @@ class ProvAPITests(TestCase):
             "_:id5": {
                 self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}1",
                 self.PROV_ENTITY: "lreg:api/code_repo_release/1",
-                self.PROV_ROLE: {"$": "fair:software", "type": self.PROV_QUALIFIED_NAME},
+                self.PROV_ROLE: {
+                    "$": "fair:software",
+                    "type": self.PROV_QUALIFIED_NAME,
+                },
             },
             "_:id6": {
                 self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}1",
@@ -1068,17 +1095,26 @@ class ProvAPITests(TestCase):
             "_:id10": {
                 self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}1",
                 self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}1",
-                self.PROV_ROLE: {"$": "fair:input_data", "type": self.PROV_QUALIFIED_NAME},
+                self.PROV_ROLE: {
+                    "$": self.FAIR_INPUT_DATA,
+                    "type": self.PROV_QUALIFIED_NAME,
+                },
             },
             "_:id13": {
                 self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}1",
                 self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}4",
-                self.PROV_ROLE: {"$": "fair:input_data", "type": self.PROV_QUALIFIED_NAME},
+                self.PROV_ROLE: {
+                    "$": self.FAIR_INPUT_DATA,
+                    "type": self.PROV_QUALIFIED_NAME,
+                },
             },
             "_:id16": {
                 self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}1",
                 self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}5",
-                self.PROV_ROLE: {"$": "fair:input_data", "type": self.PROV_QUALIFIED_NAME},
+                self.PROV_ROLE: {
+                    "$": self.FAIR_INPUT_DATA,
+                    "type": self.PROV_QUALIFIED_NAME,
+                },
             },
         }
         self.assertEqual(results["used"], expected_result)
@@ -1087,42 +1123,57 @@ class ProvAPITests(TestCase):
             "_:id1": {
                 self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}2",
                 self.PROV_AGENT: f"{self.LREG_AUTHOR}3",
-                self.PROV_ROLE: {"$": self.DCTERMS_CREATOR, "type": self.PROV_QUALIFIED_NAME},
+                self.PROV_ROLE: {
+                    "$": self.DCTERMS_CREATOR,
+                    "type": self.PROV_QUALIFIED_NAME,
+                },
             },
             "_:id9": {
                 self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}1",
                 self.PROV_AGENT: f"{self.LREG_AUTHOR}1",
-                self.PROV_ROLE: {"$": self.DCTERMS_CREATOR, "type": self.PROV_QUALIFIED_NAME},
+                self.PROV_ROLE: {
+                    "$": self.DCTERMS_CREATOR,
+                    "type": self.PROV_QUALIFIED_NAME,
+                },
             },
             "_:id12": {
                 self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}4",
                 self.PROV_AGENT: f"{self.LREG_AUTHOR}2",
-                self.PROV_ROLE: {"$": self.DCTERMS_CREATOR, "type": self.PROV_QUALIFIED_NAME},
+                self.PROV_ROLE: {
+                    "$": self.DCTERMS_CREATOR,
+                    "type": self.PROV_QUALIFIED_NAME,
+                },
             },
             "_:id15": {
                 self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}5",
                 self.PROV_AGENT: f"{self.LREG_AUTHOR}3",
-                self.PROV_ROLE: {"$": self.DCTERMS_CREATOR, "type": self.PROV_QUALIFIED_NAME},
+                self.PROV_ROLE: {
+                    "$": self.DCTERMS_CREATOR,
+                    "type": self.PROV_QUALIFIED_NAME,
+                },
             },
             "_:id19": {
                 self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}3",
                 self.PROV_AGENT: f"{self.LREG_AUTHOR}3",
-                self.PROV_ROLE: {"$": self.DCTERMS_CREATOR, "type": self.PROV_QUALIFIED_NAME},
+                self.PROV_ROLE: {
+                    "$": self.DCTERMS_CREATOR,
+                    "type": self.PROV_QUALIFIED_NAME,
+                },
             },
         }
         self.assertEqual(results["wasAttributedTo"], expected_result)
 
         expected_result = {
             "_:id11": {
-                "prov:generatedEntity": f"{self.LREG_DATA_PRODUCT}2",
+                self.PROV_GENERATED_ENTITY: f"{self.LREG_DATA_PRODUCT}2",
                 "prov:usedEntity": f"{self.LREG_DATA_PRODUCT}1",
             },
             "_:id14": {
-                "prov:generatedEntity": f"{self.LREG_DATA_PRODUCT}2",
+                self.PROV_GENERATED_ENTITY: f"{self.LREG_DATA_PRODUCT}2",
                 "prov:usedEntity": f"{self.LREG_DATA_PRODUCT}4",
             },
             "_:id17": {
-                "prov:generatedEntity": f"{self.LREG_DATA_PRODUCT}2",
+                self.PROV_GENERATED_ENTITY: f"{self.LREG_DATA_PRODUCT}2",
                 "prov:usedEntity": f"{self.LREG_DATA_PRODUCT}5",
             },
         }
@@ -1145,7 +1196,10 @@ class ProvAPITests(TestCase):
                 self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}1",
                 "prov:trigger": f"{self.LREG_USER}1",
                 "prov:time": "2021-07-17T18:21:11+00:00",
-                self.PROV_ROLE: {"$": "fair:code_runner", "type": self.PROV_QUALIFIED_NAME},
+                self.PROV_ROLE: {
+                    "$": "fair:code_runner",
+                    "type": self.PROV_QUALIFIED_NAME,
+                },
             }
         }
         self.assertEqual(results["wasStartedBy"], expected_result)
@@ -1155,7 +1209,10 @@ class ProvAPITests(TestCase):
         client.force_authenticate(user=self.user)
         url = reverse("prov_report", kwargs={"pk": 1})
         response = client.get(
-            url, format="provn", HTTP_ACCEPT="text/provenance-notation", HTTP_HOST='localhost'
+            url,
+            format="provn",
+            HTTP_ACCEPT="text/provenance-notation",
+            HTTP_HOST="localhost",
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
