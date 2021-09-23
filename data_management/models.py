@@ -486,6 +486,8 @@ class StorageLocation(BaseModel):
         ]
 
     def full_uri(self):
+        if (self.storage_root.root.startswith('/') or self.storage_root.root.startswith('file://')) and not self.storage_root.root.endswith('/'):
+            return self.storage_root.root + '/' + self.path
         return self.storage_root.root + self.path
 
     def __str__(self):
