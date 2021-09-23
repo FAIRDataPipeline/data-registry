@@ -1,4 +1,5 @@
 from dateutil import parser
+import os
 
 from data_management.models import *
 from django.contrib.auth import get_user_model
@@ -10,6 +11,8 @@ def reset_db():
     Issue.objects.all().delete()
     Source.objects.all().delete()
     Namespace.objects.all().delete()
+
+    os.remove('/tmp/test1.txt')
 
 
 def init_db(test=True):
@@ -58,6 +61,11 @@ def init_db(test=True):
     scl_repo = StorageRoot.objects.create(
         updated_by=user,
         root='https://raw.githubusercontent.com/ScottishCovidResponse/modelling-software-checklist',
+    )
+
+    sr_local = StorageRoot.objects.create(
+        updated_by=user,
+        root='file:///tmp',
     )
 
     sl_repo_prob = StorageLocation.objects.create(
@@ -114,6 +122,16 @@ def init_db(test=True):
         path='main/software-checklist.md',
         hash='f250b8dff4783cb59ee537d375a9420e3fbe66c2',
         storage_root=scl_repo,
+    )
+
+    with open('/tmp/test1.txt', 'w') as fh:
+        fh.write('This is a text file.')
+
+    sl_local_txt = StorageLocation.objects.create(
+        updated_by=user,
+        path='test1.txt',
+        hash='3aab8c814c8da05be7e957c9aefe42b87841f0c0',
+        storage_root=sr_local,
     )
 
     StorageLocation.objects.create(
@@ -217,6 +235,8 @@ def init_db(test=True):
     o_temp_comp = Object.objects.create(updated_by=user, storage_location=sl_temp_comp)
     o_temp_mixing = Object.objects.create(updated_by=user, storage_location=sl_temp_mixing)
     o_temp_pop = Object.objects.create(updated_by=user, storage_location=sl_temp_pop)
+
+    o_local_txt = Object.objects.create(updated_by=user, storage_location=sl_local_txt)
 
     o_code = Object.objects.create(updated_by=user, storage_location=sl_code)
     o_script = Object.objects.create(updated_by=user, storage_location=sl_script)
@@ -415,6 +435,14 @@ def init_db(test=True):
         namespace=n_simp,
         name='human/population',
         version='0.1.0',
+    )
+
+    DataProduct.objects.create(
+        updated_by=user,
+        object=o_local_txt,
+        namespace=n_fair,
+        name='test/txt',
+        version='0.0.1',
     )
 
     crr_code = CodeRepoRelease.objects.create(
