@@ -124,12 +124,13 @@ def init_db(test=True):
         storage_root=scl_repo,
     )
 
-    with open(os.path.join(os.environ['HOME'], 'test1.txt'), 'w') as fh:
+    local_txt_filename = 'test1.txt'
+    with open(os.path.join(os.environ['HOME'], local_txt_filename), 'w') as fh:
         fh.write('This is a text file.')
 
     sl_local_txt = StorageLocation.objects.create(
         updated_by=user,
-        path='test1.txt',
+        path=local_txt_filename,
         hash='3aab8c814c8da05be7e957c9aefe42b87841f0c0',
         storage_root=sr_local,
     )
