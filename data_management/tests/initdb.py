@@ -12,7 +12,7 @@ def reset_db():
     Source.objects.all().delete()
     Namespace.objects.all().delete()
 
-    os.remove('/tmp/test1.txt')
+    os.remove(os.path.join(os.environ['HOME'], 'test1.txt'))
 
 
 def init_db(test=True):
@@ -65,7 +65,7 @@ def init_db(test=True):
 
     sr_local = StorageRoot.objects.create(
         updated_by=user,
-        root='file:///tmp',
+        root='file://%s' % os.environ['HOME'],
     )
 
     sl_repo_prob = StorageLocation.objects.create(
@@ -124,7 +124,7 @@ def init_db(test=True):
         storage_root=scl_repo,
     )
 
-    with open('/tmp/test1.txt', 'w') as fh:
+    with open(os.path.join(os.environ['HOME'], 'test1.txt'), 'w') as fh:
         fh.write('This is a text file.')
 
     sl_local_txt = StorageLocation.objects.create(
