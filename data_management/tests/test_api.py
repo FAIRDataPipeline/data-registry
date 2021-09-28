@@ -104,7 +104,7 @@ class StorageRootAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
         results = response.json()['results']
-        self.assertEqual(len(results), 8)
+        self.assertEqual(len(results), 9)
 
     def test_get_detail(self):
         client = APIClient()
@@ -143,7 +143,7 @@ class StorageLocationAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
         results = response.json()['results']
-        self.assertEqual(len(results), 19)
+        self.assertEqual(len(results), 20)
 
     def test_get_detail(self):
         client = APIClient()
@@ -202,6 +202,15 @@ class StorageAPITests(TestCase):
 
         self.assertEqual(response.status_code, 302)
 
+    def test_get_data_product(self):
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse("get_data_product", kwargs={"data_product_name": "test/txt", "namespace": "FAIR", "version": "0.0.1"})
+        response = client.get(url)
+
+        self.assertEqual(b''.join(response.streaming_content), bytes("This is a text file.", "utf-8"))
+
+
 class ObjectAPITests(TestCase):
 
     def setUp(self):
@@ -217,7 +226,7 @@ class ObjectAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
         results = response.json()['results']
-        self.assertEqual(len(results), 19)
+        self.assertEqual(len(results), 20)
 
     def test_get_detail(self):
         client = APIClient()
@@ -257,7 +266,7 @@ class ObjectComponentAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
         results = response.json()['results']
-        self.assertEqual(len(results), 51)
+        self.assertEqual(len(results), 52)
 
     def test_get_detail_whole_object(self):
         client = APIClient()
@@ -272,7 +281,7 @@ class ObjectComponentAPITests(TestCase):
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('objectcomponent-detail', kwargs={'pk': 17})
+        url = reverse('objectcomponent-detail', kwargs={'pk': 18})
         response = client.get(url, format='json')
 
         self.assertEqual(response.status_code, 200)
@@ -459,8 +468,8 @@ class QualityControlledAPITests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['object'], 'http://localhost/api/object/15/')
-        self.assertEqual(response.json()['document'], 'http://localhost/api/object/17/')
+        self.assertEqual(response.json()['object'], 'http://localhost/api/object/16/')
+        self.assertEqual(response.json()['document'], 'http://localhost/api/object/18/')
 
 
 class KeywordAPITests(TestCase):
@@ -671,7 +680,7 @@ class DataProductAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
         results = response.json()['results']
-        self.assertEqual(len(results), 13)
+        self.assertEqual(len(results), 14)
 
     def test_get_detail(self):
         client = APIClient()
@@ -692,7 +701,7 @@ class DataProductAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
         results = response.json()['results']
-        self.assertEqual(len(results), 9)
+        self.assertEqual(len(results), 10)
 
     def test_filter_by_name(self):
         client = APIClient()
