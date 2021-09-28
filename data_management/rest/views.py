@@ -123,6 +123,8 @@ class ProvReportView(views.APIView):
 
     `dpi` (optional): A float used to define the dpi for the `JPEG` and `SVG` images
 
+    `depth` (optional): An integer used to determine how many code runs to include,
+    the default is 1
     """
     try:
         Dot(prog='dot').create()
@@ -137,7 +139,6 @@ class ProvReportView(views.APIView):
 
     def get(self, request, pk):
         data_product = get_object_or_404(models.DataProduct, pk=pk)
-        doc = generate_prov_document(data_product, request)
 
         show_attributes = request.query_params.get('attributes', True)
         if show_attributes == "False":
@@ -150,11 +151,22 @@ class ProvReportView(views.APIView):
         except ValueError:
             aspect_ratio = default_aspect_ratio
 
+        default_depth = 1
+        depth = request.query_params.get('depth', default_depth)
+        try:
+            depth = int(depth)
+        except ValueError:
+            depth = default_depth
+        if depth < 1:
+            depth = 1
+
         dpi = request.query_params.get('dpi', None)
         try:
             dpi = float(dpi)
         except (TypeError, ValueError):
             dpi = None
+
+        doc = generate_prov_document(data_product, depth, request)
 
         value = serialize_prov_document(
             doc,
