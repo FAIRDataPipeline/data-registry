@@ -67,6 +67,19 @@ class XMLRenderer(renderers.BaseRenderer):
         return data
 
 
+class JSONLDRenderer(renderers.BaseRenderer):
+    """
+    Custom renderer for returning JSON-LD data.
+    """
+    media_type = 'application/ld+json'
+    format = 'json-ld'
+    charset = 'utf8'
+    render_style = 'text'
+
+    def render(self, data, media_type=None, renderer_context=None):
+        return data
+
+
 class ProvnRenderer(renderers.BaseRenderer):
     """
     Custom renderer for returning PROV-N data (as defined in https://www.w3.org/TR/2013/REC-prov-n-20130430/).
@@ -95,27 +108,32 @@ class TextRenderer(renderers.BaseRenderer):
 
 class ProvReportView(views.APIView):
     """
-    API view for returning a PROV report for a DataProduct.
+    ***The provenance report for a `DataProduct`.***
 
-    This report can be returned as JSON (default) or XML or PROV-N using the custom
-    renderers. In addition if GraphViz is installed then JPEG and SVG renderers are also
-    available.
+    The provenance report can be generated as `JSON`, `JSON-LD`, `XML` or `PROV-N`.
+    Optionally `JPEG` and `SVG` versions of the provenance may be available.
 
-    This method makes use of the following optional query parameters:
-        aspect_ratio: a float used to define the ratio for images
-        dpi:  a float used to define the dpi for images
-        show_attributes: a boolean, shows attributes of elements when True
+    ### Query parameters:
+
+    `attributes` (optional): A boolean, when `True` (default) show additional
+    attributes of the objects on the image
+
+    `aspect_ratio` (optional): A float used to define the ratio for the `JPEG` and
+    `SVG` images. The default is 0.71, which is equivalent to A4 landscape.
+
+    `dpi` (optional): A float used to define the dpi for the `JPEG` and `SVG` images
 
     """
     try:
         Dot(prog='dot').create()
         # GraphViz is installed so the JPEG and SVG renderers are made available.
         renderer_classes = [renderers.BrowsableAPIRenderer, renderers.JSONRenderer,
-                            JPEGRenderer, SVGRenderer, XMLRenderer, ProvnRenderer]
+                            JSONLDRenderer, JPEGRenderer, SVGRenderer, XMLRenderer,
+                            ProvnRenderer]
     except FileNotFoundError:
         # GraphViz is not installed so the JPEG and SVG renderers are NOT available.
         renderer_classes = [renderers.BrowsableAPIRenderer, renderers.JSONRenderer,
-                            XMLRenderer, ProvnRenderer]
+                            JSONLDRenderer, XMLRenderer, ProvnRenderer]
 
     def get(self, request, pk):
         data_product = get_object_or_404(models.DataProduct, pk=pk)
