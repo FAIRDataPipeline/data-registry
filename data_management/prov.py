@@ -372,6 +372,7 @@ def _add_input_data_products(
     @return a list of data products that were added
 
     """
+    all_data_products = []
     for component in object_components:
         obj = component.object
         data_products = obj.data_products.all()
@@ -421,7 +422,9 @@ def _add_input_data_products(
             # add the link to the data product
             doc.wasDerivedFrom(dp_entity, file_entity)
 
-    return data_products
+        all_data_products.extend(data_products)
+
+    return all_data_products
 
 
 def _add_model_config(cr_activity, doc, model_config, reg_uri_prefix, vocab_namespaces):
