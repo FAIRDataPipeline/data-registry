@@ -895,18 +895,6 @@ class ProvAPITests(TestCase):
 
         expected_result = {
             self.PROV_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
-            self.PROV_AT_LOCATION: "https://data.scrc.uk/api/text_file/output/2",
-            self.DCTERMS_DESCRIPTION: "output 2 object",
-            self.FAIR_NAMESPACE: "prov",
-            self.DCTERMS_TITLE: "this/is/cr/test/output/2",
-            self.DCAT_HAS_VERSION: "0.2.0",
-        }
-        prov_out = results["entity"][f"{self.LREG_DATA_PRODUCT}3"]
-        del prov_out[self.DCTERMS_MODIFIED]
-        self.assertEqual(prov_out, expected_result)
-
-        expected_result = {
-            self.PROV_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
             self.PROV_AT_LOCATION: "https://data.scrc.uk/api/text_file/input/2",
             self.DCTERMS_DESCRIPTION: "input 2 object",
             self.FAIR_NAMESPACE: "prov",
@@ -962,20 +950,6 @@ class ProvAPITests(TestCase):
         }
         self.assertEqual(
             results["entity"]["lreg:api/external_object/2"], expected_result
-        )
-
-        expected_result = {
-            self.PROV_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
-            self.DCTERMS_TITLE: "this is cr test output 2",
-            self.DCTERMS_ISSUED: {
-                "$": "2021-07-10T18:38:00+00:00",
-                "type": self.XSD_DATE_TIME,
-            },
-            self.DCAT_HAS_VERSION: "0.2.0",
-            self.DCTERMS_IDENTIFIER: "this_is_cr_test_output_2",
-        }
-        self.assertEqual(
-            results["entity"]["lreg:api/external_object/3"], expected_result
         )
 
         expected_result = {
@@ -1059,10 +1033,6 @@ class ProvAPITests(TestCase):
             "_:id8": {
                 self.PROV_SPECIFIC_ENTITY: "lreg:api/external_object/1",
                 self.PROV_GENERAL_ENTITY: f"{self.LREG_DATA_PRODUCT}1",
-            },
-            "_:id18": {
-                self.PROV_SPECIFIC_ENTITY: "lreg:api/external_object/3",
-                self.PROV_GENERAL_ENTITY: f"{self.LREG_DATA_PRODUCT}3",
             },
         }
         self.assertEqual(results["specializationOf"], expected_result)
@@ -1152,14 +1122,6 @@ class ProvAPITests(TestCase):
                     "type": self.PROV_QUALIFIED_NAME,
                 },
             },
-            "_:id19": {
-                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}3",
-                self.PROV_AGENT: f"{self.LREG_AUTHOR}3",
-                self.PROV_ROLE: {
-                    "$": self.DCTERMS_CREATOR,
-                    "type": self.PROV_QUALIFIED_NAME,
-                },
-            },
         }
         self.assertEqual(results["wasAttributedTo"], expected_result)
 
@@ -1182,10 +1144,6 @@ class ProvAPITests(TestCase):
         expected_result = {
             "_:id3": {
                 self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}2",
-                self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}1",
-            },
-            "_:id20": {
-                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}3",
                 self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}1",
             },
         }

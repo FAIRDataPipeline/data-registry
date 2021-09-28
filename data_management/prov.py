@@ -351,23 +351,20 @@ def _add_external_object(
     doc.specializationOf(external_object_entity, data_product_entity)
 
 
-def _add_linked_files(
+def _add_input_data_products(
     cr_activity,
     doc,
     dp_entity,
-    input_objects,
     object_components,
     reg_uri_prefix,
     vocab_namespaces,
 ):
     """
-    Add linked files to the code run activity.
+    Add input data products to the code run activity.
 
     @param cr_activity: a prov.activity representing the code run
     @param doc: a ProvDocument that the entities will belong to
     @param dp_entity: a prov.entity representing the data_product
-    @param input_objects: boolean, 'True' if the object_components represent input
-                objects
     @param object_components: a list of object_components from the ObjectComponent table
     @param reg_uri_prefix: a str containing the name of the prefix
     @param vocab_namespaces: a dict containing the Namespaces for the vocab
@@ -409,24 +406,20 @@ def _add_linked_files(
                 obj.authors.all(), doc, file_entity, reg_uri_prefix, vocab_namespaces
             )
 
-            if input_objects:
-                # add link to the code run
-                doc.used(
-                    cr_activity,
-                    file_entity,
-                    None,
-                    None,
-                    {
-                        PROV_ROLE: QualifiedName(
-                            vocab_namespaces[FAIR_VOCAB_PREFIX], 'input_data'
-                        )
-                    },
-                )
-                # add the link to the data product
-                doc.wasDerivedFrom(dp_entity, file_entity)
-            else:
-                # add the link to the code run
-                doc.wasGeneratedBy(file_entity, cr_activity)
+            # add link to the code run
+            doc.used(
+                cr_activity,
+                file_entity,
+                None,
+                None,
+                {
+                    PROV_ROLE: QualifiedName(
+                        vocab_namespaces[FAIR_VOCAB_PREFIX], 'input_data'
+                    )
+                },
+            )
+            # add the link to the data product
+            doc.wasDerivedFrom(dp_entity, file_entity)
 
     return data_products
 
@@ -606,23 +599,11 @@ def _generate_prov_document(doc, data_product, reg_uri_prefix, vocab_namespaces)
     )
 
     # add input files
-    input_files = _add_linked_files(
+    input_files = _add_input_data_products(
         cr_activity,
         doc,
         dp_entity,
-        True,
         code_run.inputs.all(),
-        reg_uri_prefix,
-        vocab_namespaces,
-    )
-
-    # add additional output files
-    _add_linked_files(
-        cr_activity,
-        doc,
-        dp_entity,
-        False,
-        code_run.outputs.all(),
         reg_uri_prefix,
         vocab_namespaces,
     )
