@@ -1291,26 +1291,7 @@ endDocument"""
             results["used"][self.ID24][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}1"
         )
 
-        self.assertIn(
-            results["used"][self.ID9][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}4"
-        )
-        self.assertIn(
-            results["used"][self.ID9][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}6"
-        )
-
-        self.assertIn(
-            results["used"][self.ID11][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}4"
-        )
-        self.assertIn(
-            results["used"][self.ID11][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}7"
-        )
-
-        self.assertIn(
-            results["used"][self.ID4][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}5"
-        )
-        self.assertIn(
-            results["used"][self.ID4][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}8"
-        )
+        self._check_code_runs_present(results)
 
     def test_get_multi_run_limited(self):
         client = APIClient()
@@ -1341,6 +1322,9 @@ endDocument"""
         self.assertNotIn(self.ID19, results["used"].keys())
         self.assertNotIn(self.ID24, results["used"].keys())
 
+        self._check_code_runs_present(results)
+
+    def _check_code_runs_present(self, results):
         self.assertIn(
             results["used"][self.ID9][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}4"
         )
@@ -1361,3 +1345,4 @@ endDocument"""
         self.assertIn(
             results["used"][self.ID4][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}8"
         )
+
