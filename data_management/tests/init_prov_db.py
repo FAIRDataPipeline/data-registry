@@ -167,6 +167,8 @@ def init_db():
     o_output_2.authors.add(a3)
     o_output_3 = Object.objects.create(updated_by=user)
     o_output_4 = Object.objects.create(updated_by=user)
+    o_output_5 = Object.objects.create(updated_by=user)
+    o_output_6 = Object.objects.create(updated_by=user)
 
     n_prov = Namespace.objects.create(updated_by=user, name="prov")
 
@@ -257,6 +259,22 @@ def init_db():
         version="0.4.0",
     )
 
+    DataProduct.objects.create(
+        updated_by=user,
+        object=o_output_5,
+        namespace=n_prov,
+        name="this/is/cr/test/output/5",
+        version="0.5.0",
+    )
+
+    DataProduct.objects.create(
+        updated_by=user,
+        object=o_output_6,
+        namespace=n_prov,
+        name="this/is/cr/test/output/6",
+        version="0.6.0",
+    )
+
     CodeRepoRelease.objects.create(
         updated_by=user,
         name="ScottishCovidResponse/SCRCdata",
@@ -303,6 +321,27 @@ def init_db():
         [o_input_1.components.first()]
     )
     cr3.outputs.set([o_output_4.components.first()])
+
+    cr4 = CodeRun.objects.create(
+        updated_by=usera,
+        run_date="2021-07-17T19:41:11Z",
+        submission_script=o_script,
+    )
+    cr4.inputs.set(
+        [o_output_3.components.first(),
+         o_output_4.components.first()]
+    )
+    cr4.outputs.set([o_output_5.components.first()])
+
+    cr5 = CodeRun.objects.create(
+        updated_by=usera,
+        run_date="2021-07-17T19:51:11Z",
+        submission_script=o_script,
+    )
+    cr5.inputs.set(
+        [o_output_5.components.first()]
+    )
+    cr5.outputs.set([o_output_6.components.first()])
 
 
 if __name__ == "__main__":
