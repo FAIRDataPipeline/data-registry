@@ -1244,3 +1244,114 @@ endDocument"""
         response = client.get(url, format="xml", HTTP_ACCEPT="text/xml")
         self.assertEqual(response["Content-Type"], "text/xml; charset=utf8")
         self.assertContains(response, f"{self.LREG_OBJECT}", status_code=200)
+
+    def test_get_multi_run(self):
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse("prov_report", kwargs={"pk": 9})
+        response = client.get(
+            url, data={"depth": 5}, format="json", HTTP_ACCEPT="application/json"
+        )
+        results = response.json()
+
+        for dp in [
+            f"{self.LREG_DATA_PRODUCT}1",
+            f"{self.LREG_DATA_PRODUCT}6",
+            f"{self.LREG_DATA_PRODUCT}7",
+            f"{self.LREG_DATA_PRODUCT}8",
+            f"{self.LREG_DATA_PRODUCT}9",
+        ]:
+            self.assertIn(dp, results["entity"].keys())
+
+        for cr in [
+            f"{self.LREG_CODE_RUN}2",
+            f"{self.LREG_CODE_RUN}3",
+            f"{self.LREG_CODE_RUN}4",
+            f"{self.LREG_CODE_RUN}5",
+        ]:
+            self.assertIn(cr, results["activity"].keys())
+
+        self.assertIn(
+            results["used"]["_:id19"][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}2"
+        )
+        self.assertIn(
+            results["used"]["_:id19"][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}1"
+        )
+
+        self.assertIn(
+            results["used"]["_:id24"][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}3"
+        )
+        self.assertIn(
+            results["used"]["_:id24"][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}1"
+        )
+
+        self.assertIn(
+            results["used"]["_:id9"][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}4"
+        )
+        self.assertIn(
+            results["used"]["_:id9"][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}6"
+        )
+
+        self.assertIn(
+            results["used"]["_:id11"][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}4"
+        )
+        self.assertIn(
+            results["used"]["_:id11"][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}7"
+        )
+
+        self.assertIn(
+            results["used"]["_:id4"][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}5"
+        )
+        self.assertIn(
+            results["used"]["_:id4"][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}8"
+        )
+
+    def test_get_multi_run_limited(self):
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse("prov_report", kwargs={"pk": 9})
+        response = client.get(
+            url, data={"depth": 2}, format="json", HTTP_ACCEPT="application/json"
+        )
+        results = response.json()
+
+        for dp in [
+            f"{self.LREG_DATA_PRODUCT}6",
+            f"{self.LREG_DATA_PRODUCT}7",
+            f"{self.LREG_DATA_PRODUCT}8",
+            f"{self.LREG_DATA_PRODUCT}9",
+        ]:
+            self.assertIn(dp, results["entity"].keys())
+
+        for dp in [f"{self.LREG_DATA_PRODUCT}1"]:
+            self.assertNotIn(dp, results["entity"].keys())
+
+        for cr in [f"{self.LREG_CODE_RUN}4", f"{self.LREG_CODE_RUN}5"]:
+            self.assertIn(cr, results["activity"].keys())
+
+        for cr in [f"{self.LREG_CODE_RUN}2", f"{self.LREG_CODE_RUN}3"]:
+            self.assertNotIn(cr, results["activity"].keys())
+
+        self.assertNotIn("_:id19", results["used"].keys())
+        self.assertNotIn("_:id24", results["used"].keys())
+
+        self.assertIn(
+            results["used"]["_:id9"][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}4"
+        )
+        self.assertIn(
+            results["used"]["_:id9"][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}6"
+        )
+
+        self.assertIn(
+            results["used"]["_:id11"][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}4"
+        )
+        self.assertIn(
+            results["used"]["_:id11"][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}7"
+        )
+
+        self.assertIn(
+            results["used"]["_:id4"][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}5"
+        )
+        self.assertIn(
+            results["used"]["_:id4"][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}8"
+        )
