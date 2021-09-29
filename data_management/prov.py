@@ -385,27 +385,27 @@ def _add_input_data_products(
             if len(entity) > 0:
                 # The prov documentation says a ProvRecord is returned, but actually a
                 # list of ProvRecord is returned
-                continue
-
-            file_entity = doc.entity(
-                file_id,
-                (
+                file_entity = entity[0]
+            else:
+                file_entity = doc.entity(
+                    file_id,
                     (
-                        PROV_TYPE,
-                        QualifiedName(vocab_namespaces[DCAT_VOCAB_PREFIX], 'Dataset'),
+                        (
+                            PROV_TYPE,
+                            QualifiedName(vocab_namespaces[DCAT_VOCAB_PREFIX], 'Dataset'),
+                        ),
+                        *_generate_object_meta(obj, vocab_namespaces),
                     ),
-                    *_generate_object_meta(obj, vocab_namespaces),
-                ),
-            )
+                )
 
-            # add external object linked to the data product
-            _add_external_object(
-                doc, data_product, file_entity, reg_uri_prefix, vocab_namespaces
-            )
+                # add external object linked to the data product
+                _add_external_object(
+                    doc, data_product, file_entity, reg_uri_prefix, vocab_namespaces
+                )
 
-            _add_author_agents(
-                obj.authors.all(), doc, file_entity, reg_uri_prefix, vocab_namespaces
-            )
+                _add_author_agents(
+                    obj.authors.all(), doc, file_entity, reg_uri_prefix, vocab_namespaces
+                )
 
             # add link to the code run
             doc.used(
