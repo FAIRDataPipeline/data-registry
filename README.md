@@ -11,7 +11,7 @@ The *FAIR data registry* is implemented as a [Django](https://www.djangoproject.
 ### Documentation
 
 
-Information on how to run the local registry is available at [the local registry section in the project website](https://fairdatapipeline.github.io/docs/local_registry/).
+Information on how to run the local registry is available at [the local registry section in the project website](https://fairdatapipeline.github.io/docs/data_registry/).
 
 Alternatively, you can run the local registry in a local VM using [Vagrant](https://www.vagrantup.com) with the included Vagrantfile.
 
