@@ -67,6 +67,15 @@ def _generate_object_meta(obj, vocab_namespaces):
             )
         )
 
+    for component in obj.components.all():
+        for issue in component.issues.all():
+            data.append(
+                (
+                    QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], 'issue'),
+                    f"{issue.description} severity: {issue.severity}",
+                )
+            )
+
     if obj.file_type is not None:
         data.append(
             (
@@ -616,12 +625,6 @@ def _generate_prov_document(doc, data_product, reg_uri_prefix, vocab_namespaces)
         all_input_files.extend(input_files)
 
     return all_input_files
-
-
-def get_whole_object_component(components):
-    for component in components:
-        if component.whole_object:
-            return component
 
 
 def generate_prov_document(data_product, depth, request):
