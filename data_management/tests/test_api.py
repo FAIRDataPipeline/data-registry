@@ -832,6 +832,7 @@ class KeyvalueAPITests(TestCase):
 
 class ProvAPITests(TestCase):
 
+    APPLICATION_JSON = "application/json"
     DCAT_DATASET = "dcat:Dataset"
     DCAT_HAS_VERSION = "dcat:hasVersion"
     DCTERMS_CREATOR = "dcterms:creator"
@@ -842,6 +843,11 @@ class ProvAPITests(TestCase):
     DCTERMS_MODIFIED = "dcterms:modified"
     DCTERMS_TITLE = "dcterms:title"
     FOAF_NAME = "foaf:name"
+    ID4 = "_:id4"
+    ID9 = "_:id9"
+    ID11 = "_:id11"
+    ID19 = "_:id19"
+    ID24 = "_:id24"
     LREG_AUTHOR = "lreg:api/author/"
     LREG_CODE_RUN = "lreg:api/code_run/"
     LREG_DATA_PRODUCT = "lreg:api/data_product/"
@@ -872,9 +878,9 @@ class ProvAPITests(TestCase):
         client.force_authenticate(user=self.user)
 
         url = reverse("prov_report", kwargs={"pk": 2})
-        response = client.get(url, format="json", HTTP_ACCEPT="application/json")
+        response = client.get(url, format="json", HTTP_ACCEPT=self.APPLICATION_JSON)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response["Content-Type"], self.APPLICATION_JSON)
 
         results = response.json()
 
@@ -899,18 +905,6 @@ class ProvAPITests(TestCase):
             self.DCAT_HAS_VERSION: "0.2.0",
         }
         prov_out = results["entity"][f"{self.LREG_DATA_PRODUCT}2"]
-        del prov_out[self.DCTERMS_MODIFIED]
-        self.assertEqual(prov_out, expected_result)
-
-        expected_result = {
-            self.PROV_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
-            self.PROV_AT_LOCATION: "https://data.scrc.uk/api/text_file/output/2",
-            self.DCTERMS_DESCRIPTION: "output 2 object",
-            self.FAIR_NAMESPACE: "prov",
-            self.DCTERMS_TITLE: "this/is/cr/test/output/2",
-            self.DCAT_HAS_VERSION: "0.2.0",
-        }
-        prov_out = results["entity"][f"{self.LREG_DATA_PRODUCT}3"]
         del prov_out[self.DCTERMS_MODIFIED]
         self.assertEqual(prov_out, expected_result)
 
@@ -971,20 +965,6 @@ class ProvAPITests(TestCase):
         }
         self.assertEqual(
             results["entity"]["lreg:api/external_object/2"], expected_result
-        )
-
-        expected_result = {
-            self.PROV_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
-            self.DCTERMS_TITLE: "this is cr test output 2",
-            self.DCTERMS_ISSUED: {
-                "$": "2021-07-10T18:38:00+00:00",
-                "type": self.XSD_DATE_TIME,
-            },
-            self.DCAT_HAS_VERSION: "0.2.0",
-            self.DCTERMS_IDENTIFIER: "this_is_cr_test_output_2",
-        }
-        self.assertEqual(
-            results["entity"]["lreg:api/external_object/3"], expected_result
         )
 
         expected_result = {
@@ -1069,10 +1049,6 @@ class ProvAPITests(TestCase):
                 self.PROV_SPECIFIC_ENTITY: "lreg:api/external_object/1",
                 self.PROV_GENERAL_ENTITY: f"{self.LREG_DATA_PRODUCT}1",
             },
-            "_:id18": {
-                self.PROV_SPECIFIC_ENTITY: "lreg:api/external_object/3",
-                self.PROV_GENERAL_ENTITY: f"{self.LREG_DATA_PRODUCT}3",
-            },
         }
         self.assertEqual(results["specializationOf"], expected_result)
 
@@ -1137,7 +1113,7 @@ class ProvAPITests(TestCase):
                     "type": self.PROV_QUALIFIED_NAME,
                 },
             },
-            "_:id9": {
+            self.ID9: {
                 self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}1",
                 self.PROV_AGENT: f"{self.LREG_AUTHOR}1",
                 self.PROV_ROLE: {
@@ -1161,19 +1137,11 @@ class ProvAPITests(TestCase):
                     "type": self.PROV_QUALIFIED_NAME,
                 },
             },
-            "_:id19": {
-                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}3",
-                self.PROV_AGENT: f"{self.LREG_AUTHOR}3",
-                self.PROV_ROLE: {
-                    "$": self.DCTERMS_CREATOR,
-                    "type": self.PROV_QUALIFIED_NAME,
-                },
-            },
         }
         self.assertEqual(results["wasAttributedTo"], expected_result)
 
         expected_result = {
-            "_:id11": {
+            self.ID11: {
                 self.PROV_GENERATED_ENTITY: f"{self.LREG_DATA_PRODUCT}2",
                 self.PROV_USED_ENTITY: f"{self.LREG_DATA_PRODUCT}1",
             },
@@ -1193,15 +1161,11 @@ class ProvAPITests(TestCase):
                 self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}2",
                 self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}1",
             },
-            "_:id20": {
-                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}3",
-                self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}1",
-            },
         }
         self.assertEqual(results["wasGeneratedBy"], expected_result)
 
         expected_result = {
-            "_:id4": {
+            self.ID4: {
                 self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}1",
                 "prov:trigger": f"{self.LREG_USER}1",
                 "prov:time": "2021-07-17T18:21:11+00:00",
@@ -1295,3 +1259,99 @@ endDocument"""
         response = client.get(url, format="xml", HTTP_ACCEPT="text/xml")
         self.assertEqual(response["Content-Type"], "text/xml; charset=utf8")
         self.assertContains(response, f"{self.LREG_OBJECT}", status_code=200)
+
+    def test_get_multi_run(self):
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse("prov_report", kwargs={"pk": 9})
+        response = client.get(
+            url, data={"depth": 5}, format="json", HTTP_ACCEPT=self.APPLICATION_JSON
+        )
+        results = response.json()
+
+        for dp in [
+            f"{self.LREG_DATA_PRODUCT}1",
+            f"{self.LREG_DATA_PRODUCT}6",
+            f"{self.LREG_DATA_PRODUCT}7",
+            f"{self.LREG_DATA_PRODUCT}8",
+            f"{self.LREG_DATA_PRODUCT}9",
+        ]:
+            self.assertIn(dp, results["entity"].keys())
+
+        for cr in [
+            f"{self.LREG_CODE_RUN}2",
+            f"{self.LREG_CODE_RUN}3",
+            f"{self.LREG_CODE_RUN}4",
+            f"{self.LREG_CODE_RUN}5",
+        ]:
+            self.assertIn(cr, results["activity"].keys())
+
+        self.assertIn(
+            results["used"][self.ID19][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}2"
+        )
+        self.assertIn(
+            results["used"][self.ID19][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}1"
+        )
+
+        self.assertIn(
+            results["used"][self.ID24][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}3"
+        )
+        self.assertIn(
+            results["used"][self.ID24][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}1"
+        )
+
+        self._check_code_runs_present(results)
+
+    def test_get_multi_run_limited(self):
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse("prov_report", kwargs={"pk": 9})
+        response = client.get(
+            url, data={"depth": 2}, format="json", HTTP_ACCEPT=self.APPLICATION_JSON
+        )
+        results = response.json()
+
+        for dp in [
+            f"{self.LREG_DATA_PRODUCT}6",
+            f"{self.LREG_DATA_PRODUCT}7",
+            f"{self.LREG_DATA_PRODUCT}8",
+            f"{self.LREG_DATA_PRODUCT}9",
+        ]:
+            self.assertIn(dp, results["entity"].keys())
+
+        for dp in [f"{self.LREG_DATA_PRODUCT}1"]:
+            self.assertNotIn(dp, results["entity"].keys())
+
+        for cr in [f"{self.LREG_CODE_RUN}4", f"{self.LREG_CODE_RUN}5"]:
+            self.assertIn(cr, results["activity"].keys())
+
+        for cr in [f"{self.LREG_CODE_RUN}2", f"{self.LREG_CODE_RUN}3"]:
+            self.assertNotIn(cr, results["activity"].keys())
+
+        self.assertNotIn(self.ID19, results["used"].keys())
+        self.assertNotIn(self.ID24, results["used"].keys())
+
+        self._check_code_runs_present(results)
+
+    def _check_code_runs_present(self, results):
+        self.assertIn(
+            results["used"][self.ID9][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}4"
+        )
+        self.assertIn(
+            results["used"][self.ID9][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}6"
+        )
+
+        self.assertIn(
+            results["used"][self.ID11][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}4"
+        )
+        self.assertIn(
+            results["used"][self.ID11][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}7"
+        )
+
+        self.assertIn(
+            results["used"][self.ID4][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}5"
+        )
+        self.assertIn(
+            results["used"][self.ID4][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}8"
+        )
+

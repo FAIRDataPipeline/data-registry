@@ -114,8 +114,11 @@ def _add_author_agents(authors, doc, entity, reg_uri_prefix, vocab_namespaces):
             entity,
             author_agent,
             None,
-            {PROV_ROLE: QualifiedName(
-                vocab_namespaces[DCTERMS_VOCAB_PREFIX], 'creator')},
+            {
+                PROV_ROLE: QualifiedName(
+                    vocab_namespaces[DCTERMS_VOCAB_PREFIX], 'creator'
+                )
+            },
         )
 
 
@@ -148,7 +151,7 @@ def _add_code_repo_release(
             (
                 (
                     PROV_TYPE,
-                    QualifiedName(vocab_namespaces[DCMITYPE_VOCAB_PREFIX], 'Software')
+                    QualifiedName(vocab_namespaces[DCMITYPE_VOCAB_PREFIX], 'Software'),
                 ),
                 *_generate_object_meta(code_repo, vocab_namespaces),
                 (
@@ -348,78 +351,80 @@ def _add_external_object(
     doc.specializationOf(external_object_entity, data_product_entity)
 
 
-def _add_linked_files(
+def _add_input_data_products(
     cr_activity,
     doc,
     dp_entity,
-    dp_id,
-    input_objects,
     object_components,
     reg_uri_prefix,
     vocab_namespaces,
 ):
     """
-    Add linked files to the code run activity.
+    Add input data products to the code run activity.
 
     @param cr_activity: a prov.activity representing the code run
     @param doc: a ProvDocument that the entities will belong to
     @param dp_entity: a prov.entity representing the data_product
-    @param dp_id: the data_product id
-    @param input_objects: boolean, 'True' if the object_components represent input
-                objects
     @param object_components: a list of object_components from the ObjectComponent table
     @param reg_uri_prefix: a str containing the name of the prefix
     @param vocab_namespaces: a dict containing the Namespaces for the vocab
 
+    @return a list of data products that were added
+
     """
+    all_data_products = []
     for component in object_components:
         obj = component.object
         data_products = obj.data_products.all()
 
         for data_product in data_products:
-            if not input_objects and data_product.id == dp_id:
-                # we have already added the original data product
-                continue
-
             file_id = f'{reg_uri_prefix}:api/data_product/{data_product.id}'
-            file_entity = doc.entity(
-                file_id,
-                (
-                    (
-                        PROV_TYPE,
-                        QualifiedName(vocab_namespaces[DCAT_VOCAB_PREFIX], 'Dataset'),
-                    ),
-                    *_generate_object_meta(obj, vocab_namespaces),
-                ),
-            )
 
-            # add external object linked to the data product
-            _add_external_object(
-                doc, data_product, file_entity, reg_uri_prefix, vocab_namespaces
-            )
-
-            _add_author_agents(
-                obj.authors.all(), doc, file_entity, reg_uri_prefix, vocab_namespaces
-            )
-
-            if input_objects:
-                # add link to the code run
-                doc.used(
-                    cr_activity,
-                    file_entity,
-                    None,
-                    None,
-                    {
-                        PROV_ROLE: QualifiedName(
-                            vocab_namespaces[FAIR_VOCAB_PREFIX], 'input_data'
-                        )
-                    },
-                )
-                # add the link to the data product
-                doc.wasDerivedFrom(dp_entity, file_entity)
+            entity = doc.get_record(file_id)
+            # check to see if we have already created an entity for this data product
+            if len(entity) > 0:
+                # The prov documentation says a ProvRecord is returned, but actually a
+                # list of ProvRecord is returned
+                file_entity = entity[0]
             else:
-                # add the link to the code run
-                doc.wasGeneratedBy(file_entity, cr_activity)
+                file_entity = doc.entity(
+                    file_id,
+                    (
+                        (
+                            PROV_TYPE,
+                            QualifiedName(vocab_namespaces[DCAT_VOCAB_PREFIX], 'Dataset'),
+                        ),
+                        *_generate_object_meta(obj, vocab_namespaces),
+                    ),
+                )
+
+                # add external object linked to the data product
+                _add_external_object(
+                    doc, data_product, file_entity, reg_uri_prefix, vocab_namespaces
+                )
+
+                _add_author_agents(
+                    obj.authors.all(), doc, file_entity, reg_uri_prefix, vocab_namespaces
+                )
+
+            # add link to the code run
+            doc.used(
+                cr_activity,
+                file_entity,
+                None,
+                None,
+                {
+                    PROV_ROLE: QualifiedName(
+                        vocab_namespaces[FAIR_VOCAB_PREFIX], 'input_data'
+                    )
+                },
+            )
+            # add the link to the data product
+            doc.wasDerivedFrom(dp_entity, file_entity)
+
+        all_data_products.extend(data_products)
+
+    return all_data_products
 
 
 def _add_model_config(cr_activity, doc, model_config, reg_uri_prefix, vocab_namespaces):
@@ -458,6 +463,48 @@ def _add_model_config(cr_activity, doc, model_config, reg_uri_prefix, vocab_name
     )
 
 
+def _add_prime_data_product(doc, data_product, reg_uri_prefix, vocab_namespaces):
+    """
+    Add the prime data product for this level of the provenance report.
+
+    @param doc: a ProvDocument that the entities will belong to
+    @param data_product: The DataProduct to generate the PROV document for
+    @param reg_uri_prefix: a str containing the name of the prefix
+    @param vocab_namespaces: a dict containing the Namespaces for the vocab
+
+    @return the data product entity
+
+    """
+    data_product_id = f'{reg_uri_prefix}:api/data_product/{data_product.id}'
+    entity = doc.get_record(data_product_id)
+    # check to see if we have already created an entity for this data product
+    if len(entity) > 0:
+        # The prov documentation says a ProvRecord is returned, but actually a
+        # list of ProvRecord is returned
+        return entity[0]
+
+    # add the data product
+    dp_entity = doc.entity(
+        f'{reg_uri_prefix}:api/data_product/{data_product.id}',
+        (
+            (PROV_TYPE, QualifiedName(vocab_namespaces[DCAT_VOCAB_PREFIX], 'Dataset')),
+            *_generate_object_meta(data_product.object, vocab_namespaces),
+        ),
+    )
+
+    _add_author_agents(
+        data_product.object.authors.all(),
+        doc,
+        dp_entity,
+        reg_uri_prefix,
+        vocab_namespaces,
+    )
+
+    _add_external_object(doc, data_product, dp_entity, reg_uri_prefix, vocab_namespaces)
+
+    return dp_entity
+
+
 def _add_submission_script(
     cr_activity, doc, submission_script, reg_uri_prefix, vocab_namespaces
 ):
@@ -476,9 +523,10 @@ def _add_submission_script(
         (
             (
                 PROV_TYPE,
-                QualifiedName(vocab_namespaces[DCMITYPE_VOCAB_PREFIX], 'Software')
+                QualifiedName(vocab_namespaces[DCMITYPE_VOCAB_PREFIX], 'Software'),
             ),
-            *_generate_object_meta(submission_script, vocab_namespaces),),
+            *_generate_object_meta(submission_script, vocab_namespaces),
+        ),
     )
 
     _add_author_agents(
@@ -501,13 +549,78 @@ def _add_submission_script(
     )
 
 
+def _generate_prov_document(doc, data_product, reg_uri_prefix, vocab_namespaces):
+    """
+    Add the next level to the provenance doc.
+
+    This takes a data product and finds generates it provenance. A list of input files
+    are returned so they can be used to create the next level of the provenane if
+    needed.
+
+    @param doc: a ProvDocument that the entities will belong to
+    @param data_product: The DataProduct to generate the PROV document for
+    @param reg_uri_prefix: a str containing the name of the prefix
+    @param vocab_namespaces: a dict containing the Namespaces for the vocab
+
+    @return a list of files that were used as input files, may be empty
+
+    """
+    # add the the root data product
+    dp_entity = _add_prime_data_product(
+        doc, data_product, reg_uri_prefix, vocab_namespaces
+    )
+
+    # add the activity, i.e. the code run
+    components = data_product.object.components.all()
+    whole_object = get_whole_object_component(components)
+    try:
+        code_run = whole_object.outputs_of.all()[0]
+    except IndexError:
+        # there is no code run so we cannot add any more provenance data
+        return []
+
+    # add the code run, this is the central activity
+    cr_activity = _add_code_run(
+        dp_entity, doc, code_run, reg_uri_prefix, vocab_namespaces
+    )
+
+    # add the code repo release
+    if code_run.code_repo is not None:
+        _add_code_repo_release(
+            cr_activity, doc, code_run.code_repo, reg_uri_prefix, vocab_namespaces
+        )
+
+    # add the model config
+    if code_run.model_config is not None:
+        _add_model_config(
+            cr_activity, doc, code_run.model_config, reg_uri_prefix, vocab_namespaces
+        )
+
+    # add the submission script
+    _add_submission_script(
+        cr_activity, doc, code_run.submission_script, reg_uri_prefix, vocab_namespaces
+    )
+
+    # add input files
+    input_files = _add_input_data_products(
+        cr_activity,
+        doc,
+        dp_entity,
+        code_run.inputs.all(),
+        reg_uri_prefix,
+        vocab_namespaces,
+    )
+
+    return input_files
+
+
 def get_whole_object_component(components):
     for component in components:
         if component.whole_object:
             return component
 
 
-def generate_prov_document(data_product, request):
+def generate_prov_document(data_product, depth, request):
     """
     Generate a PROV document for a DataProduct detailing all the input and outputs and
     how they were generated.
@@ -515,6 +628,8 @@ def generate_prov_document(data_product, request):
     This uses the W3C PROV ontology (https://www.w3.org/TR/prov-o/).
 
     :param data_product: The DataProduct to generate the PROV document for
+    :param depth: The depth for the document. How many levels of code runs to include.
+    :param request: A request object
 
     :return: A PROV-O document
 
@@ -547,84 +662,32 @@ def generate_prov_document(data_product, request):
     for namespace in doc.get_registered_namespaces():
         vocab_namespaces[namespace.prefix] = namespace
 
-    # add the data product
-    dp_entity = doc.entity(
-        f'{reg_uri_prefix}:api/data_product/{data_product.id}',
-        (
-            (PROV_TYPE, QualifiedName(vocab_namespaces[DCAT_VOCAB_PREFIX], 'Dataset')),
-            *_generate_object_meta(data_product.object, vocab_namespaces),
-        ),
+    # get the initial set of input files
+    input_files = _generate_prov_document(
+        doc, data_product, reg_uri_prefix, vocab_namespaces
     )
 
-    _add_author_agents(
-        data_product.object.authors.all(),
-        doc,
-        dp_entity,
-        reg_uri_prefix,
-        vocab_namespaces,
-    )
-    _add_external_object(doc, data_product, dp_entity, reg_uri_prefix, vocab_namespaces)
-
-    # add the activity, i.e. the code run
-    components = data_product.object.components.all()
-    whole_object = get_whole_object_component(components)
-    try:
-        code_run = whole_object.outputs_of.all()[0]
-    except IndexError:
-        # there is no code run so we cannot add any more provenance data
+    if depth == 1:
         return doc
 
-    # add the code run, this is the central activity
-    cr_activity = _add_code_run(
-        dp_entity, doc, code_run, reg_uri_prefix, vocab_namespaces)
+    # add extra layers to the report if requested by the user
+    while depth > 1:
+        next_level_input_files = []
 
-    # add the code repo release
-    if code_run.code_repo is not None:
-        _add_code_repo_release(
-            cr_activity, doc, code_run.code_repo, reg_uri_prefix, vocab_namespaces
-        )
+        for input_file in input_files:
+            next_input_files = _generate_prov_document(
+                doc, input_file, reg_uri_prefix, vocab_namespaces
+            )
+            next_level_input_files.extend(next_input_files)
 
-    # add the model config
-    if code_run.model_config is not None:
-        _add_model_config(
-            cr_activity, doc, code_run.model_config, reg_uri_prefix, vocab_namespaces
-        )
-
-    # add the submission script
-    _add_submission_script(
-        cr_activity, doc, code_run.submission_script, reg_uri_prefix, vocab_namespaces
-    )
-
-    # add input files
-    _add_linked_files(
-        cr_activity,
-        doc,
-        dp_entity,
-        None,
-        True,
-        code_run.inputs.all(),
-        reg_uri_prefix,
-        vocab_namespaces,
-    )
-
-    # add additional output files
-    _add_linked_files(
-        cr_activity,
-        doc,
-        dp_entity,
-        data_product.id,
-        False,
-        code_run.outputs.all(),
-        reg_uri_prefix,
-        vocab_namespaces,
-    )
+        # reset the input files for the next level
+        input_files = next_level_input_files
+        depth = depth - 1
 
     return doc
 
 
-def serialize_prov_document(
-    doc, format_, aspect_ratio, dpi=None, show_attributes=True
-):
+def serialize_prov_document(doc, format_, aspect_ratio, dpi=None, show_attributes=True):
     """
     Serialise a PROV document as either a JPEG or SVG image or an XML or PROV-N report.
 
