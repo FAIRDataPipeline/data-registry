@@ -124,14 +124,12 @@ def init_db():
     UserAuthor.objects.get_or_create(updated_by=user, user=user, author=author)
 
     storage_root_1 = StorageRoot.objects.get_or_create(
-        id=1,
         root="file:///var/folders/0f/fj5r_1ws15x4jzgnm27h_y6h0000gr/T/tmptjtzaz9p/data_store/",
         local=True,
         updated_by=user,
     )[0]
 
     storage_root_2 = StorageRoot.objects.get_or_create(
-        id=2,
         root="/var/folders/0f/fj5r_1ws15x4jzgnm27h_y6h0000gr/T/tmptjtzaz9p/data_store",
         local=True,
         updated_by=user,
