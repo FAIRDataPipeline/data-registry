@@ -578,7 +578,7 @@ def _generate_prov_document(doc, data_product, reg_uri_prefix, vocab_namespaces)
         try:
             code_run = component.outputs_of.all()[0]
         except IndexError:
-            print("there is no code run for this component so we cannot add any more provenance data")
+            # there is no code run for this component so we cannot add any more provenance data
             continue
 
         # add the code run, this is the central activity
