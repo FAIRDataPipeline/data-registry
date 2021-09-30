@@ -572,46 +572,50 @@ def _generate_prov_document(doc, data_product, reg_uri_prefix, vocab_namespaces)
 
     # add the activity, i.e. the code run
     components = data_product.object.components.all()
-    whole_object = get_whole_object_component(components)
-    try:
-        code_run = whole_object.outputs_of.all()[0]
-    except IndexError:
-        # there is no code run so we cannot add any more provenance data
-        return []
+    all_input_files = []
 
-    # add the code run, this is the central activity
-    cr_activity = _add_code_run(
-        dp_entity, doc, code_run, reg_uri_prefix, vocab_namespaces
-    )
+    for component in components:
+        try:
+            code_run = component.outputs_of.all()[0]
+        except IndexError:
+            print("there is no code run for this component so we cannot add any more provenance data")
+            continue
 
-    # add the code repo release
-    if code_run.code_repo is not None:
-        _add_code_repo_release(
-            cr_activity, doc, code_run.code_repo, reg_uri_prefix, vocab_namespaces
+        # add the code run, this is the central activity
+        cr_activity = _add_code_run(
+            dp_entity, doc, code_run, reg_uri_prefix, vocab_namespaces
         )
 
-    # add the model config
-    if code_run.model_config is not None:
-        _add_model_config(
-            cr_activity, doc, code_run.model_config, reg_uri_prefix, vocab_namespaces
+        # add the code repo release
+        if code_run.code_repo is not None:
+            _add_code_repo_release(
+                cr_activity, doc, code_run.code_repo, reg_uri_prefix, vocab_namespaces
+            )
+
+        # add the model config
+        if code_run.model_config is not None:
+            _add_model_config(
+                cr_activity, doc, code_run.model_config, reg_uri_prefix, vocab_namespaces
+            )
+
+        # add the submission script
+        _add_submission_script(
+            cr_activity, doc, code_run.submission_script, reg_uri_prefix, vocab_namespaces
         )
 
-    # add the submission script
-    _add_submission_script(
-        cr_activity, doc, code_run.submission_script, reg_uri_prefix, vocab_namespaces
-    )
+        # add input files
+        input_files = _add_input_data_products(
+            cr_activity,
+            doc,
+            dp_entity,
+            code_run.inputs.all(),
+            reg_uri_prefix,
+            vocab_namespaces,
+        )
 
-    # add input files
-    input_files = _add_input_data_products(
-        cr_activity,
-        doc,
-        dp_entity,
-        code_run.inputs.all(),
-        reg_uri_prefix,
-        vocab_namespaces,
-    )
+        all_input_files.extend(input_files)
 
-    return input_files
+    return all_input_files
 
 
 def get_whole_object_component(components):
