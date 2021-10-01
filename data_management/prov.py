@@ -1,5 +1,6 @@
 import io
 import json
+import xml.etree.ElementTree
 
 from django.conf import settings
 from prov.constants import PROV, PROV_ROLE, PROV_TYPE
@@ -72,7 +73,7 @@ def _generate_object_meta(obj, vocab_namespaces):
             data.append(
                 (
                     QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], 'issue'),
-                    f"{issue.description} severity: {issue.severity}",
+                    f"{issue.description} severity: {issue.severity} ID: {issue.id}"
                 )
             )
 
@@ -694,6 +695,20 @@ def generate_prov_document(data_product, depth, request):
     return doc
 
 
+def highlight_issues(dot):
+    nodes = dot.get_node_list()
+    for node in nodes:
+        if "fair:issue" in node.obj_dict["attributes"]["label"]:
+            label = node.get_label()
+            table = xml.etree.ElementTree.fromstring(label[1:-1:])
+            for row in table:
+                for cell in row:
+                    if "href" in cell.attrib and cell.attrib["href"] == "https://data.scrc.uk/vocab/#issue":
+                        cell.attrib["bgcolor"] = "red"
+            new_label = xml.etree.ElementTree.tostring(table, encoding="unicode")
+            node.set_label('<' + new_label + '>')
+
+
 def serialize_prov_document(doc, format_, aspect_ratio, dpi=None, show_attributes=True):
     """
     Serialise a PROV document as either a JPEG or SVG image or an XML or PROV-N report.
@@ -709,6 +724,7 @@ def serialize_prov_document(doc, format_, aspect_ratio, dpi=None, show_attribute
     """
     if format_ in ('jpg', 'svg'):
         dot = prov.dot.prov_to_dot(doc, show_element_attributes=show_attributes)
+        highlight_issues(dot)
         dot.set_ratio(aspect_ratio)
         dot.set_dpi(dpi)
         with io.BytesIO() as buf:
