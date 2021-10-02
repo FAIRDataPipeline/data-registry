@@ -3,25 +3,19 @@
 ORIGINAL_PWD=`pwd`
 
 export DJANGO_SETTINGS_MODULE="drams.local-settings"
+export DJANGO_SUPERUSER_USERNAME=admin
+export DJANGO_SUPERUSER_PASSWORD=admin
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 FAIR_HOME="$(dirname "${DIR}")"
 cd $FAIR_HOME
 
 pgrep -f "$FAIR_HOME/manage.py runserver" | xargs kill &> /dev/null 2>&1
 
-find . -path '*/migrations/*.py*' -not -path './venv/*' -not -name '__init__.py' -delete
-if [ -f "db.sqlite3" ]; then
-    rm db.sqlite3
-fi
+cd scripts
+./rebuild-local.sh
 
-python3 manage.py makemigrations custom_user
-python3 manage.py makemigrations data_management
-python3 manage.py migrate
-python3 manage.py graph_models data_management --arrow-shape crow -X "BaseModel,DataObject,DataObjectVersion" -E -o schema.dot
-python3 manage.py collectstatic --noinput > /dev/null 2>&1
-python3 manage.py createsuperuser --noinput
+unset DJANGO_SETTINGS_MODULE
+unset DJANGO_SUPERUSER_USERNAME
+unset DJANGO_SUPERUSER_PASSWORD
+cd $ORIGINAL_PWD
 
-if command -v dot &> /dev/null
-then
-    dot schema.dot -Tsvg -o static/images/schema.svg
-fi
