@@ -16,10 +16,14 @@ from . import models
 
 
 DCAT_VOCAB_PREFIX = 'dcat'
+DCAT_VOCAB_NAMESPACE = 'http://www.w3.org/ns/dcat#'
 DCMITYPE_VOCAB_PREFIX = 'dcmitype'
+DCMITYPE_VOCAB_NAMESPACE = 'http://purl.org/dc/dcmitype/'
 DCTERMS_VOCAB_PREFIX = 'dcterms'
+DCTERMS_VOCAB_NAMESPACE = 'http://purl.org/dc/terms/'
 FAIR_VOCAB_PREFIX = 'fair'
 FOAF_VOCAB_PREFIX = 'foaf'
+FOAF_VOCAB_NAMESPACE = 'http://xmlns.com/foaf/spec/#'
 
 
 def _generate_object_meta(obj, vocab_namespaces):
@@ -643,28 +647,28 @@ def generate_prov_document(data_product, depth, request):
 
     """
     url = request.build_absolute_uri('/')
-    cenral_registry_url = settings.CENTRAL_REGISTRY_URL
-    if not cenral_registry_url.endswith('/'):
-        cenral_registry_url = f'{cenral_registry_url}/'
+    central_registry_url = settings.CENTRAL_REGISTRY_URL
+    if not central_registry_url.endswith('/'):
+        central_registry_url = f'{central_registry_url}/'
 
     doc = prov.model.ProvDocument()
 
-    if url == cenral_registry_url:
+    if url == central_registry_url:
         # we are using the main registry
         reg_uri_prefix = 'reg'
-        doc.add_namespace(reg_uri_prefix, cenral_registry_url)
+        doc.add_namespace(reg_uri_prefix, central_registry_url)
     else:
         # we are using a local registry
         reg_uri_prefix = 'lreg'
         doc.add_namespace(reg_uri_prefix, url)
 
     # the vocab namespace is always the main registry
-    doc.add_namespace(FAIR_VOCAB_PREFIX, f'{cenral_registry_url}vocab/#')
+    doc.add_namespace(FAIR_VOCAB_PREFIX, f'{central_registry_url}vocab/#')
     # we need to tell SONAR to ignore 'http' in the vocab URLs
-    doc.add_namespace(DCAT_VOCAB_PREFIX, 'http://www.w3.org/ns/dcat#')  # NOSONAR
-    doc.add_namespace(DCMITYPE_VOCAB_PREFIX, 'http://purl.org/dc/dcmitype/')  # NOSONAR
-    doc.add_namespace(DCTERMS_VOCAB_PREFIX, 'http://purl.org/dc/terms/')  # NOSONAR
-    doc.add_namespace(FOAF_VOCAB_PREFIX, 'http://xmlns.com/foaf/spec/#')  # NOSONAR
+    doc.add_namespace(DCAT_VOCAB_PREFIX, DCAT_VOCAB_NAMESPACE)  # NOSONAR
+    doc.add_namespace(DCMITYPE_VOCAB_PREFIX, DCMITYPE_VOCAB_NAMESPACE)  # NOSONAR
+    doc.add_namespace(DCTERMS_VOCAB_PREFIX, DCTERMS_VOCAB_NAMESPACE)  # NOSONAR
+    doc.add_namespace(FOAF_VOCAB_PREFIX, FOAF_VOCAB_NAMESPACE)  # NOSONAR
 
     vocab_namespaces = {}
     for namespace in doc.get_registered_namespaces():
@@ -711,10 +715,10 @@ def highlight_issues(dot):
 
 def serialize_prov_document(doc, format_, aspect_ratio, dpi=None, show_attributes=True):
     """
-    Serialise a PROV document as either a JPEG or SVG image or an XML or PROV-N report.
+    Serialise a PROV document as either a JPEG or SVG image or an XML or JSON-LD or PROV-N report.
 
     :param doc: A PROV-O document
-    :param format_: The format to generate: jpg, svg, xml or provn
+    :param format_: The format to generate: jpg, svg, xml, json-ld or provn
     :param aspect_ratio: a float used to define the ratio for images
     :param dpi:  a float used to define the dpi for images
     :param show_attributes: a boolean, shows attributes of elements when True
