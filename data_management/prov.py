@@ -14,16 +14,16 @@ from data_management.views import external_object
 
 from . import models
 
-
+# we need to tell SONAR to ignore 'http' in the vocab URLs
 DCAT_VOCAB_PREFIX = 'dcat'
-DCAT_VOCAB_NAMESPACE = 'http://www.w3.org/ns/dcat#'
+DCAT_VOCAB_NAMESPACE = 'http://www.w3.org/ns/dcat#' # NOSONAR
 DCMITYPE_VOCAB_PREFIX = 'dcmitype'
-DCMITYPE_VOCAB_NAMESPACE = 'http://purl.org/dc/dcmitype/'
+DCMITYPE_VOCAB_NAMESPACE = 'http://purl.org/dc/dcmitype/' # NOSONAR
 DCTERMS_VOCAB_PREFIX = 'dcterms'
-DCTERMS_VOCAB_NAMESPACE = 'http://purl.org/dc/terms/'
+DCTERMS_VOCAB_NAMESPACE = 'http://purl.org/dc/terms/' # NOSONAR
 FAIR_VOCAB_PREFIX = 'fair'
 FOAF_VOCAB_PREFIX = 'foaf'
-FOAF_VOCAB_NAMESPACE = 'http://xmlns.com/foaf/spec/#'
+FOAF_VOCAB_NAMESPACE = 'http://xmlns.com/foaf/spec/#'# NOSONAR
 
 
 def _generate_object_meta(obj, vocab_namespaces):
@@ -664,11 +664,11 @@ def generate_prov_document(data_product, depth, request):
 
     # the vocab namespace is always the main registry
     doc.add_namespace(FAIR_VOCAB_PREFIX, f'{central_registry_url}vocab/#')
-    # we need to tell SONAR to ignore 'http' in the vocab URLs
-    doc.add_namespace(DCAT_VOCAB_PREFIX, DCAT_VOCAB_NAMESPACE)  # NOSONAR
-    doc.add_namespace(DCMITYPE_VOCAB_PREFIX, DCMITYPE_VOCAB_NAMESPACE)  # NOSONAR
-    doc.add_namespace(DCTERMS_VOCAB_PREFIX, DCTERMS_VOCAB_NAMESPACE)  # NOSONAR
-    doc.add_namespace(FOAF_VOCAB_PREFIX, FOAF_VOCAB_NAMESPACE)  # NOSONAR
+    
+    doc.add_namespace(DCAT_VOCAB_PREFIX, DCAT_VOCAB_NAMESPACE)  
+    doc.add_namespace(DCMITYPE_VOCAB_PREFIX, DCMITYPE_VOCAB_NAMESPACE)  
+    doc.add_namespace(DCTERMS_VOCAB_PREFIX, DCTERMS_VOCAB_NAMESPACE)  
+    doc.add_namespace(FOAF_VOCAB_PREFIX, FOAF_VOCAB_NAMESPACE)  
 
     vocab_namespaces = {}
     for namespace in doc.get_registered_namespaces():
