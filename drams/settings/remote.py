@@ -4,6 +4,11 @@ from .base import *
 with open('/home/ubuntu/secret_key.txt') as f:
     SECRET_KEY = f.read().strip()
 
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+SECURE_SSL_REDIRECT = True
+SECURE_REFERRER_POLICY = 'origin'
+
 ALLOWED_HOSTS = ['data.scrc.uk', '127.0.0.1', 'localhost']
 
 DATABASES = {

@@ -11,11 +11,6 @@ DEBUG = False
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
-SECURE_SSL_REDIRECT = True
-SECURE_REFERRER_POLICY = 'origin'
-
 # The URL of the central public registry
 CENTRAL_REGISTRY_URL = 'https://data.scrc.uk/'
 
