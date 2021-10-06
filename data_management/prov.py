@@ -3,7 +3,7 @@ import json
 import xml.etree.ElementTree
 
 from django.conf import settings
-from prov.constants import PROV, PROV_ROLE, PROV_TYPE
+from prov.constants import PROV, PROV_ROLE
 import prov.dot
 from prov.identifier import QualifiedName
 import prov.model
@@ -16,14 +16,16 @@ from . import models
 
 # we need to tell SONAR to ignore 'http' in the vocab URLs
 DCAT_VOCAB_PREFIX = 'dcat'
-DCAT_VOCAB_NAMESPACE = 'http://www.w3.org/ns/dcat#' # NOSONAR
+DCAT_VOCAB_NAMESPACE = 'http://www.w3.org/ns/dcat#'  # NOSONAR
 DCMITYPE_VOCAB_PREFIX = 'dcmitype'
-DCMITYPE_VOCAB_NAMESPACE = 'http://purl.org/dc/dcmitype/' # NOSONAR
+DCMITYPE_VOCAB_NAMESPACE = 'http://purl.org/dc/dcmitype/'  # NOSONAR
 DCTERMS_VOCAB_PREFIX = 'dcterms'
-DCTERMS_VOCAB_NAMESPACE = 'http://purl.org/dc/terms/' # NOSONAR
+DCTERMS_VOCAB_NAMESPACE = 'http://purl.org/dc/terms/'  # NOSONAR
 FAIR_VOCAB_PREFIX = 'fair'
 FOAF_VOCAB_PREFIX = 'foaf'
-FOAF_VOCAB_NAMESPACE = 'http://xmlns.com/foaf/spec/#'# NOSONAR
+FOAF_VOCAB_NAMESPACE = 'http://xmlns.com/foaf/spec/#'  # NOSONAR
+RDF_VOCAB_PREFIX = 'rdf'
+RDF_VOCAB_NAMESPACE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'  # NOSONAR
 
 
 def _generate_object_meta(obj, vocab_namespaces):
@@ -115,7 +117,9 @@ def _add_author_agents(authors, doc, entity, reg_uri_prefix, vocab_namespaces):
             author_agent = doc.agent(
                 agent_id,
                 {
-                    PROV_TYPE: QualifiedName(PROV, 'Person'),
+                    QualifiedName(
+                        vocab_namespaces[RDF_VOCAB_PREFIX], 'type'
+                    ): QualifiedName(PROV, "Person"),
                     QualifiedName(
                         vocab_namespaces[FOAF_VOCAB_PREFIX], 'name'
                     ): author.name,
@@ -164,7 +168,7 @@ def _add_code_repo_release(
             f'{reg_uri_prefix}:api/code_repo_release/{code_repo_release.id}',
             (
                 (
-                    PROV_TYPE,
+                    QualifiedName(vocab_namespaces[RDF_VOCAB_PREFIX], 'type'),
                     QualifiedName(vocab_namespaces[DCMITYPE_VOCAB_PREFIX], 'Software'),
                 ),
                 *_generate_object_meta(code_repo, vocab_namespaces),
@@ -217,7 +221,9 @@ def _add_code_run(dp_entity, doc, code_run, reg_uri_prefix, vocab_namespaces):
         str(code_run.run_date),
         None,
         {
-            PROV_TYPE: QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], 'Run'),
+            QualifiedName(vocab_namespaces[RDF_VOCAB_PREFIX], 'type'): QualifiedName(
+                vocab_namespaces[FAIR_VOCAB_PREFIX], 'Run'
+            ),
             QualifiedName(
                 vocab_namespaces[DCTERMS_VOCAB_PREFIX], 'description'
             ): code_run.description,
@@ -231,7 +237,9 @@ def _add_code_run(dp_entity, doc, code_run, reg_uri_prefix, vocab_namespaces):
         run_agent = doc.agent(
             f'{reg_uri_prefix}:api/user/{code_run.updated_by.id}',
             {
-                PROV_TYPE: QualifiedName(PROV, 'Person'),
+                QualifiedName(
+                    vocab_namespaces[RDF_VOCAB_PREFIX], 'type'
+                ): QualifiedName(PROV, 'Person'),
                 QualifiedName(
                     vocab_namespaces[FOAF_VOCAB_PREFIX], 'name'
                 ): code_run.updated_by.full_name(),
@@ -250,7 +258,9 @@ def _add_code_run(dp_entity, doc, code_run, reg_uri_prefix, vocab_namespaces):
             run_agent = doc.agent(
                 agent_id,
                 {
-                    PROV_TYPE: QualifiedName(PROV, 'Person'),
+                    QualifiedName(
+                        vocab_namespaces[RDF_VOCAB_PREFIX], 'type'
+                    ): QualifiedName(PROV, 'Person'),
                     QualifiedName(
                         vocab_namespaces[FOAF_VOCAB_PREFIX], 'name'
                     ): user_authors[0].author.name,
@@ -293,7 +303,10 @@ def _add_external_object(
 
     data = []
     data.append(
-        (PROV_TYPE, QualifiedName(vocab_namespaces[DCAT_VOCAB_PREFIX], 'Dataset'))
+        (
+            QualifiedName(vocab_namespaces[RDF_VOCAB_PREFIX], 'type'),
+            QualifiedName(vocab_namespaces[DCAT_VOCAB_PREFIX], 'Dataset'),
+        )
     )
 
     data.append(
@@ -405,8 +418,10 @@ def _add_input_data_products(
                     file_id,
                     (
                         (
-                            PROV_TYPE,
-                            QualifiedName(vocab_namespaces[DCAT_VOCAB_PREFIX], 'Dataset'),
+                            QualifiedName(vocab_namespaces[RDF_VOCAB_PREFIX], 'type'),
+                            QualifiedName(
+                                vocab_namespaces[DCAT_VOCAB_PREFIX], 'Dataset'
+                            ),
                         ),
                         *_generate_object_meta(obj, vocab_namespaces),
                     ),
@@ -418,7 +433,11 @@ def _add_input_data_products(
                 )
 
                 _add_author_agents(
-                    obj.authors.all(), doc, file_entity, reg_uri_prefix, vocab_namespaces
+                    obj.authors.all(),
+                    doc,
+                    file_entity,
+                    reg_uri_prefix,
+                    vocab_namespaces,
                 )
 
             # add link to the code run
@@ -501,7 +520,10 @@ def _add_prime_data_product(doc, data_product, reg_uri_prefix, vocab_namespaces)
     dp_entity = doc.entity(
         f'{reg_uri_prefix}:api/data_product/{data_product.id}',
         (
-            (PROV_TYPE, QualifiedName(vocab_namespaces[DCAT_VOCAB_PREFIX], 'Dataset')),
+            (
+                QualifiedName(vocab_namespaces[RDF_VOCAB_PREFIX], 'type'),
+                QualifiedName(vocab_namespaces[DCAT_VOCAB_PREFIX], 'Dataset'),
+            ),
             *_generate_object_meta(data_product.object, vocab_namespaces),
         ),
     )
@@ -536,7 +558,7 @@ def _add_submission_script(
         f'{reg_uri_prefix}:api/object/{submission_script.id}',
         (
             (
-                PROV_TYPE,
+                QualifiedName(vocab_namespaces[RDF_VOCAB_PREFIX], 'type'),
                 QualifiedName(vocab_namespaces[DCMITYPE_VOCAB_PREFIX], 'Software'),
             ),
             *_generate_object_meta(submission_script, vocab_namespaces),
@@ -592,7 +614,8 @@ def _generate_prov_document(doc, data_product, reg_uri_prefix, vocab_namespaces)
         try:
             code_run = component.outputs_of.all()[0]
         except IndexError:
-            # there is no code run for this component so we cannot add any more provenance data
+            # there is no code run for this component so we cannot add any more
+            # provenance data
             continue
 
         # add the code run, this is the central activity
@@ -609,12 +632,20 @@ def _generate_prov_document(doc, data_product, reg_uri_prefix, vocab_namespaces)
         # add the model config
         if code_run.model_config is not None:
             _add_model_config(
-                cr_activity, doc, code_run.model_config, reg_uri_prefix, vocab_namespaces
+                cr_activity,
+                doc,
+                code_run.model_config,
+                reg_uri_prefix,
+                vocab_namespaces,
             )
 
         # add the submission script
         _add_submission_script(
-            cr_activity, doc, code_run.submission_script, reg_uri_prefix, vocab_namespaces
+            cr_activity,
+            doc,
+            code_run.submission_script,
+            reg_uri_prefix,
+            vocab_namespaces,
         )
 
         # add input files
@@ -664,11 +695,12 @@ def generate_prov_document(data_product, depth, request):
 
     # the vocab namespace is always the main registry
     doc.add_namespace(FAIR_VOCAB_PREFIX, f'{central_registry_url}vocab/#')
-    
-    doc.add_namespace(DCAT_VOCAB_PREFIX, DCAT_VOCAB_NAMESPACE)  
-    doc.add_namespace(DCMITYPE_VOCAB_PREFIX, DCMITYPE_VOCAB_NAMESPACE)  
-    doc.add_namespace(DCTERMS_VOCAB_PREFIX, DCTERMS_VOCAB_NAMESPACE)  
-    doc.add_namespace(FOAF_VOCAB_PREFIX, FOAF_VOCAB_NAMESPACE)  
+
+    doc.add_namespace(DCAT_VOCAB_PREFIX, DCAT_VOCAB_NAMESPACE)
+    doc.add_namespace(DCMITYPE_VOCAB_PREFIX, DCMITYPE_VOCAB_NAMESPACE)
+    doc.add_namespace(DCTERMS_VOCAB_PREFIX, DCTERMS_VOCAB_NAMESPACE)
+    doc.add_namespace(FOAF_VOCAB_PREFIX, FOAF_VOCAB_NAMESPACE)
+    doc.add_namespace(RDF_VOCAB_PREFIX, RDF_VOCAB_NAMESPACE)
 
     vocab_namespaces = {}
     for namespace in doc.get_registered_namespaces():
@@ -707,7 +739,10 @@ def highlight_issues(dot):
             table = xml.etree.ElementTree.fromstring(label[1:-1:])
             for row in table:
                 for cell in row:
-                    if "href" in cell.attrib and cell.attrib["href"] == "https://data.scrc.uk/vocab/#issue":
+                    if (
+                        "href" in cell.attrib
+                        and cell.attrib["href"] == "https://data.scrc.uk/vocab/#issue"
+                    ):
                         cell.attrib["bgcolor"] = "red"
             new_label = xml.etree.ElementTree.tostring(table, encoding="unicode")
             node.set_label('<' + new_label + '>')
@@ -715,7 +750,8 @@ def highlight_issues(dot):
 
 def serialize_prov_document(doc, format_, aspect_ratio, dpi=None, show_attributes=True):
     """
-    Serialise a PROV document as either a JPEG or SVG image or an XML or JSON-LD or PROV-N report.
+    Serialise a PROV document as either a JPEG or SVG image or an XML or JSON-LD or
+    PROV-N report.
 
     :param doc: A PROV-O document
     :param format_: The format to generate: jpg, svg, xml, json-ld or provn
