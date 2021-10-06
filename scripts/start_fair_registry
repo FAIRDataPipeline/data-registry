@@ -21,7 +21,7 @@ if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
-export DJANGO_SETTINGS_MODULE="drams.local-settings"
+export DJANGO_SETTINGS_MODULE="drams.settings.local"
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 FAIR_HOME="$(dirname "${DIR}")"
 cd $FAIR_HOME
