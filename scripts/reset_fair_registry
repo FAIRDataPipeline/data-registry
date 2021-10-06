@@ -2,7 +2,7 @@
 
 ORIGINAL_PWD=`pwd`
 
-export DJANGO_SETTINGS_MODULE="drams.settings.local"
+export DJANGO_SETTINGS_MODULE="drams.local-settings"
 export DJANGO_SUPERUSER_USERNAME=admin
 export DJANGO_SUPERUSER_PASSWORD=admin
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"

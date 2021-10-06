@@ -1,4 +1,4 @@
-from .base import *
+from .base-settings import *
 
 MIDDLEWARE += ['whitenoise.middleware.WhiteNoiseMiddleware', ]
 

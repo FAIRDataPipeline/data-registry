@@ -25,7 +25,7 @@ jobs:
         with:
           path: "local-requirements.txt"
       - name: Run Tests
-        run: python manage.py test --settings drams.settings.test
+        run: python manage.py test --settings drams.test-settings
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
         with:

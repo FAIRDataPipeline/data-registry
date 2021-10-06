@@ -1,5 +1,5 @@
 #!/bin/bash
-export DJANGO_SETTINGS_MODULE="drams.settings.vagrant"
+export DJANGO_SETTINGS_MODULE="drams.vagrant-settings"
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 FAIR_HOME="$(dirname "${DIR}")"
 nohup "$FAIR_HOME"/venv/bin/python "$FAIR_HOME"/manage.py runserver 0.0.0.0:8000 > $FAIR_HOME/output.log &

@@ -26,7 +26,7 @@ set FAIR_HOME="%homedrive%%homepath%\.fair\registry"
 cd %FAIR_HOME%
 
 :: Set Environment Variables needed for Django
-setx DJANGO_SETTINGS_MODULE "drams.settings.local"
+setx DJANGO_SETTINGS_MODULE "drams.local-settings"
 
 :: Because Windows use refreshenv from chocolatey to refresh environmental variables without restart
 echo refreshing enviromental variables
