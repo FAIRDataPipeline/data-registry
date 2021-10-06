@@ -1,5 +1,6 @@
 import io
 import json
+import xml.etree.ElementTree
 
 from django.conf import settings
 from prov.constants import PROV, PROV_ROLE, PROV_TYPE
@@ -13,12 +14,16 @@ from data_management.views import external_object
 
 from . import models
 
-
+# we need to tell SONAR to ignore 'http' in the vocab URLs
 DCAT_VOCAB_PREFIX = 'dcat'
+DCAT_VOCAB_NAMESPACE = 'http://www.w3.org/ns/dcat#' # NOSONAR
 DCMITYPE_VOCAB_PREFIX = 'dcmitype'
+DCMITYPE_VOCAB_NAMESPACE = 'http://purl.org/dc/dcmitype/' # NOSONAR
 DCTERMS_VOCAB_PREFIX = 'dcterms'
+DCTERMS_VOCAB_NAMESPACE = 'http://purl.org/dc/terms/' # NOSONAR
 FAIR_VOCAB_PREFIX = 'fair'
 FOAF_VOCAB_PREFIX = 'foaf'
+FOAF_VOCAB_NAMESPACE = 'http://xmlns.com/foaf/spec/#'# NOSONAR
 
 
 def _generate_object_meta(obj, vocab_namespaces):
@@ -66,6 +71,15 @@ def _generate_object_meta(obj, vocab_namespaces):
                 str(data_product.version),
             )
         )
+
+    for component in obj.components.all():
+        for issue in component.issues.all():
+            data.append(
+                (
+                    QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], 'issue'),
+                    f"{issue.description} severity: {issue.severity} ID: {issue.id}"
+                )
+            )
 
     if obj.file_type is not None:
         data.append(
@@ -618,12 +632,6 @@ def _generate_prov_document(doc, data_product, reg_uri_prefix, vocab_namespaces)
     return all_input_files
 
 
-def get_whole_object_component(components):
-    for component in components:
-        if component.whole_object:
-            return component
-
-
 def generate_prov_document(data_product, depth, request):
     """
     Generate a PROV document for a DataProduct detailing all the input and outputs and
@@ -639,28 +647,28 @@ def generate_prov_document(data_product, depth, request):
 
     """
     url = request.build_absolute_uri('/')
-    cenral_registry_url = settings.CENTRAL_REGISTRY_URL
-    if not cenral_registry_url.endswith('/'):
-        cenral_registry_url = f'{cenral_registry_url}/'
+    central_registry_url = settings.CENTRAL_REGISTRY_URL
+    if not central_registry_url.endswith('/'):
+        central_registry_url = f'{central_registry_url}/'
 
     doc = prov.model.ProvDocument()
 
-    if url == cenral_registry_url:
+    if url == central_registry_url:
         # we are using the main registry
         reg_uri_prefix = 'reg'
-        doc.add_namespace(reg_uri_prefix, cenral_registry_url)
+        doc.add_namespace(reg_uri_prefix, central_registry_url)
     else:
         # we are using a local registry
         reg_uri_prefix = 'lreg'
         doc.add_namespace(reg_uri_prefix, url)
 
     # the vocab namespace is always the main registry
-    doc.add_namespace(FAIR_VOCAB_PREFIX, f'{cenral_registry_url}vocab/#')
-    # we need to tell SONAR to ignore 'http' in the vocab URLs
-    doc.add_namespace(DCAT_VOCAB_PREFIX, 'http://www.w3.org/ns/dcat#')  # NOSONAR
-    doc.add_namespace(DCMITYPE_VOCAB_PREFIX, 'http://purl.org/dc/dcmitype/')  # NOSONAR
-    doc.add_namespace(DCTERMS_VOCAB_PREFIX, 'http://purl.org/dc/terms/')  # NOSONAR
-    doc.add_namespace(FOAF_VOCAB_PREFIX, 'http://xmlns.com/foaf/spec/#')  # NOSONAR
+    doc.add_namespace(FAIR_VOCAB_PREFIX, f'{central_registry_url}vocab/#')
+    
+    doc.add_namespace(DCAT_VOCAB_PREFIX, DCAT_VOCAB_NAMESPACE)  
+    doc.add_namespace(DCMITYPE_VOCAB_PREFIX, DCMITYPE_VOCAB_NAMESPACE)  
+    doc.add_namespace(DCTERMS_VOCAB_PREFIX, DCTERMS_VOCAB_NAMESPACE)  
+    doc.add_namespace(FOAF_VOCAB_PREFIX, FOAF_VOCAB_NAMESPACE)  
 
     vocab_namespaces = {}
     for namespace in doc.get_registered_namespaces():
@@ -691,12 +699,26 @@ def generate_prov_document(data_product, depth, request):
     return doc
 
 
+def highlight_issues(dot):
+    nodes = dot.get_node_list()
+    for node in nodes:
+        if "fair:issue" in node.obj_dict["attributes"]["label"]:
+            label = node.get_label()
+            table = xml.etree.ElementTree.fromstring(label[1:-1:])
+            for row in table:
+                for cell in row:
+                    if "href" in cell.attrib and cell.attrib["href"] == "https://data.scrc.uk/vocab/#issue":
+                        cell.attrib["bgcolor"] = "red"
+            new_label = xml.etree.ElementTree.tostring(table, encoding="unicode")
+            node.set_label('<' + new_label + '>')
+
+
 def serialize_prov_document(doc, format_, aspect_ratio, dpi=None, show_attributes=True):
     """
-    Serialise a PROV document as either a JPEG or SVG image or an XML or PROV-N report.
+    Serialise a PROV document as either a JPEG or SVG image or an XML or JSON-LD or PROV-N report.
 
     :param doc: A PROV-O document
-    :param format_: The format to generate: jpg, svg, xml or provn
+    :param format_: The format to generate: jpg, svg, xml, json-ld or provn
     :param aspect_ratio: a float used to define the ratio for images
     :param dpi:  a float used to define the dpi for images
     :param show_attributes: a boolean, shows attributes of elements when True
@@ -706,6 +728,7 @@ def serialize_prov_document(doc, format_, aspect_ratio, dpi=None, show_attribute
     """
     if format_ in ('jpg', 'svg'):
         dot = prov.dot.prov_to_dot(doc, show_element_attributes=show_attributes)
+        highlight_issues(dot)
         dot.set_ratio(aspect_ratio)
         dot.set_dpi(dpi)
         with io.BytesIO() as buf:
