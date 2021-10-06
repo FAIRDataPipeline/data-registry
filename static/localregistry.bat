@@ -68,7 +68,7 @@ python -m pip install -r "%FAIR_HOME:"=%\local-requirements.txt"
 cd %FAIR_HOME%
 
 :: Set Environment Variables needed for Django
-setx DJANGO_SETTINGS_MODULE "drams.settings.local"
+setx DJANGO_SETTINGS_MODULE "drams.local-settings"
 setx DJANGO_SUPERUSER_USERNAME admin
 setx DJANGO_SUPERUSER_PASSWORD admin
 
