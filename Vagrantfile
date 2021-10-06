@@ -10,7 +10,7 @@
 
 Vagrant.configure("2") do |config|
 
-    config.vm.box = "bento/ubuntu-18.04"
+    config.vm.box = "bento/ubuntu-20.04"
 
     # sync folder containing data registry code
     config.vm.synced_folder ".", "/code/data-registry"
@@ -28,11 +28,14 @@ apt-get install -y python3-venv graphviz
 
 export FAIR_HOME=/code/data-registry
 rm -rf "$FAIR_HOME"/venv
-python3 -m venv "$FAIR_HOME"/venv
+python3 -m venv "$FAIR_HOME"/venv --copies
 source "$FAIR_HOME"/venv/bin/activate
 
-python -m pip install --upgrade pip wheel
-python -m pip install -r "$FAIR_HOME"/local-requirements.txt
+# An issue with virtualbox can lead to issues when reinstalling the VM
+# see https://www.virtualbox.org/ticket/8761 
+# a work around for this is to use the --ignore-installed option for pip
+python -m pip install --upgrade pip wheel --ignore-installed
+python -m pip install -r "$FAIR_HOME"/local-requirements.txt  --ignore-installed
 
 export DJANGO_SETTINGS_MODULE="drams.vagrant-settings"
 export DJANGO_SUPERUSER_USERNAME=admin
