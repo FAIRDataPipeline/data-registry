@@ -861,12 +861,12 @@ class ProvAPITests(TestCase):
     PROV_ENTITY = "prov:entity"
     PROV_GENERAL_ENTITY = "prov:generalEntity"
     PROV_GENERATED_ENTITY = "prov:generatedEntity"
-    PROV_SPECIFIC_ENTITY = "prov:specificEntity"
     PROV_PERSON = "prov:Person"
+    PROV_SPECIFIC_ENTITY = "prov:specificEntity"
     PROV_ROLE = "prov:role"
-    PROV_TYPE = "prov:type"
     PROV_USED_ENTITY = "prov:usedEntity"
     PROV_QUALIFIED_NAME = "prov:QUALIFIED_NAME"
+    RDF_TYPE = "rdf:type"
     XSD_DATE_TIME = "xsd:dateTime"
 
     def setUp(self):
@@ -885,7 +885,7 @@ class ProvAPITests(TestCase):
         results = response.json()
 
         expected_result = {
-            self.PROV_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
+            self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
             self.PROV_AT_LOCATION: "https://data.scrc.uk/api/text_file/input/1",
             self.DCTERMS_DESCRIPTION: "input 1 object",
             self.FAIR_NAMESPACE: "prov",
@@ -897,7 +897,7 @@ class ProvAPITests(TestCase):
         self.assertEqual(prov_out, expected_result)
 
         expected_result = {
-            self.PROV_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
+            self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
             self.PROV_AT_LOCATION: "https://data.scrc.uk/api/text_file/output/1",
             self.DCTERMS_DESCRIPTION: "output 1 object",
             self.FAIR_NAMESPACE: "prov",
@@ -909,7 +909,7 @@ class ProvAPITests(TestCase):
         self.assertEqual(prov_out, expected_result)
 
         expected_result = {
-            self.PROV_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
+            self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
             self.PROV_AT_LOCATION: "https://data.scrc.uk/api/text_file/input/2",
             self.DCTERMS_DESCRIPTION: "input 2 object",
             self.FAIR_NAMESPACE: "prov",
@@ -921,7 +921,7 @@ class ProvAPITests(TestCase):
         self.assertEqual(prov_out, expected_result)
 
         expected_result = {
-            self.PROV_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
+            self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
             self.PROV_AT_LOCATION: "https://data.scrc.uk/api/text_file/input/3",
             self.DCTERMS_DESCRIPTION: "input 3 object",
             self.FAIR_NAMESPACE: "prov",
@@ -933,7 +933,7 @@ class ProvAPITests(TestCase):
         self.assertEqual(prov_out, expected_result)
 
         expected_result = {
-            self.PROV_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
+            self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
             self.DCTERMS_TITLE: "this is cr test input 1",
             self.DCTERMS_ISSUED: {
                 "$": "2020-07-10T18:38:00+00:00",
@@ -950,7 +950,7 @@ class ProvAPITests(TestCase):
         )
 
         expected_result = {
-            self.PROV_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
+            self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
             self.DCTERMS_TITLE: "this is cr test output 1",
             self.DCTERMS_ISSUED: {
                 "$": "2021-07-10T18:38:00+00:00",
@@ -972,7 +972,7 @@ class ProvAPITests(TestCase):
             self.DCTERMS_TITLE: "ScottishCovidResponse/SCRCdata",
             self.DCAT_HAS_VERSION: "0.1.0",
             "fair:website": "https://github.com/ScottishCovidResponse/SCRCdata",
-            self.PROV_TYPE: {
+            self.RDF_TYPE: {
                 "$": "dcmitype:Software",
                 "type": self.PROV_QUALIFIED_NAME,
             },
@@ -991,7 +991,7 @@ class ProvAPITests(TestCase):
         expected_result = {
             self.DCTERMS_FORMAT: "text file",
             self.PROV_AT_LOCATION: "https://data.scrc.uk/api/text_file/16/?format=text",
-            self.PROV_TYPE: {
+            self.RDF_TYPE: {
                 "$": "dcmitype:Software",
                 "type": self.PROV_QUALIFIED_NAME,
             },
@@ -1003,35 +1003,35 @@ class ProvAPITests(TestCase):
         expected_result = {
             f"{self.LREG_CODE_RUN}1": {
                 "prov:startTime": "2021-07-17T18:21:11+00:00",
-                self.PROV_TYPE: {"$": "fair:Run", "type": self.PROV_QUALIFIED_NAME},
+                self.RDF_TYPE: {"$": "fair:Run", "type": self.PROV_QUALIFIED_NAME},
                 self.DCTERMS_DESCRIPTION: "Test run",
             }
         }
         self.assertEqual(results["activity"], expected_result)
         expected_result = {
             f"{self.LREG_AUTHOR}3": {
-                self.PROV_TYPE: {
+                self.RDF_TYPE: {
                     "$": self.PROV_PERSON,
                     "type": self.PROV_QUALIFIED_NAME,
                 },
                 self.FOAF_NAME: "Rosanna Massabeti",
             },
             f"{self.LREG_USER}1": {
-                self.PROV_TYPE: {
+                self.RDF_TYPE: {
                     "$": self.PROV_PERSON,
                     "type": self.PROV_QUALIFIED_NAME,
                 },
                 self.FOAF_NAME: "User Not Found",
             },
             f"{self.LREG_AUTHOR}1": {
-                self.PROV_TYPE: {
+                self.RDF_TYPE: {
                     "$": self.PROV_PERSON,
                     "type": self.PROV_QUALIFIED_NAME,
                 },
                 self.FOAF_NAME: "Ivana Valenti",
             },
             f"{self.LREG_AUTHOR}2": {
-                self.PROV_TYPE: {
+                self.RDF_TYPE: {
                     "$": self.PROV_PERSON,
                     "type": self.PROV_QUALIFIED_NAME,
                 },
@@ -1202,11 +1202,12 @@ class ProvAPITests(TestCase):
   prefix dcmitype <http://purl.org/dc/dcmitype/>
   prefix dcterms <http://purl.org/dc/terms/>
   prefix foaf <http://xmlns.com/foaf/spec/#>
+  prefix rdf <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
   
-  entity(lreg:api/data_product/1, [prov:type='dcat:Dataset', prov:atLocation="https://data.scrc.uk/api/text_file/input/1", dcterms:description="input 1 object", fair:namespace="prov", dcterms:title="this/is/cr/test/input/1", dcat:hasVersion="0.2.0"])
-  agent(lreg:api/author/1, [prov:type='prov:Person', foaf:name="Ivana Valenti"])
+  entity(lreg:api/data_product/1, [rdf:type='dcat:Dataset', prov:atLocation="https://data.scrc.uk/api/text_file/input/1", dcterms:description="input 1 object", fair:namespace="prov", dcterms:title="this/is/cr/test/input/1", dcat:hasVersion="0.2.0"])
+  agent(lreg:api/author/1, [rdf:type='prov:Person', foaf:name="Ivana Valenti"])
   wasAttributedTo(lreg:api/data_product/1, lreg:api/author/1, [prov:role='dcterms:creator'])
-  entity(lreg:api/external_object/1, [prov:type='dcat:Dataset', dcterms:title="this is cr test input 1", dcterms:issued="2020-07-10T18:38:00+00:00" %% xsd:dateTime, dcat:hasVersion="0.2.0", fair:alternate_identifier="this_is_cr_test_input_1", fair:alternate_identifier_type="text", dcterms:description="this is code run test input 1", prov:atLocation="https://example.org/file_strore/1.txt"])
+  entity(lreg:api/external_object/1, [rdf:type='dcat:Dataset', dcterms:title="this is cr test input 1", dcterms:issued="2020-07-10T18:38:00+00:00" %% xsd:dateTime, dcat:hasVersion="0.2.0", fair:alternate_identifier="this_is_cr_test_input_1", fair:alternate_identifier_type="text", dcterms:description="this is code run test input 1", prov:atLocation="https://example.org/file_strore/1.txt"])
   specializationOf(lreg:api/external_object/1, lreg:api/data_product/1)
 endDocument"""
         self.assertEqual(result, expected_result)
