@@ -106,7 +106,7 @@ def _add_author_agents(authors, doc, entity, reg_uri_prefix, vocab_namespaces):
 
     """
     for author in authors:
-        agent_id = f'{reg_uri_prefix}:api/author/{author.id}'
+        agent_id = f'{reg_uri_prefix}:{author.name}'
         agent = doc.get_record(agent_id)
         # check to see if we have already created an agent for this author
         if len(agent) > 0:
@@ -160,12 +160,12 @@ def _add_code_repo_release(
 
     if code_repo_release is None:
         code_release_entity = doc.entity(
-            f'{reg_uri_prefix}:api/object/{code_repo.id}',
+            f'{reg_uri_prefix}:{code_repo.description}',
             (*_generate_object_meta(code_repo, vocab_namespaces),),
         )
     else:
         code_release_entity = doc.entity(
-            f'{reg_uri_prefix}:api/code_repo_release/{code_repo_release.id}',
+            f'{reg_uri_prefix}:{code_repo_release.name}',
             (
                 (
                     QualifiedName(vocab_namespaces[RDF_VOCAB_PREFIX], 'type'),
@@ -217,7 +217,7 @@ def _add_code_run(dp_entity, doc, code_run, reg_uri_prefix, vocab_namespaces):
 
     """
     cr_activity = doc.activity(
-        f'{reg_uri_prefix}:api/code_run/{code_run.id}',
+        f'{reg_uri_prefix}:{code_run.description}',
         str(code_run.run_date),
         None,
         {
@@ -235,7 +235,7 @@ def _add_code_run(dp_entity, doc, code_run, reg_uri_prefix, vocab_namespaces):
     user_authors = models.UserAuthor.objects.filter(user=code_run.updated_by)
     if len(user_authors) == 0:
         run_agent = doc.agent(
-            f'{reg_uri_prefix}:api/user/{code_run.updated_by.id}',
+            f'{reg_uri_prefix}:{code_run.updated_by.name}',
             {
                 QualifiedName(
                     vocab_namespaces[RDF_VOCAB_PREFIX], 'type'
@@ -247,7 +247,7 @@ def _add_code_run(dp_entity, doc, code_run, reg_uri_prefix, vocab_namespaces):
         )
     else:
         # we have an author linked to the user
-        agent_id = f'{reg_uri_prefix}:api/author/{user_authors[0].author.id}'
+        agent_id = f'{reg_uri_prefix}:{user_authors[0].author.name}'
         agent = doc.get_record(agent_id)
         # check to see if we have already created an agent for this author
         if len(agent) > 0:
@@ -373,7 +373,7 @@ def _add_external_object(
         )
 
     external_object_entity = doc.entity(
-        f'{reg_uri_prefix}:api/external_object/{external_object.id}', (*data,)
+        f'{reg_uri_prefix}:{external_object.title}', (*data,)
     )
     doc.specializationOf(external_object_entity, data_product_entity)
 
@@ -405,7 +405,7 @@ def _add_input_data_products(
         data_products = obj.data_products.all()
 
         for data_product in data_products:
-            file_id = f'{reg_uri_prefix}:api/data_product/{data_product.id}'
+            file_id = f'{reg_uri_prefix}:{data_product.name}'
 
             entity = doc.get_record(file_id)
             # check to see if we have already created an entity for this data product
@@ -472,7 +472,7 @@ def _add_model_config(cr_activity, doc, model_config, reg_uri_prefix, vocab_name
 
     """
     model_config_entity = doc.entity(
-        f'{reg_uri_prefix}:api/object/{model_config.id}',
+        f'{reg_uri_prefix}:{model_config.description}',
         (*_generate_object_meta(model_config, vocab_namespaces),),
     )
 
@@ -508,7 +508,7 @@ def _add_prime_data_product(doc, data_product, reg_uri_prefix, vocab_namespaces)
     @return the data product entity
 
     """
-    data_product_id = f'{reg_uri_prefix}:api/data_product/{data_product.id}'
+    data_product_id = f'{reg_uri_prefix}:{data_product.name}'
     entity = doc.get_record(data_product_id)
     # check to see if we have already created an entity for this data product
     if len(entity) > 0:
@@ -518,7 +518,7 @@ def _add_prime_data_product(doc, data_product, reg_uri_prefix, vocab_namespaces)
 
     # add the data product
     dp_entity = doc.entity(
-        f'{reg_uri_prefix}:api/data_product/{data_product.id}',
+        f'{reg_uri_prefix}:{data_product.name}',
         (
             (
                 QualifiedName(vocab_namespaces[RDF_VOCAB_PREFIX], 'type'),
@@ -555,7 +555,7 @@ def _add_submission_script(
 
     """
     submission_script_entity = doc.entity(
-        f'{reg_uri_prefix}:api/object/{submission_script.id}',
+        f'{reg_uri_prefix}:{submission_script.description}',
         (
             (
                 QualifiedName(vocab_namespaces[RDF_VOCAB_PREFIX], 'type'),
