@@ -16,6 +16,13 @@ from data_management.models import (
 from django.contrib.auth import get_user_model
 
 
+ANALYSIS_DESCRIPTION = "Analysis / processing script location"
+GITHUB_COM = "https://github.com/"
+SEIRS_DESCRIPTION = "SEIRS model results"
+SUBMISSION_SCRIPT_DESCRIPTION = "Submission script location in local datastore"
+YAML_DESCRIPTION = "Working config.yaml file location in local datastore"
+
+
 def init_db():
     user = get_user_model().objects.get_or_create(username="exampleusera")[0]
 
@@ -161,7 +168,7 @@ def init_db():
     )[0]
 
     storage_root_2 = StorageRoot.objects.get_or_create(
-        root="https://github.com/",
+        root=GITHUB_COM,
         local=False,
         updated_by=user,
     )[0]
@@ -393,7 +400,7 @@ def init_db():
     object_1.authors.add(author_1)
 
     object_2 = Object.objects.get_or_create(
-        description="Working config.yaml file location in local datastore",
+        description=YAML_DESCRIPTION,
         updated_by=user,
         storage_location=storage_location_2,
         file_type=yaml_document,
@@ -401,7 +408,7 @@ def init_db():
     object_2.authors.add(author_1)
 
     object_3 = Object.objects.get_or_create(
-        description="Submission script location in local datastore",
+        description=SUBMISSION_SCRIPT_DESCRIPTION,
         updated_by=user,
         storage_location=storage_location_3,
         file_type=shell_script,
@@ -409,7 +416,7 @@ def init_db():
     object_3.authors.add(author_1)
 
     object_4 = Object.objects.get_or_create(
-        description="Analysis / processing script location",
+        description=ANALYSIS_DESCRIPTION,
         updated_by=user,
         storage_location=storage_location_4,
         file_type=git,
@@ -431,7 +438,7 @@ def init_db():
     object_6.authors.add(author_1)
 
     object_7 = Object.objects.get_or_create(
-        description="Working config.yaml file location in local datastore",
+        description=YAML_DESCRIPTION,
         updated_by=user,
         storage_location=storage_location_7,
         file_type=yaml_document,
@@ -439,7 +446,7 @@ def init_db():
     object_7.authors.add(author_2)
 
     object_8 = Object.objects.get_or_create(
-        description="Submission script location in local datastore",
+        description=SUBMISSION_SCRIPT_DESCRIPTION,
         updated_by=user,
         storage_location=storage_location_8,
         file_type=shell_script,
@@ -447,14 +454,14 @@ def init_db():
     object_8.authors.add(author_2)
 
     object_9 = Object.objects.get_or_create(
-        description="Analysis / processing script location",
+        description=ANALYSIS_DESCRIPTION,
         updated_by=user,
         storage_location=storage_location_9,
     )[0]
     object_9.authors.add(author_2)
 
     object_10 = Object.objects.get_or_create(
-        description="SEIRS model results",
+        description=SEIRS_DESCRIPTION,
         updated_by=user,
         storage_location=storage_location_10,
         file_type=csv_file,
@@ -494,7 +501,7 @@ def init_db():
     object_14.authors.add(author_1)
 
     object_15 = Object.objects.get_or_create(
-        description="SEIRS model results",
+        description=SEIRS_DESCRIPTION,
         updated_by=user,
         storage_location=storage_location_15,
         file_type=csv_file,
@@ -518,14 +525,14 @@ def init_db():
     object_17.authors.add(author_1)
 
     object_18 = Object.objects.get_or_create(
-        description="Analysis / processing script location",
+        description=ANALYSIS_DESCRIPTION,
         updated_by=user,
         storage_location=storage_location_18,
     )[0]
     object_18.authors.add(author_1)
 
     object_19 = Object.objects.get_or_create(
-        description="SEIRS model results",
+        description=SEIRS_DESCRIPTION,
         updated_by=user,
         storage_location=storage_location_19,
         file_type=csv_file,
@@ -541,7 +548,7 @@ def init_db():
     object_20.authors.add(author_1)
 
     object_21 = Object.objects.get_or_create(
-        description="Working config.yaml file location in local datastore",
+        description=YAML_DESCRIPTION,
         updated_by=user,
         storage_location=storage_location_21,
         file_type=yaml_document,
@@ -549,7 +556,7 @@ def init_db():
     object_21.authors.add(author_1)
 
     object_22 = Object.objects.get_or_create(
-        description="Submission script location in local datastore",
+        description=SUBMISSION_SCRIPT_DESCRIPTION,
         updated_by=user,
         storage_location=storage_location_22,
         file_type=shell_script,
@@ -557,7 +564,7 @@ def init_db():
     object_22.authors.add(author_1)
 
     object_23 = Object.objects.get_or_create(
-        description="Analysis / processing script location",
+        description=ANALYSIS_DESCRIPTION,
         updated_by=user,
         storage_location=storage_location_4,
         file_type=git,
@@ -627,7 +634,7 @@ def init_db():
         updated_by=user,
         name="SimpleModel",
         version="1.0.0",
-        website="https://github.com/",
+        website=GITHUB_COM,
         object=object_4,
     )
 
@@ -635,7 +642,7 @@ def init_db():
         updated_by=user,
         name="javaSimpleModel",
         version="1.0.0",
-        website="https://github.com/",
+        website=GITHUB_COM,
         object=object_9,
     )
 
@@ -643,7 +650,7 @@ def init_db():
         updated_by=user,
         name="DataPipeline.jl",
         version="1.0.0",
-        website="https://github.com/",
+        website=GITHUB_COM,
         object=object_13,
     )
 
@@ -651,7 +658,7 @@ def init_db():
         updated_by=user,
         name="pythonFDP",
         version="1.0.0",
-        website="https://github.com/",
+        website=GITHUB_COM,
         object=object_18,
     )
 
