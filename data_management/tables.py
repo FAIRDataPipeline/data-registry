@@ -64,8 +64,9 @@ def external_objects_table_data(request):
         'totalNotFiltered': all_objects.count(),
         'rows': [
             {
-                'identifier': obj.identifier,
-                'alternate_identifier': '<a href="/external_object/%d">%s</a>' % (obj.data_product.id, obj.alternate_identifier),
+                'url': '<a href="/external_object/%d"><i class="far fa-file-alt"</i></a>' % obj.data_product.id,
+                'identifier': '<a href="%s">%s</a>' % (obj.identifier, obj.identifier),
+                'alternate_identifier': obj.alternate_identifier,
                 'release_date': str(obj.release_date),
                 'title': obj.title,
                 'version': obj.data_product.version,
