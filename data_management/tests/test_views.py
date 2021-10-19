@@ -23,7 +23,7 @@ class IndexViewTests(TestCase):
     def test_index_page_displays_data_products(self):
         response = self.client.get(reverse('index'))
         context = response.context[-1]
-        self.assertEqual(len(context['data_products']), 13)
+        self.assertEqual(len(context['data_products']), 14)
 
     def test_index_page_displays_external_objects(self):
         response = self.client.get(reverse('index'))

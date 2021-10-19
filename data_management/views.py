@@ -1,12 +1,13 @@
 from configparser import ConfigParser
 import os
 
-from django.http import HttpResponseNotFound
+from django.http import HttpResponseNotFound, FileResponse
 from django.shortcuts import render, HttpResponse, redirect
 from django.views import generic
 from django.utils.text import camel_case_to_spaces
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from rest_framework import status
 from rest_framework.authtoken.models import Token
 
 from collections import namedtuple
@@ -14,6 +15,7 @@ from collections import namedtuple
 from . import models
 from . import object_storage
 from . import settings
+from . import version
 
 
 def index(request):
@@ -37,6 +39,7 @@ def index(request):
         'external_objects': external_objects,
         'code_repo_release': code_repo_release,
         'remote_registry': settings.REMOTE_REGISTRY,
+        'registry_version': version.get_version()
     }
     return render(request, os.path.join('data_management', 'index.html'), ctx)
 
@@ -219,6 +222,33 @@ def get_data(request, name):
     return redirect(object_storage.create_url(name, 'GET', filename))
 
 
+def serve_file(full_uri):
+    """
+    Provide ability to view or download files stored on the local filesystem
+    """
+    if settings.REMOTE_REGISTRY:
+        return HttpResponse(status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    full_uri = full_uri.replace('file://', '')
+
+    if os.path.isfile(full_uri):
+        return FileResponse(open(full_uri, 'rb'))
+
+    return HttpResponseNotFound()
+
+
+def get_data_product(data_product):
+    """
+    Generate a link for accessing a data product
+    """
+    full_uri = data_product.object.storage_location.full_uri()
+
+    if full_uri.startswith('/') or full_uri.startswith('file://'):
+        return serve_file(full_uri)
+
+    return redirect(full_uri)
+
+
 def data_product(request, namespace, data_product_name, version):
     """
     Redirect to the URL of a file given the namespace, data product name and version
@@ -235,7 +265,7 @@ def data_product(request, namespace, data_product_name, version):
     if 'root' in request.GET:
         return HttpResponse(data_product.object.storage_location.storage_root.root)
 
-    return redirect(data_product.object.storage_location.full_uri())
+    return get_data_product(data_product)
 
 
 def external_object(request, alternate_identifier, title, version):
@@ -249,10 +279,10 @@ def external_object(request, alternate_identifier, title, version):
         return HttpResponseNotFound()
 
     # Use storage location if it exists and user has not requested the original_store
-    if external_object.object.storage_location and 'original' not in request.GET:
+    if external_object.data_product.object.storage_location and 'original' not in request.GET:
         if 'root' in request.GET:
-            return HttpResponse(external_object.object.storage_location.storage_root.root)
-        return redirect(external_object.object.storage_location.full_uri())
+            return HttpResponse(external_object.data_product.object.storage_location.storage_root.root)
+        return get_data_product(external_object.data_product)
 
     # Use original_store if it exists
     if external_object.original_store:

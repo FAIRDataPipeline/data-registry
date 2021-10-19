@@ -30,7 +30,7 @@ def data_product_table_data(request):
         'rows': [
             {
                 'namespace': str(obj.namespace),
-                'name': '<a href="/data_product/%d">%s</a>' % (obj.object.id, obj.name),
+                'name': '<a href="/data_product/%d">%s</a>' % (obj.id, obj.name),
                 'version': obj.version,
             } for obj in page_objects
         ],
@@ -47,7 +47,6 @@ def external_objects_table_data(request):
     all_objects = models.ExternalObject.objects.all().order_by(sign + sort)
     if search:
         filtered_objects = all_objects.filter(
-            Q(source__name__icontains=search) |
             Q(alternate_identifier__icontains=search) |
             Q(identifier__icontains=search) |
             Q(release_date__icontains=search) |

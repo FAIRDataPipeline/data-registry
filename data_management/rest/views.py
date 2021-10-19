@@ -8,6 +8,7 @@ from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework import viewsets, permissions, views, renderers, mixins, exceptions, status, filters as rest_filters
 from rest_framework.response import Response
+from pydot import Dot
 from django.db import IntegrityError
 from django_filters.rest_framework import DjangoFilterBackend, filterset
 from django_filters import constants, filters
@@ -66,11 +67,24 @@ class XMLRenderer(renderers.BaseRenderer):
         return data
 
 
+class JSONLDRenderer(renderers.BaseRenderer):
+    """
+    Custom renderer for returning JSON-LD data.
+    """
+    media_type = 'application/ld+json'
+    format = 'json-ld'
+    charset = 'utf8'
+    render_style = 'text'
+
+    def render(self, data, media_type=None, renderer_context=None):
+        return data
+
+
 class ProvnRenderer(renderers.BaseRenderer):
     """
     Custom renderer for returning PROV-N data (as defined in https://www.w3.org/TR/2013/REC-prov-n-20130430/).
     """
-    media_type = 'text/plain'
+    media_type = 'text/provenance-notation'
     format = 'provn'
     charset = 'utf8'
     render_style = 'text'
@@ -92,20 +106,75 @@ class TextRenderer(renderers.BaseRenderer):
         return data['text']
 
 
-@renderer_classes([
-    renderers.BrowsableAPIRenderer, renderers.JSONRenderer, JPEGRenderer, SVGRenderer, XMLRenderer, ProvnRenderer
-])
 class ProvReportView(views.APIView):
     """
-    API view for returning a PROV report for a CodeRun.
+    ***The provenance report for a `DataProduct`.***
 
-    This report can be returned as JSON (default) or JPEG, SVG, XML or PROV-N using the custom renderers.
+    The provenance report can be generated as `JSON`, `JSON-LD`, `XML` or `PROV-N`.
+    Optionally `JPEG` and `SVG` versions of the provenance may be available.
+
+    ### Query parameters:
+
+    `attributes` (optional): A boolean, when `True` (default) show additional
+    attributes of the objects on the image
+
+    `aspect_ratio` (optional): A float used to define the ratio for the `JPEG` and
+    `SVG` images. The default is 0.71, which is equivalent to A4 landscape.
+
+    `dpi` (optional): A float used to define the dpi for the `JPEG` and `SVG` images
+
+    `depth` (optional): An integer used to determine how many code runs to include,
+    the default is 1
     """
+    try:
+        Dot(prog='dot').create()
+        # GraphViz is installed so the JPEG and SVG renderers are made available.
+        renderer_classes = [renderers.BrowsableAPIRenderer, renderers.JSONRenderer,
+                            JSONLDRenderer, JPEGRenderer, SVGRenderer, XMLRenderer,
+                            ProvnRenderer]
+    except FileNotFoundError:
+        # GraphViz is not installed so the JPEG and SVG renderers are NOT available.
+        renderer_classes = [renderers.BrowsableAPIRenderer, renderers.JSONRenderer,
+                            JSONLDRenderer, XMLRenderer, ProvnRenderer]
 
-    def get(self, request, pk, format=None):
-        code_run = get_object_or_404(models.CodeRun, pk=pk)
-        doc = generate_prov_document(code_run)
-        value = serialize_prov_document(doc, request.accepted_renderer.format)
+    def get(self, request, pk):
+        data_product = get_object_or_404(models.DataProduct, pk=pk)
+
+        show_attributes = request.query_params.get('attributes', True)
+        if show_attributes == "False":
+            show_attributes = False
+
+        default_aspect_ratio = 0.71
+        aspect_ratio = request.query_params.get('aspect_ratio', default_aspect_ratio)
+        try:
+            aspect_ratio = float(aspect_ratio)
+        except ValueError:
+            aspect_ratio = default_aspect_ratio
+
+        default_depth = 1
+        depth = request.query_params.get('depth', default_depth)
+        try:
+            depth = int(depth)
+        except ValueError:
+            depth = default_depth
+        if depth < 1:
+            depth = 1
+
+        dpi = request.query_params.get('dpi', None)
+        try:
+            dpi = float(dpi)
+        except (TypeError, ValueError):
+            dpi = None
+
+        doc = generate_prov_document(data_product, depth, request)
+
+        value = serialize_prov_document(
+            doc,
+            request.accepted_renderer.format,
+            aspect_ratio,
+            dpi,
+            show_attributes=bool(show_attributes)
+        )
         return Response(value)
 
 
@@ -292,17 +361,17 @@ class DataProductViewSet(BaseViewSet, mixins.UpdateModelMixin):
     filterset_fields = models.DataProduct.FILTERSET_FIELDS
     __doc__ = models.DataProduct.__doc__
 
+    def create(self, request, *args, **kwargs):
+        if 'prov_report' not in request.data:
+            request.data['prov_report'] = []
+        return super().create(request, *args, **kwargs)
+
 
 class CodeRunViewSet(BaseViewSet, mixins.UpdateModelMixin, mixins.DestroyModelMixin):
     model = models.CodeRun
     serializer_class = serializers.CodeRunSerializer
     filterset_fields = models.CodeRun.FILTERSET_FIELDS
     __doc__ = models.CodeRun.__doc__
-
-    def create(self, request, *args, **kwargs):
-        if 'prov_report' not in request.data:
-            request.data['prov_report'] = []
-        return super().create(request, *args, **kwargs)
 
 
 for name, cls in models.all_models.items():

@@ -59,13 +59,13 @@ elif [ ! -z $(echo ${GIT_BRANCH} | xargs) ]; then
     echo "Cloning branch ${GIT_BRANCH}"
     git clone https://github.com/FAIRDataPipeline/data-registry.git -b ${GIT_BRANCH} "$FAIR_HOME" > /dev/null 2>&1
 elif [ ! -z $(echo ${GIT_PRE_RELEASE} | xargs) ]; then
-    TAG=`curl --silent "https://api.github.com/repos/FAIRDataPipeline/data-registry/releases" | sed -n 's/^.*"tag_name": "v\(.*\)",.*$/\1/p' | sort -r -V | head -n 1`
+    TAG=`curl --silent "https://api.github.com/repos/FAIRDataPipeline/data-registry/releases" | sed -n 's/^.*"tag_name": "\(v.*\)",.*$/\1/p' | sort -r -V | head -n 1`
     echo "Cloning tag $TAG"
     git clone https://github.com/FAIRDataPipeline/data-registry.git "$FAIR_HOME" > /dev/null 2>&1
     cd "$FAIR_HOME"
     git checkout tags/$TAG > /dev/null 2>&1
 else
-    TAG=`curl --silent "https://api.github.com/repos/FAIRDataPipeline/data-registry/releases/latest" | sed -n 's/^.*"tag_name": "v\(.*\)",.*$/\1/p'`
+    TAG=`curl --silent "https://api.github.com/repos/FAIRDataPipeline/data-registry/releases/latest" | sed -n 's/^.*"tag_name": "\(v.*\)",.*$/\1/p'`
     echo "Cloning tag $TAG"
     git clone https://github.com/FAIRDataPipeline/data-registry.git "$FAIR_HOME" > /dev/null 2>&1
     cd "$FAIR_HOME"

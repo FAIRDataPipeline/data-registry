@@ -14,3 +14,5 @@ danteconfig
 output.log
 token
 *.dot
+session_port.log
+coverage.xml

@@ -10,14 +10,29 @@ jobs:
         python: ["3.7", "3.9"]
     steps:
       - uses: actions/checkout@v2
+      - run: git fetch --prune --unshallow
       - name: Set up Python
         uses: actions/setup-python@v2
+      - name: Install graphviz on ubuntu
+        run:  |
+              if [ ${{ runner.os }} == "Linux" ]; then
+                  sudo apt-get install graphviz
+              else
+                  brew install graphviz
+              fi
       - name: Install Python dependencies
         uses: py-actions/py-dependency-install@v2
         with:
           path: "local-requirements.txt"
       - name: Run Tests
         run: python manage.py test --settings drams.test-settings
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          env_vars: OS,PYTHON
+          files: ./coverage.xml
+          flags: unittests
+          verbose: true
   deploy-local-registry:
     name: Deploy local registry on ${{ matrix.os }} with Python ${{ matrix.python }}
     runs-on: ${{ matrix.os }}

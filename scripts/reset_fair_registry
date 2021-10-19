@@ -1,0 +1,21 @@
+#!/bin/bash
+
+ORIGINAL_PWD=`pwd`
+
+export DJANGO_SETTINGS_MODULE="drams.local-settings"
+export DJANGO_SUPERUSER_USERNAME=admin
+export DJANGO_SUPERUSER_PASSWORD=admin
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+FAIR_HOME="$(dirname "${DIR}")"
+cd $FAIR_HOME
+
+pgrep -f "$FAIR_HOME/manage.py runserver" | xargs kill &> /dev/null 2>&1
+
+cd scripts
+./rebuild-local.sh
+
+unset DJANGO_SETTINGS_MODULE
+unset DJANGO_SUPERUSER_USERNAME
+unset DJANGO_SUPERUSER_PASSWORD
+cd $ORIGINAL_PWD
+

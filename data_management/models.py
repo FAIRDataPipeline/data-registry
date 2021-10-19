@@ -1,7 +1,6 @@
 import hashlib
 from uuid import uuid4, UUID
 
-from django.contrib.sites.shortcuts import get_current_site
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
@@ -406,10 +405,6 @@ class CodeRun(BaseModel):
     inputs = models.ManyToManyField(ObjectComponent, related_name='inputs_of', blank=True)
     uuid = models.UUIDField(default=uuid4, editable=True, unique=True)
 
-    def prov_report(self):
-        url = reverse('prov_report', kwargs={'pk': self.id})
-        full_url = ''.join(['http://', get_current_site(None).domain, url])
-        return full_url
 
     def __str__(self):
         if self.code_repo:
@@ -492,6 +487,8 @@ class StorageLocation(BaseModel):
         ]
 
     def full_uri(self):
+        if (self.storage_root.root.startswith('/') or self.storage_root.root.startswith('file://')) and not self.storage_root.root.endswith('/'):
+            return self.storage_root.root + '/' + self.path
         return self.storage_root.root + self.path
 
     def __str__(self):
@@ -562,6 +559,7 @@ class DataProduct(BaseModel):
 
     EXTRA_DISPLAY_FIELDS = (
         'external_object',
+        'prov_report',
     )
 
     object = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='data_products')
@@ -575,6 +573,10 @@ class DataProduct(BaseModel):
                 fields=('namespace', 'name', 'version'),
                 name='unique_data_product'),
         ]
+
+    def prov_report(self):
+        url = reverse('prov_report', kwargs={'pk': self.id})
+        return url
 
     def __str__(self):
         return '%s:%s version %s' % (self.namespace, self.name, self.version)
@@ -668,6 +670,8 @@ class QualityControlled(BaseModel):
     ### Writable Fields:
     `object`: API URL of the associated `Object`
 
+    `document`: API URL of the `Object` representing the quality control document
+
     ### Read-only Fields:
     `url`: Reference to the instance of the `QualityControlled`, final integer is the `QualityControlled` id
 
@@ -675,9 +679,10 @@ class QualityControlled(BaseModel):
 
     `updated_by`: Reference to the user that updated this record
     """
-    ADMIN_LIST_FIELDS = ('object',)
+    ADMIN_LIST_FIELDS = ('object', 'document')
 
     object = models.OneToOneField(Object, on_delete=models.PROTECT, related_name='quality_control')
+    document = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='quality_control_document')
 
 
 class Keyword(BaseModel):

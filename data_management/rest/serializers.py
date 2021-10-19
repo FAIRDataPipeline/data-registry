@@ -44,7 +44,6 @@ class BaseSerializer(serializers.HyperlinkedModelSerializer):
 class BaseSerializerUUID(BaseSerializer):
     uuid = serializers.UUIDField(initial=uuid4, default=uuid4)
 
-
 class IssueSerializer(BaseSerializerUUID):
 
     class Meta(BaseSerializer.Meta):
@@ -52,6 +51,7 @@ class IssueSerializer(BaseSerializerUUID):
 
 
 class CodeRunSerializer(BaseSerializer):
+
     class Meta(BaseSerializer.Meta):
         model = models.CodeRun
         read_only_fields = model.EXTRA_DISPLAY_FIELDS
@@ -61,6 +61,7 @@ class CodeRunSerializer(BaseSerializer):
 
 class DataProductSerializer(BaseSerializer):
     internal_format = serializers.SerializerMethodField()
+    prov_report = serializers.SerializerMethodField()
 
     class Meta(BaseSerializer.Meta):
         model = models.DataProduct
@@ -71,6 +72,12 @@ class DataProductSerializer(BaseSerializer):
         internal_format = serializers.BooleanField()
         internal_format = any([component.whole_object == False for component in obj.object.components.all()])
         return internal_format
+
+    def get_prov_report(self, obj):
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.prov_report())
+        return obj.prov_report()
 
 
 for name, cls in models.all_models.items():
