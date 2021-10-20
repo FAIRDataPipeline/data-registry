@@ -3,6 +3,7 @@ from uuid import uuid4, UUID
 
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models.deletion import PROTECT
 from django.urls import reverse
 from dynamic_validator import ModelFieldRequiredMixin
 from django.contrib.auth import get_user_model
@@ -334,6 +335,8 @@ class ObjectComponent(BaseModel):
 
     `whole_object` (*optional*): Specifies if this `ObjectComponent` refers to the whole object or not (by default this is `False`)
 
+    `output_of`: `CodeRun` that the `ObjectComponent` was created as an output of
+
     ### Read-only Fields:
     `url`: Reference to the instance of the `ObjectComponent`, final integer is the `ObjectComponent` id
 
@@ -341,18 +344,18 @@ class ObjectComponent(BaseModel):
 
     `updated_by`: Reference to the user that updated this record
 
-    `input_of`: List of `CodeRun` that the `ObjectComponent` is being used as an input to
+    `input_to`: List of `CodeRun` that the `ObjectComponent` was used as an input to
 
-    `output_of`: List of `CodeRun` that the `ObjectComponent` was created as an output of
     """
     ADMIN_LIST_FIELDS = ('object', 'name')
-    EXTRA_DISPLAY_FIELDS = ('inputs_of', 'outputs_of')
+    EXTRA_DISPLAY_FIELDS = ('input_to')
 
     object = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='components', null=False)
     name = NameField(null=False, blank=False)
     issues = models.ManyToManyField(Issue, related_name='component_issues', blank=True)
     description = models.TextField(max_length=TEXT_FIELD_LENGTH, null=True, blank=True)
     whole_object = models.BooleanField(default=False)
+    output_of = models.ForeignKey("CodeRun", on_delete=PROTECT, blank=True, related_name="outputs")
 
     class Meta:
         constraints = [
@@ -382,8 +385,6 @@ class CodeRun(BaseModel):
 
     `inputs`: List of `ObjectComponent` that the `CodeRun` used as inputs
 
-    `outputs`: List of `ObjectComponent` that the `CodeRun` produced as outputs
-
     `uuid` (*optional*): UUID of the `CodeRun`. If not specified a UUID is generated automatically.
 
     ### Read-only Fields:
@@ -392,18 +393,19 @@ class CodeRun(BaseModel):
     `last_updated`: Datetime that this record was last updated
 
     `updated_by`: Reference to the user that updated this record
+
+    `outputs`: List of `ObjectComponent` that the `CodeRun` produced as outputs
     """
     ADMIN_LIST_FIELDS = ('description',)
+    EXTRA_DISPLAY_FIELDS = ("outputs")
 
     code_repo = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='code_repo_of', null=True, blank=True)
     model_config = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='config_of', null=True, blank=True)
     submission_script = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='submission_script_of', null=False, blank=False)
     run_date = models.DateTimeField(null=False, blank=False)
     description = models.CharField(max_length=CHAR_FIELD_LENGTH, null=False, blank=False)
-    inputs = models.ManyToManyField(ObjectComponent, related_name='inputs_of', blank=True)
-    outputs = models.ManyToManyField(ObjectComponent, related_name='outputs_of', blank=True)
+    inputs = models.ManyToManyField(ObjectComponent, related_name='input_to', blank=True)
     uuid = models.UUIDField(default=uuid4, editable=True, unique=True)
-
 
     def __str__(self):
         if self.code_repo:
