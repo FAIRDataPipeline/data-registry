@@ -37,3 +37,4 @@ django-crispy-forms==1.9.2
 Markdown==3.2.2
 setuptools~=54.2.0
 whitenoise==5.2.0
+coverage
