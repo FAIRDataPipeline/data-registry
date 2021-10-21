@@ -25,7 +25,7 @@ jobs:
         with:
           path: "local-requirements.txt"
       - name: Run Tests
-        run: coverage run --source='.' manage.py test data_management --settings drams.test-settings
+        run: coverage run --source=custom_user,data_management manage.py test --settings drams.test-settings
       - name: Generate XML
         run: coverage xml
       - name: Upload coverage to Codecov
