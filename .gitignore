@@ -16,3 +16,4 @@ token
 *.dot
 session_port.log
 coverage.xml
+.coverage
