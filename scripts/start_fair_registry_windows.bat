@@ -33,7 +33,7 @@ echo refreshing enviromental variables
 call refreshenv
 
 @echo Spawning Server
-start %FAIR_HOME:"=%\venv\scripts\python.exe %FAIR_HOME:"=%/manage.py runserver %PORT%  1> %FAIR_HOME:"=%\output.log 2>&1
+start %FAIR_HOME:"=%\venv\scripts\python.exe %FAIR_HOME:"=%/manage.py runserver 127.0.0.1:%PORT%  1> %FAIR_HOME:"=%\output.log 2>&1
 
 echo %PORT% > %FAIR_HOME:"=%\session_port.log
 
