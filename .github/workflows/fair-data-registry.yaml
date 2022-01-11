@@ -7,12 +7,14 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python: ["3.7", "3.9"]
+        python: ["3.7", "3.9", "3.10"]
     steps:
       - uses: actions/checkout@v2
       - run: git fetch --prune --unshallow
       - name: Set up Python
         uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
       - name: Install graphviz on ubuntu
         run:  |
               if [ ${{ runner.os }} == "Linux" ]; then
