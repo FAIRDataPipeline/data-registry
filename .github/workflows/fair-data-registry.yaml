@@ -25,7 +25,9 @@ jobs:
         with:
           path: "local-requirements.txt"
       - name: Run Tests
-        run: python manage.py test --settings drams.test-settings
+        run: DJANGO_SETTINGS_MODULE=drams.test-settings coverage run --omit=drams,scripts,tools manage.py test 
+      - name: Generate XML
+        run: coverage xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
         with:
