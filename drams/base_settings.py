@@ -37,7 +37,6 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.github',
     'custom_user.apps.CustomUserConfig',
     'data_management.apps.DataManagementConfig',
-    'django_nose',
 ]
 
 MIDDLEWARE = [
@@ -87,7 +86,7 @@ REST_FRAMEWORK = {
     ]
 }
 
-TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
+TEST_RUNNER = 'django.test.runner.DiscoverRunner'
 
 DATABASES = {
     'default': {
