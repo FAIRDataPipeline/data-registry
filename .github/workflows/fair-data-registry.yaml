@@ -7,12 +7,14 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python: ["3.7", "3.9"]
+        python: ["3.7", "3.9", "3.10"]
     steps:
       - uses: actions/checkout@v2
       - run: git fetch --prune --unshallow
       - name: Set up Python
         uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
       - name: Install graphviz on ubuntu
         run:  |
               if [ ${{ runner.os }} == "Linux" ]; then
@@ -25,7 +27,9 @@ jobs:
         with:
           path: "local-requirements.txt"
       - name: Run Tests
-        run: python manage.py test --settings drams.test-settings
+        run: DJANGO_SETTINGS_MODULE=drams.test-settings coverage run --omit=drams,scripts,tools manage.py test 
+      - name: Generate XML
+        run: coverage xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
         with:

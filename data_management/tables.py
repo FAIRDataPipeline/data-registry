@@ -47,7 +47,6 @@ def external_objects_table_data(request):
     all_objects = models.ExternalObject.objects.all().order_by(sign + sort)
     if search:
         filtered_objects = all_objects.filter(
-            Q(source__name__icontains=search) |
             Q(alternate_identifier__icontains=search) |
             Q(identifier__icontains=search) |
             Q(release_date__icontains=search) |

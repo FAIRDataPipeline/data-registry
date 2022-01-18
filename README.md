@@ -1,6 +1,8 @@
 # FAIR Data Registry
 
-[![FAIR Data Registry](https://github.com/FAIRDataPipeline/data-registry/actions/workflows/fair-data-registry.yaml/badge.svg)](https://github.com/FAIRDataPipeline/data-registry/actions/workflows/fair-data-registry.yaml) [![codecov](https://codecov.io/gh/FAIRDataPipeline/data-registry/branch/main/graph/badge.svg?token=YT9mHzRfxn)](https://codecov.io/gh/FAIRDataPipeline/data-registry)
+[![FAIR Data Registry](https://github.com/FAIRDataPipeline/data-registry/actions/workflows/fair-data-registry.yaml/badge.svg)](https://github.com/FAIRDataPipeline/data-registry/actions/workflows/fair-data-registry.yaml) [![codecov](https://codecov.io/gh/FAIRDataPipeline/data-registry/branch/main/graph/badge.svg?token=YT9mHzRfxn)](https://codecov.io/gh/FAIRDataPipeline/data-registry)[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5562750.svg)](https://doi.org/10.5281/zenodo.5562750)
+
+
 
 The *FAIR data registry* is a component of the [FAIR data pipeline](https://fairdatapipeline.github.io/) that maintains a metadata catalogue for different data types utilised and generated within a typical epidemiological modelling workflow.
 
