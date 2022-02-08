@@ -52,6 +52,7 @@ jobs:
       - name: Deploy registry
         run: curl -fsSL https://raw.githubusercontent.com/FAIRDataPipeline/data-registry/${GITHUB_REF/refs\/heads\//}/static/localregistry.sh | bash -s -- -d $INSTALL_DIR -b ${GITHUB_REF/refs\/heads\//}
       - name: Start registry
-        run: $INSTALL_DIR/registry/scripts/start_fair_registry -p $REGISTRY_PORT
+        run:  |
+              $INSTALL_DIR/registry/scripts/start_fair_registry -p $REGISTRY_PORT
       - name: Test registry
         run: curl http://localhost:$REGISTRY_PORT/api/
