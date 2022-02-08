@@ -50,7 +50,7 @@ jobs:
     steps:
       - uses: actions/setup-python@v2
       - name: Deploy registry
-        if: ! startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') != true
         run: curl -fsSL https://raw.githubusercontent.com/FAIRDataPipeline/data-registry/${GITHUB_REF/refs\/heads\//}/static/localregistry.sh | bash -s -- -d $INSTALL_DIR -b ${GITHUB_REF/refs\/heads\//}
       - name: Deploy registry (Tagged Release)
         if: startsWith(github.ref, 'refs/tags/')
