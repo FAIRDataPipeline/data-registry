@@ -803,7 +803,7 @@ def init_db():
 
     namespace_4 = Namespace.objects.get_or_create(
         name="user_4",
-        defaults={'full_name': 'Example user 4'}, 'updated_by' : user,
+        defaults={'full_name': 'Example user 4', 'updated_by' : user},
     )[0]
 
     data_product_1 = DataProduct.objects.get_or_create(
