@@ -22,12 +22,15 @@ jobs:
               else
                   brew install graphviz
               fi
-      - name: Install Python dependencies
-        uses: py-actions/py-dependency-install@v2
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
         with:
-          path: "local-requirements.txt"
+          virtualenvs-create: true
+          virtualenvs-in-project: true
       - name: Run Tests
-        run: DJANGO_SETTINGS_MODULE=drams.test-settings coverage run --omit=drams,scripts,tools manage.py test 
+        run: |
+          poetry install 
+          DJANGO_SETTINGS_MODULE=drams.test-settings coverage run --omit=drams,scripts,tools manage.py test 
       - name: Generate XML
         run: coverage xml
       - name: Upload coverage to Codecov
