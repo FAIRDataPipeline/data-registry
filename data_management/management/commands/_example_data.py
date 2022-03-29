@@ -890,8 +890,7 @@ def init_db():
     )
 
     ExternalObject.objects.get_or_create(
-        alternate_identifier="SEIRS model parameters - Static parameters of the model",
-        alternate_identifier_type="SEIRS_model_params",
+        identifier="https://doi.org/10.1038/s41592-020-0856-2",
         primary_not_supplement=True,
         release_date="2020-06-01T12:00:00Z",
         title="Static parameters of the model",
