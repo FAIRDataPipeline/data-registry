@@ -786,15 +786,15 @@ def init_db():
     object_component_26.outputs_of.add(code_run_5)
 
     namespace_1 = Namespace.objects.get_or_create(
-        name="user_1",
-        full_name = 'Example user 1', 
-        defaults={'updated_by' : user},
-    )[0]
-
-    namespace_2 = Namespace.objects.get_or_create(
         name="PSU",
         full_name = "Pennsylvania State University",
         defaults={'website': 'https://ror.org/04p491231', 'updated_by' : user},
+    )[0]
+
+    namespace_2 = Namespace.objects.get_or_create(
+        name="user_1",
+        full_name = 'Example user 1', 
+        defaults={'updated_by' : user},
     )[0]
 
     namespace_3 = Namespace.objects.get_or_create(
@@ -814,7 +814,7 @@ def init_db():
         version="1.0.0",
         updated_by=user,
         object=object_1,
-        namespace=namespace_2,
+        namespace=namespace_1,
     )[0]
 
     DataProduct.objects.get_or_create(
@@ -822,7 +822,7 @@ def init_db():
         version="0.0.1",
         updated_by=user,
         object=object_5,
-        namespace=namespace_1,
+        namespace=namespace_2,
     )
 
     DataProduct.objects.get_or_create(
@@ -830,7 +830,7 @@ def init_db():
         version="0.0.1",
         updated_by=user,
         object=object_6,
-        namespace=namespace_1,
+        namespace=namespace_2,
     )
 
     DataProduct.objects.get_or_create(
@@ -846,7 +846,7 @@ def init_db():
         version="0.0.1",
         updated_by=user,
         object=object_14,
-        namespace=namespace_1,
+        namespace=namespace_2,
     )
 
     DataProduct.objects.get_or_create(
@@ -854,7 +854,7 @@ def init_db():
         version="0.0.1",
         updated_by=user,
         object=object_15,
-        namespace=namespace_1,
+        namespace=namespace_2,
     )
 
     DataProduct.objects.get_or_create(
@@ -878,7 +878,7 @@ def init_db():
         version="0.0.1",
         updated_by=user,
         object=object_24,
-        namespace=namespace_1,
+        namespace=namespace_2,
     )
 
     DataProduct.objects.get_or_create(
@@ -886,7 +886,7 @@ def init_db():
         version="0.0.1",
         updated_by=user,
         object=object_25,
-        namespace=namespace_1,
+        namespace=namespace_2,
     )
 
     ExternalObject.objects.get_or_create(
