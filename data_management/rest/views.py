@@ -21,6 +21,7 @@ from data_management import models, object_storage, settings
 from data_management import object_storage
 from data_management.rest import serializers
 from data_management.prov import generate_prov_document, serialize_prov_document
+from data_management.rocrate import generate_ro_crate, serialize_ro_crate
 
 
 class BadQuery(APIException):
@@ -106,6 +107,19 @@ class TextRenderer(renderers.BaseRenderer):
         return data['text']
 
 
+class ZipRenderer(renderers.BaseRenderer):
+    """
+    Custom renderer for returning zip data.
+    """
+    media_type = 'application/zip'
+    format = 'zip'
+    charset = None
+    render_style = 'binary'
+
+    def render(self, data, media_type=None, renderer_context=None):
+        return data
+
+
 class ProvReportView(views.APIView):
     """
     ***The provenance report for a `DataProduct`.***
@@ -176,6 +190,51 @@ class ProvReportView(views.APIView):
             show_attributes=bool(show_attributes)
         )
         return Response(value)
+
+
+class ROCrateView(views.APIView):
+    """
+***The RO Crate for a `DataProduct`.***
+
+An RO Crate is research object (RO) that has been packaged up, in this case as a zip
+file. This research object is centred around the creation of a `DataProduct`. The
+`DataProduct` file is packaged up along with any other local files that were used to
+produce it. Also included in the RO Crate is the metadata file `ro-crate-metadata.json`.
+All of the packaged files are represented as `File` data entities in the metadata file.
+Any external files will have a link to them in the metadata file, but will not be
+packaged in the zip file.
+
+The `CodeRun` has been modelled as a RO Crate `ContextEntity` of type `CreateAction`,
+see
+[software-used-to-create-files](https://www.researchobject.org/ro-crate/1.1/provenance.html#software-used-to-create-files).
+
+A `CreateAction` has `instrument` property, which represents the software used to
+generate the product. For our purposes `instrument`s include the link to the repo, the
+submission script and configuration file. The submission script metadata is based on
+information from
+[describing-scripts-and-workflows](https://www.researchobject.org/ro-crate/1.1/workflows.html#describing-scripts-and-workflows).
+
+`CreateAction` (`CodeRun`) properties:
+
+* `object`: the input files
+* `result`: the output file
+* `agent`: the `Author`
+
+The RO Crate is available as a `zip` file.
+
+The contents of the ro-crate-metadata file can be viewed as `JSON` or `JSON-LD`.
+
+    """
+
+    renderer_classes = [renderers.BrowsableAPIRenderer, renderers.JSONRenderer,
+                        JSONLDRenderer, ZipRenderer]
+
+    def get(self, request, pk):
+        data_product = get_object_or_404(models.DataProduct, pk=pk)
+
+        crate = generate_ro_crate(data_product, request)
+
+        return Response(serialize_ro_crate(crate, request.accepted_renderer.format))
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
@@ -364,6 +423,8 @@ class DataProductViewSet(BaseViewSet, mixins.UpdateModelMixin):
     def create(self, request, *args, **kwargs):
         if 'prov_report' not in request.data:
             request.data['prov_report'] = []
+        if 'ro_crate' not in request.data:
+            request.data['ro_crate'] = ""
         return super().create(request, *args, **kwargs)
 
 

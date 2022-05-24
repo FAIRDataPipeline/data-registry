@@ -553,12 +553,18 @@ class DataProduct(BaseModel):
     `updated_by`: Reference to the user that updated this record
 
     `external_object`: `ExternalObject` API URL associated with this `DataProduct`
+
+    `prov_report`: The provenance report for this `DataProduct`
+
+    `ro_crate`: The RO Crate containing this `DataProduct` plus any available input files
+
     """
     ADMIN_LIST_FIELDS = ('namespace', 'name', 'version')
 
     EXTRA_DISPLAY_FIELDS = (
         'external_object',
         'prov_report',
+        'ro_crate',
     )
 
     object = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='data_products')
@@ -575,6 +581,10 @@ class DataProduct(BaseModel):
 
     def prov_report(self):
         url = reverse('prov_report', kwargs={'pk': self.id})
+        return url
+
+    def ro_crate(self):
+        url = reverse('ro_crate', kwargs={'pk': self.id})
         return url
 
     def __str__(self):

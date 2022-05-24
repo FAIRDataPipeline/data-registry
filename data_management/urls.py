@@ -26,6 +26,7 @@ urlpatterns = [
     path('issue/<int:pk>', views.IssueDetailView.as_view(), name='issue'),
     path('api/', include(router.urls)),
     path('api/prov-report/<int:pk>/', cache_page(cache_duration)(api_views.ProvReportView.as_view()), name='prov_report'),
+    path('api/ro-crate/<int:pk>/', cache_page(cache_duration)(api_views.ROCrateView.as_view()), name='ro_crate'),
     path('get-token', views.get_token, name='get_token'),
     path('revoke-token', views.revoke_token, name='revoke_token'),
     path('docs/', cache_page(cache_duration)(views.doc_index), name='docs_index'),
