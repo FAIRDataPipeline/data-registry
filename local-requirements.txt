@@ -38,3 +38,4 @@ Markdown==3.2.2
 setuptools~=54.2.0
 whitenoise==5.2.0
 coverage
+rocrate==0.6.1
