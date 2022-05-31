@@ -22,12 +22,12 @@ curl -i --upload-file <filename> "<url>"
 ```
 where `<filename>` should be replaced with the name of the file you want to upload and `<url>` should be replaced with the URL obtained in the previous step. The status code will be 201 if the file was uploaded successfully.
      
-The `StorageLocation` should be created in the usual way, using https://data.scrc.uk/api/storage_root/4472/ as the `StorageRoot`, e.g. POST the following JSON to https://data.scrc.uk/api/storage_location/:
+The `StorageLocation` should be created in the usual way, using https://data.scrc.uk/api/storage_root/1/ as the `StorageRoot`, e.g. POST the following JSON to https://data.scrc.uk/api/storage_location/:
 ```
 {
   "path": "<checksum>",
   "hash": "<checksum>",
-  "storage_root": "https://data.scrc.uk/api/storage_root/4472/"
+  "storage_root": "https://data.scrc.uk/api/storage_root/1/"
 }
 ```
 where for the checksum should be used for both the `path` and `hash`.
