@@ -392,9 +392,14 @@ class CodeRun(BaseModel):
     `last_updated`: Datetime that this record was last updated
 
     `updated_by`: Reference to the user that updated this record
+
+    `ro_crate`: The RO Crate containing this `CodeRun` plus any available input and output files
     """
     ADMIN_LIST_FIELDS = ('description',)
 
+    EXTRA_DISPLAY_FIELDS = (
+        'ro_crate',
+    )
     code_repo = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='code_repo_of', null=True, blank=True)
     model_config = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='config_of', null=True, blank=True)
     submission_script = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='submission_script_of', null=False, blank=False)
@@ -410,6 +415,9 @@ class CodeRun(BaseModel):
             return '%s run %s' % (self.code_repo, self.description)
         return str(self.uuid)
 
+    def ro_crate(self):
+        url = reverse('code_run_ro_crate', kwargs={'pk': self.id})
+        return url
 
 ###############################################################################
 # Metadata objects
@@ -584,7 +592,7 @@ class DataProduct(BaseModel):
         return url
 
     def ro_crate(self):
-        url = reverse('ro_crate', kwargs={'pk': self.id})
+        url = reverse('data_product_ro_crate', kwargs={'pk': self.id})
         return url
 
     def __str__(self):

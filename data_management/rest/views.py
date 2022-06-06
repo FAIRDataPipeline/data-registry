@@ -21,7 +21,7 @@ from data_management import models, object_storage, settings
 from data_management import object_storage
 from data_management.rest import serializers
 from data_management.prov import generate_prov_document, serialize_prov_document
-from data_management.rocrate import generate_ro_crate, serialize_ro_crate
+from data_management.rocrate import generate_ro_crate_from_dp, generate_ro_crate_from_cr, serialize_ro_crate
 
 
 class BadQuery(APIException):
@@ -192,7 +192,52 @@ class ProvReportView(views.APIView):
         return Response(value)
 
 
-class ROCrateView(views.APIView):
+class CodeRunROCrateView(views.APIView):
+    """
+***The RO Crate for a `CodeRun`.***
+
+An RO Crate is research object (RO) that has been packaged up, in this case as a zip
+file. This research object is centred around a `CodeRun` All output `DataProduct` files
+are packaged up along with any other local files that were used to produce them.
+Also included in the RO Crate is the metadata file `ro-crate-metadata.json`.
+All of the packaged files are represented as `File` data entities in the metadata file.
+Any external files will have a link to them in the metadata file, but will not be
+packaged in the zip file.
+
+The `CodeRun` has been modelled as a RO Crate `ContextEntity` of type `CreateAction`,
+see
+[software-used-to-create-files](https://www.researchobject.org/ro-crate/1.1/provenance.html#software-used-to-create-files).
+
+A `CreateAction` has `instrument` property, which represents the software used to
+generate the product. For our purposes `instrument`s include the link to the repo, the
+submission script and configuration file. The submission script metadata is based on
+information from
+[describing-scripts-and-workflows](https://www.researchobject.org/ro-crate/1.1/workflows.html#describing-scripts-and-workflows).
+
+`CreateAction` (`CodeRun`) properties:
+
+* `instrument`: the software used to generate the output
+* `object`: the input files
+* `result`: the output file
+* `agent`: the `Author`
+
+The RO Crate is available as a `zip` file.
+
+The contents of the ro-crate-metadata file can be viewed as `JSON` or `JSON-LD`.
+
+    """
+    renderer_classes = [renderers.BrowsableAPIRenderer, renderers.JSONRenderer,
+                        JSONLDRenderer, ZipRenderer]
+
+    def get(self, request, pk):
+        code_run = get_object_or_404(models.CodeRun, pk=pk)
+
+        crate = generate_ro_crate_from_cr(code_run, request)
+
+        return Response(serialize_ro_crate(crate, request.accepted_renderer.format))
+
+
+class DataProductROCrateView(views.APIView):
     """
 ***The RO Crate for a `DataProduct`.***
 
@@ -216,6 +261,7 @@ information from
 
 `CreateAction` (`CodeRun`) properties:
 
+* `instrument`: the software used to generate the output
 * `object`: the input files
 * `result`: the output file
 * `agent`: the `Author`
@@ -232,7 +278,7 @@ The contents of the ro-crate-metadata file can be viewed as `JSON` or `JSON-LD`.
     def get(self, request, pk):
         data_product = get_object_or_404(models.DataProduct, pk=pk)
 
-        crate = generate_ro_crate(data_product, request)
+        crate = generate_ro_crate_from_dp(data_product, request)
 
         return Response(serialize_ro_crate(crate, request.accepted_renderer.format))
 

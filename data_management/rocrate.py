@@ -1,10 +1,16 @@
 """
-Produce a RO Crate of a DataProduct.
+Produce a RO Crate of a CodeRun or DataProduct.
 
 An RO Crate is research object (RO) that has been packaged up, in this case as a zip
-file. This research object is centred around the creation of a `DataProduct`. The
-`DataProduct` file is packaged up along with any other local files that were used to
-produce it. Also included in the RO Crate is the metadata file `ro-crate-metadata.json`.
+file. This research object is centred around a `CodeRun` or the creation of a
+`DataProduct`.
+
+For a `CodeRun` all output `DataProduct` files are packaged up along with any other
+local files that were used to produce them.
+For the `DataProduct` the `DataProduct` file is packaged up along with any other local
+files that were used to produce it.
+
+Also included in the RO Crate is the metadata file `ro-crate-metadata.json`.
 All of the packaged files are represented as `File` data entities in the metadata file.
 Any external files will have a link to them in the metadata file, but will not be
 packaged in the zip file.
@@ -21,6 +27,7 @@ information from
 
 `CreateAction` (`CodeRun`) properties:
 
+* `instrument`: the software used to generate the output
 * `object`: the input files
 * `result`: the output file
 * `agent`: the `Author`
@@ -65,12 +72,7 @@ def _add_authors(authors, crate, entity, registry_url):
     entity["author"] = cr_authors
 
 
-def _add_input_data_products(
-    crate_code_run,
-    crate,
-    object_components,
-    registry_url,
-):
+def _add_data_products(crate_code_run, crate, object_components, registry_url, output):
     """
     Add input data products to the RO Crate code run entity.
 
@@ -78,6 +80,7 @@ def _add_input_data_products(
     @param crate: the RO Crate object
     @param object_components: a list of object_components from the ObjectComponent table
     @param registry_url: a str containing the registry URL
+    @param output (bool): true if the data product is an output
 
     """
     all_data_products = []
@@ -87,11 +90,14 @@ def _add_input_data_products(
 
         for data_product in data_products:
             crate_data_product = _get_data_product(
-                crate, data_product, registry_url, False
+                crate, data_product, registry_url, output
             )
             all_data_products.append(crate_data_product)
 
-    crate_code_run["object"] = all_data_products
+    if output:
+        crate_code_run["result"] = all_data_products
+    else:
+        crate_code_run["object"] = all_data_products
 
 
 def _get_code_repo_release(crate, code_repo, registry_url):
@@ -384,15 +390,77 @@ def _get_submission_script(crate, submission_script, registry_url):
     return crate_submission_script
 
 
-def generate_ro_crate(data_product, request):
+def _init_crate(data_product):
+    crate = ROCrate()
+    crate.publisher = "FAIR Data Pipeline"
+    crate.datePublished = datetime.now().isoformat()
+    crate.name = data_product.name
+    crate.version = data_product.version
+
+    return crate
+
+
+def generate_ro_crate_from_cr(code_run, request):
+    """
+    Crate an RO Crate based around the code run.
+
+    @param code_run: a code_run from the CodeRun table
+
+    @return the RO Crate object
+
+    """
+    mimetypes.init()
+    registry_url = request.build_absolute_uri("/")
+
+    crate = ROCrate()
+    crate.publisher = "FAIR Data Pipeline"
+    crate.datePublished = datetime.now().isoformat()
+    crate.name = code_run.uuid
+    # crate.version = code_run.version
+    instruments = []
+    crate_data_product = None
+
+    # add the code run
+    crate_code_run = _get_code_run(crate_data_product, crate, code_run, registry_url)
+
+    # add the code repo release
+    if code_run.code_repo is not None:
+        code_release = _get_code_repo_release(crate, code_run.code_repo, registry_url)
+        instruments.append(code_release)
+
+    # add the model config
+    if code_run.model_config is not None:
+        model_config = _get_model_config(crate, code_run.model_config, registry_url)
+        instruments.append(model_config)
+
+    # add the submission script
+    submission_script = _get_submission_script(
+        crate, code_run.submission_script, registry_url
+    )
+    instruments.append(submission_script)
+
+    crate_code_run["instrument"] = instruments
+
+    # add input files
+    _add_data_products(
+        crate_code_run, crate, code_run.inputs.all(), registry_url, False
+    )
+
+    # add output files
+    _add_data_products(
+        crate_code_run, crate, code_run.outputs.all(), registry_url, True
+    )
+
+    return crate
+
+
+def generate_ro_crate_from_dp(data_product, request):
     """
     Crate an RO Crate based around the data product.
 
-    @param crate: the RO Crate object
     @param data_product: a data_product from the DataProduct table
-    @param registry_url: a str containing the registry URL
 
-    @return a list of files that were used as input files, may be empty
+    @return the RO Crate object
 
     """
     mimetypes.init()
@@ -446,8 +514,8 @@ def generate_ro_crate(data_product, request):
         crate_code_run["instrument"] = instruments
 
         # add input files
-        _add_input_data_products(
-            crate_code_run, crate, code_run.inputs.all(), registry_url
+        _add_data_products(
+            crate_code_run, crate, code_run.inputs.all(), registry_url, False
         )
 
         return crate
