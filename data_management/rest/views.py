@@ -199,7 +199,10 @@ class CodeRunROCrateView(views.APIView):
 An RO Crate is research object (RO) that has been packaged up, in this case as a zip
 file. This research object is centred around a `CodeRun` All output `DataProduct` files
 are packaged up along with any other local files that were used to produce them.
-Also included in the RO Crate is the metadata file `ro-crate-metadata.json`.
+Also included in the RO Crate is the metadata file `ro-crate-metadata.json`. The
+`ro-crate-metadata.json` file is made available under the
+[CC0 Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/).
+Please note individual files may have their own licenses.
 All of the packaged files are represented as `File` data entities in the metadata file.
 Any external files will have a link to them in the metadata file, but will not be
 packaged in the zip file.
@@ -245,6 +248,9 @@ An RO Crate is research object (RO) that has been packaged up, in this case as a
 file. This research object is centred around the creation of a `DataProduct`. The
 `DataProduct` file is packaged up along with any other local files that were used to
 produce it. Also included in the RO Crate is the metadata file `ro-crate-metadata.json`.
+The `ro-crate-metadata.json` file is made available under the
+[CC0 Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/).
+Please note individual files may have their own licenses.
 All of the packaged files are represented as `File` data entities in the metadata file.
 Any external files will have a link to them in the metadata file, but will not be
 packaged in the zip file.

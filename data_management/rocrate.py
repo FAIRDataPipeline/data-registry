@@ -10,7 +10,10 @@ local files that were used to produce them.
 For the `DataProduct` the `DataProduct` file is packaged up along with any other local
 files that were used to produce it.
 
-Also included in the RO Crate is the metadata file `ro-crate-metadata.json`.
+Also included in the RO Crate is the metadata file `ro-crate-metadata.json`. The
+`ro-crate-metadata.json` file is made available under the
+[CC0 Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/).
+Please note individual files may have their own licenses.
 All of the packaged files are represented as `File` data entities in the metadata file.
 Any external files will have a link to them in the metadata file, but will not be
 packaged in the zip file.
@@ -100,6 +103,111 @@ def _add_data_products(crate_code_run, crate, object_components, registry_url, o
         crate_code_run["object"] = all_data_products
 
 
+def _add_licenses(crate, crate_entity, file_object, registry_url):
+    """
+    Add licenses from the file_object to the crate_entity.
+
+    @param crate: the RO Crate object
+    @param crate_entity: an entity to add the license to
+    @param file_object: an "object" from the database representing a file
+    @param registry_url: a str containing the registry URL
+
+    """
+    license_entities = []
+    try:
+        licenses = file_object.licences.all()
+    except AttributeError:
+        licenses = []
+
+    for license_ in licenses:
+        if license_.identifier is not None:
+            license_id = license_.identifier
+        else:
+            license_id = f"{registry_url}api/license/{license_.id}"
+
+        license_entity = ContextEntity(
+            crate,
+            license_id,
+            properties={
+                "@type": "CreativeWork",
+                "description": license_.licence_info,
+                "identifier": license_id,
+                "name": "Fred",
+            },  # TODO add name
+        )
+
+        crate.add(license_entity)
+        license_entities.append(license_entity)
+
+    # where the crate_entity is a crate we are adding the licenses from all the
+    # data products in turn, so there may already be some there
+    if isinstance(crate_entity, ROCrate) and crate_entity.license is not None:
+        license_entities.extend(crate_entity.license)
+
+    if len(license_entities) == 0:
+        pass
+
+    elif len(license_entities) == 1:
+        if isinstance(crate_entity, ROCrate):
+            crate_entity.license = license_entities[0]
+        else:
+            crate_entity["license"] = license_entities[0]
+
+    else:
+        if isinstance(crate_entity, ROCrate):
+            crate_entity.license = license_entities
+        else:
+            crate_entity["license"] = license_entities
+
+
+def _add_metadata_license(crate):
+    """
+    Add a licenses to the ro-crate-metadata.json file.
+
+    @param crate: the RO Crate object
+
+    """
+    url = "https://creativecommons.org/publicdomain/zero/1.0/"
+    metadata_license = ContextEntity(
+        crate,
+        url,
+        properties={
+            "@type": "CreativeWork",
+            "description": "CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+            "identifier": url,
+            "name": "CC0 Public Domain Dedication",
+        },
+    )
+
+    for entity in crate.default_entities:
+        if entity.id == "ro-crate-metadata.json":
+            crate.add(metadata_license)
+            entity["license"] = metadata_license
+            return
+
+
+def _get_default_license(crate):
+    """
+    Get a ContextEntity representing a CC BY 4.0 license.
+
+    @return a ContextEntity representing a CC BY 4.0 license
+
+    """
+    url = "https://creativecommons.org/licenses/by/4.0/"
+    default_license = ContextEntity(
+        crate,
+        url,
+        properties={
+            "@type": "CreativeWork",
+            "description": "Attribution 4.0 International",
+            "identifier": url,
+            "name": "CC BY 4.0",
+        },
+    )
+
+    return default_license
+
+
 def _get_code_repo_release(crate, code_repo, registry_url):
     """
     Create an RO Crate ContextEntity representing a code repo release.
@@ -168,8 +276,8 @@ def _get_code_run(crate_data_product, crate, code_run, registry_url):
         code_run_id,
         properties={
             "@type": "CreateAction",
-            "name": "code run",
-            "endTime": code_run.run_date.isoformat(),
+            "name": f"code run {code_run.id}",
+            "startTime": code_run.run_date.isoformat(),
             "description": code_run.description,
         },
     )
@@ -219,27 +327,11 @@ def _get_data_product(crate, data_product, registry_url, output):
     crate_data_product = _get_external_object(crate, data_product)
 
     if crate_data_product is None:
-        source_loc = str(data_product.object.storage_location).split("file:")[1]
-        encoding_format = _get_mime_type(data_product.object.file_type.extension)
-
-        if output:
-            dest_path = f"outputs/{source_loc.split('/')[-1]}"
-        else:
-            dest_path = f"inputs/data/{source_loc.split('/')[-1]}"
-
-        properties = {
-            "name": data_product.name,
-            "encodingFormat": encoding_format,
-        }
-
-        if data_product.object.description is not None:
-            properties["description"] = data_product.object.description
-
-        crate_data_product = crate.add_file(
-            source_loc,
-            dest_path=dest_path,
-            properties=properties,
+        crate_data_product = _get_local_data_product(
+            crate, data_product, registry_url, output
         )
+
+    _add_licenses(crate, crate_data_product, data_product.object, registry_url)
 
     _add_authors(
         data_product.object.authors.all(),
@@ -287,6 +379,52 @@ def _get_external_object(crate, data_product):
     return crate_external_object
 
 
+def _get_local_data_product(crate, data_product, registry_url, output):
+    """
+    Create an RO Crate file entity representing the data product.
+
+    @param crate_code_run: RO Crate entity representing the code run
+    @param data_product: a data_product from the DataProduct table
+    @param registry_url: a str containing the registry URL
+    @param output (bool): true if the data product is an output
+
+    @return an RO Crate file entity representing the data product
+
+    """
+    if data_product.object.storage_location.public is True:
+        source_loc = str(data_product.object.storage_location).split("file:")[1]
+
+        if output:
+            dest_path = f"outputs/{source_loc.split('/')[-1]}"
+        else:
+            dest_path = f"inputs/data/{source_loc.split('/')[-1]}"
+
+    else:
+        source_loc = f"{registry_url}api/storage_location/{data_product.object.storage_location.id}"
+        dest_path = None
+
+    encoding_format = _get_mime_type(data_product.object.file_type.extension)
+
+    properties = {
+        "name": data_product.name,
+        "encodingFormat": encoding_format,
+    }
+
+    if data_product.object.storage_location.hash is not None:
+        properties["hash"] = data_product.object.storage_location.hash
+
+    if data_product.object.description is not None:
+        properties["description"] = data_product.object.description
+
+    crate_data_product = crate.add_file(
+        source_loc,
+        dest_path=dest_path,
+        properties=properties,
+    )
+
+    return crate_data_product
+
+
 def _get_mime_type(extension):
     """
     Get the mime type for the given extension.
@@ -304,100 +442,61 @@ def _get_mime_type(extension):
     return mime_type
 
 
-def _get_model_config(crate, model_config, registry_url):
+def _get_software(crate, software_object, registry_url, software_type):
     """
     Create a file entity for the model configuration.
 
     @param crate: the RO Crate object
-    @param model_config: a model_config object
+    @param software_object: an "object" representing the software
     @param registry_url: a str containing the registry URL
+    @param software_type: a str containing the name of the type of software
 
     @return an RO Crate file entity representing the model configuration
 
     """
-    source_loc = str(model_config.storage_location)
+    if software_object.storage_location.public is True:
+        source_loc = str(software_object.storage_location)
+        dest_path = f"inputs/{software_type}/{source_loc.split('/')[-1]}"
 
-    crate_model_config = crate.add_file(
+    else:
+        source_loc = (
+            f"{registry_url}api/storage_location/{software_object.storage_location.id}"
+        )
+        dest_path = None
+
+    crate_software_object = crate.add_file(
         source_loc,
-        dest_path=f"inputs/model_config/{source_loc.split('/')[-1]}",
+        dest_path=dest_path,
         properties={
             "@type": ["File", "SoftwareSourceCode"],
-            "name": source_loc.split("/")[-1],
+            "name": str(software_object.storage_location).split("/")[-1],
         },
     )
 
-    if model_config.description is not None:
-        crate_model_config["description"] = model_config.description
+    if software_object.description is not None:
+        crate_software_object["description"] = software_object.description
 
     if (
-        model_config.file_type is not None
-        and model_config.file_type.extension is not None
+        software_object.file_type is not None
+        and software_object.file_type.extension is not None
     ):
-        crate_model_config["encodingFormat"] = _get_mime_type(
-            model_config.file_type.extension
+        crate_software_object["encodingFormat"] = _get_mime_type(
+            software_object.file_type.extension
         )
 
+    if software_object.storage_location.hash is not None:
+        crate_software_object["hash"] = software_object.storage_location.hash
+
+    _add_licenses(crate, crate_software_object, software_object, registry_url)
+
     _add_authors(
-        model_config.authors.all(),
+        software_object.authors.all(),
         crate,
-        crate_model_config,
+        crate_software_object,
         registry_url,
     )
 
-    return crate_model_config
-
-
-def _get_submission_script(crate, submission_script, registry_url):
-    """
-    Create an RO Crate file entity for the submission script.
-
-    @param crate: the RO Crate object
-    @param submission_script: a submission_script object
-    @param registry_url: a str containing the registry URL
-
-    @return an RO Crate file entity representing the submission script
-
-    """
-    source_loc = str(submission_script.storage_location)
-
-    crate_submission_script = crate.add_file(
-        source_loc,
-        dest_path=f"inputs/submission_script/{source_loc.split('/')[-1]}",
-        properties={
-            "@type": ["File", "SoftwareSourceCode"],
-            "name": source_loc.split("/")[-1],
-        },
-    )
-
-    if submission_script.description is not None:
-        crate_submission_script["description"] = submission_script.description
-
-    if (
-        submission_script.file_type is not None
-        and submission_script.file_type.extension is not None
-    ):
-        crate_submission_script["encodingFormat"] = _get_mime_type(
-            submission_script.file_type.extension
-        )
-
-    _add_authors(
-        submission_script.authors.all(),
-        crate,
-        crate_submission_script,
-        registry_url,
-    )
-
-    return crate_submission_script
-
-
-def _init_crate(data_product):
-    crate = ROCrate()
-    crate.publisher = "FAIR Data Pipeline"
-    crate.datePublished = datetime.now().isoformat()
-    crate.name = data_product.name
-    crate.version = data_product.version
-
-    return crate
+    return crate_software_object
 
 
 def generate_ro_crate_from_cr(code_run, request):
@@ -415,8 +514,18 @@ def generate_ro_crate_from_cr(code_run, request):
     crate = ROCrate()
     crate.publisher = "FAIR Data Pipeline"
     crate.datePublished = datetime.now().isoformat()
-    crate.name = code_run.uuid
-    # crate.version = code_run.version
+    crate.name = f"RO Crate for code run {code_run.id}"
+
+    # add the licenses from each of the data products to the ROCrate
+    for output in code_run.outputs.all():
+        _add_licenses(crate, crate, output.object, registry_url)
+    if crate.license is None:
+        crate_license = _get_default_license(crate)
+        crate.add(crate_license)
+        crate.license = crate_license
+
+    _add_metadata_license(crate)
+
     instruments = []
     crate_data_product = None
 
@@ -430,12 +539,14 @@ def generate_ro_crate_from_cr(code_run, request):
 
     # add the model config
     if code_run.model_config is not None:
-        model_config = _get_model_config(crate, code_run.model_config, registry_url)
+        model_config = _get_software(
+            crate, code_run.model_config, registry_url, "model_config"
+        )
         instruments.append(model_config)
 
     # add the submission script
-    submission_script = _get_submission_script(
-        crate, code_run.submission_script, registry_url
+    submission_script = _get_software(
+        crate, code_run.submission_script, registry_url, "submission_script"
     )
     instruments.append(submission_script)
 
@@ -469,8 +580,16 @@ def generate_ro_crate_from_dp(data_product, request):
     crate = ROCrate()
     crate.publisher = "FAIR Data Pipeline"
     crate.datePublished = datetime.now().isoformat()
-    crate.name = data_product.name
+    crate.name = f"RO Crate for {data_product.name}"
     crate.version = data_product.version
+
+    _add_licenses(crate, crate, data_product.object, registry_url)
+    if crate.license is None:
+        crate_license = _get_default_license(crate)
+        crate.add(crate_license)
+        crate.license = crate_license
+
+    _add_metadata_license(crate)
 
     # add the the main data product
     crate_data_product = _get_data_product(crate, data_product, registry_url, True)
@@ -502,12 +621,14 @@ def generate_ro_crate_from_dp(data_product, request):
 
         # add the model config
         if code_run.model_config is not None:
-            model_config = _get_model_config(crate, code_run.model_config, registry_url)
+            model_config = _get_software(
+                crate, code_run.model_config, registry_url, "model_config"
+            )
             instruments.append(model_config)
 
         # add the submission script
-        submission_script = _get_submission_script(
-            crate, code_run.submission_script, registry_url
+        submission_script = _get_software(
+            crate, code_run.submission_script, registry_url, "submission_script"
         )
         instruments.append(submission_script)
 
@@ -523,7 +644,10 @@ def generate_ro_crate_from_dp(data_product, request):
 
 def serialize_ro_crate(crate, format_):
     if format_ == "zip":
-        file_name = crate.write_zip(f"/tmp/{crate.name}/{crate.version}.zip")
+        try:
+            file_name = crate.write_zip(f"/tmp/{crate.name}/{crate.version}.zip")
+        except AttributeError:
+            file_name = crate.write_zip(f"/tmp/{crate.name}.zip")
         zip_file = open(file_name, "rb")
         return zip_file
     if format_ == "json-ld":
