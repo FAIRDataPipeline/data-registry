@@ -16,11 +16,6 @@ case $1 in
         ;;
 esac
 
-if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
-    echo "Invalid port '$PORT' specified"
-    exit 1
-fi
-
 export DJANGO_SETTINGS_MODULE="drams.local-settings"
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 FAIR_HOME="$(dirname "${DIR}")"
