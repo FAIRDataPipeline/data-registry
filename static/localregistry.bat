@@ -1,4 +1,5 @@
 @echo off & title %~nx0 & color 5F
+set prevwd=%cd%
 
 :: This script requires Python 3, GIT and Chocolatey to be installed, test for this first
 
@@ -46,12 +47,110 @@ goto :EOF
 for /f "delims=" %%V in ('chocolatey -v') do @set ver=%%V
 echo Chocolatey, %ver% is installed, continuing...
 
-:: Make the Directory
+::	Set Default Directory
 set FAIR_HOME="%homedrive%%homepath%\.fair\registry"
+:: Unset any previous variables
+set "GIT_TAG="
+set "GIT_BRANCH="
+
+:readargs
+if not "%1" == "" (
+    echo Reading Parameter %1...
+
+	if "%1" == "-d" (
+		if "%2" == "" (
+			echo No Directory Provided.
+			exit /b 1
+		)
+		set FAIR_HOME=%2
+		shift
+	)
+	
+	if "%1" == "-b" (
+		if "%2" == "" (
+			echo No Branch Provided.
+			exit /b 1
+		)
+		set GIT_BRANCH=%2
+		shift
+	)
+	if "%1" == "-t" (
+		if "%2" == "" (
+			echo No Tag Provided.
+			exit /b 1
+		)
+		set GIT_TAG=%2
+		shift
+	)
+	if "%1" == "--directory" (
+		if "%2" == "" (
+			echo No Directory Provided.
+			exit /b 1
+		)
+		set FAIR_HOME=%2
+		shift
+	)
+	if "%1" == "--branch" (
+		if "%2" == "" (
+			echo No Branch Provided.
+			exit /b 1
+		)
+		set GIT_BRANCH=%2
+		shift
+	)
+	if "%1" == "--tag" (
+		if "%2" == "" (
+			echo No Tag Provided.
+			exit /b 1
+		)
+		set GIT_TAG=%2
+		shift
+	)
+	if "%1" == "-m" (
+		set GIT_BRANCH=main
+		shift
+	)
+	if "%1" == "--main" (
+		set GIT_BRANCH=main
+	)
+	if "%1" == "-h" (
+		echo Usage local_registry.bat
+        echo [-d <directory>][-b <git-branch>][-t <git-tag>]
+		exit /b
+	)
+	
+	shift
+    goto readargs
+)
+
+:: Make the Directory
+if exist %FAIR_HOME%\ (
+	echo Directory %FAIR_HOME% already exists please supply an empty directory
+	exit /b 1
+)
+echo Creating directory %FAIR_HOME%
 mkdir %FAIR_HOME%
 
+:: Resolve Absolute Filepath
+pushd %FAIR_HOME%
+	set FAIR_HOME=%CD%
+popd
+
 :: Clone the registry into the directory
-git clone https://github.com/FAIRDataPipeline/data-registry.git %FAIR_HOME%
+if defined GIT_BRANCH (
+	echo cloning %GIT_BRANCH% into %FAIR_HOME%
+	git clone https://github.com/FAIRDataPipeline/data-registry.git -b %GIT_BRANCH% %FAIR_HOME%
+) else (
+	git clone https://github.com/FAIRDataPipeline/data-registry.git %FAIR_HOME%
+	if not defined GIT_TAG (
+		echo Determaning latest tag
+		FOR /F %%i IN ('git -C %FAIR_HOME:"=% describe --abbrev^=0 --tags') DO set GIT_TAG=%%i
+	)
+)
+if defined GIT_TAG (
+	echo cloning %GIT_TAG% into %FAIR_HOME%
+	git -C %FAIR_HOME% checkout tags/%GIT_TAG% >NUL 2>NUL
+)
 
 :: install Virtual Environment Module
 python -m venv %FAIR_HOME%/venv
@@ -91,3 +190,4 @@ python manage.py createsuperuser --noinput
 
 :: Finish
 echo Complete Exiting Now
+cd %prevwd%
