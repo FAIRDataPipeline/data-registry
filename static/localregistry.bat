@@ -62,7 +62,7 @@ if not "%1" == "" (
 			echo No Directory Provided.
 			exit /b 1
 		)
-		set FAIR_HOME=%2
+		set FAIR_HOME=%2\registry
 		shift
 	)
 	
@@ -87,7 +87,7 @@ if not "%1" == "" (
 			echo No Directory Provided.
 			exit /b 1
 		)
-		set FAIR_HOME=%2
+		set FAIR_HOME=%2\registry
 		shift
 	)
 	if "%1" == "--branch" (

@@ -65,7 +65,7 @@ jobs:
     runs-on: windows-latest
     env:
       REGISTRY_PORT: 8001
-      INSTALL_DIR: fair
+      INSTALL_DIR: fair\registry
     steps:
       - uses: actions/setup-python@v2
         with:
@@ -100,7 +100,7 @@ jobs:
       - name: Start registry
         shell: cmd
         run:  |
-              %INSTALL_DIR%\registry\scripts\start_fair_registry_windows.bat -p %REGISTRY_PORT%
+            %INSTALL_DIR%\registry\scripts\start_fair_registry_windows.bat -p %REGISTRY_PORT%
       - name: Test registry
         run: curl http://localhost:%REGISTRY_PORT%/api/
 
