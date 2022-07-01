@@ -28,7 +28,7 @@ if not "%1" == "" (
 
 	if "%1" == "-p" (
 		if "%2" == "" (
-			echo No Branch Provided.
+			echo No Port Provided.
 			exit /b 1
 		)
 		set /a PORT=%2
@@ -36,7 +36,7 @@ if not "%1" == "" (
 	)
 	if "%1" == "-a" (
 		if "%2" == "" (
-			echo No Branch Provided.
+			echo No Address Provided.
 			exit /b 1
 		)
 		set ADDRESS=%2
@@ -44,7 +44,7 @@ if not "%1" == "" (
 	)
 	if "%1" == "--port" (
 		if "%2" == "" (
-			echo No Branch Provided.
+			echo No Port Provided.
 			exit /b 1
 		)
 		set /a PORT=%2
@@ -52,7 +52,7 @@ if not "%1" == "" (
 	)
 	if "%1" == "--address" (
 		if "%2" == "" (
-			echo No Branch Provided.
+			echo No Address Provided.
 			exit /b 1
 		)
 		set ADDRESS=%2
@@ -62,7 +62,7 @@ if not "%1" == "" (
 		set /a LOG=0
 	)
 	if "%1" == "-h" (
-		echo Usage start_fair_registry.bat [-p <port>][-a <address>]
+		echo Usage start_fair_registry.bat [-p <port>][-a <address>][<--no-log>]
 		exit /b
 	)
 	shift
