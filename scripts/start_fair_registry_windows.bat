@@ -68,9 +68,6 @@ if not "%1" == "" (
 		set ADDRESS=%2
 		shift
 	)
-	if "%1" == "--no-log" (
-		set /a LOG=0
-	)
 	if "%1" == "-h" (
 		echo Usage start_fair_registry.bat [-p <port>][-a <address>][<--no-log>]
 		exit /b
@@ -96,13 +93,8 @@ call %FAIR_HOME:"=%venv\Scripts\activate.bat
 set COMMAND=[sys.executable, '%FAIR_HOME:"=%manage.py', 'runserver', '%FULL_ADDRESS%']
 
 @echo Spawning Server at %FULL_ADDRESS%
-if %LOG%==0 (
-	echo Disabling Logging
-	echo using command %COMMAND% to spawn server
-	python -c "import subprocess, sys;start_ = subprocess.Popen(%COMMAND%, stdout=subprocess.PIPE,stderr=subprocess.PIPE,shell=False)"
-) else (
-	start /b python %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
-)
+
+start /b python %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
 
 echo Writing Session and Port Info
 echo %PORT% > %FAIR_HOME:"=%session_port.log
