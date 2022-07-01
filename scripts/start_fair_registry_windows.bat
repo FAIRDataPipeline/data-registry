@@ -82,12 +82,15 @@ setx DJANGO_SETTINGS_MODULE "drams.local-settings"
 echo refreshing enviromental variables
 call refreshenv
 
+echo calling "%FAIR_HOME:"=%\venv\scripts\activate.bat" to activate virtual enviroment
+call %FAIR_HOME:"=%\venv\Scripts\activate.bat
+
 @echo Spawning Server at %FULL_ADDRESS%
 if %LOG%==0 (
 	echo Disabling Logging
-	start %FAIR_HOME:"=%venv\scripts\python.exe %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% >NUL 2>&1
+	python %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% >NUL 2>&1
 ) else (
-	start %FAIR_HOME:"=%venv\scripts\python.exe %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
+	python %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
 )
 
 echo Writing Session and Port Info
