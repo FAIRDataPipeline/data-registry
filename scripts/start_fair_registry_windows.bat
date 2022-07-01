@@ -90,6 +90,7 @@ if %LOG%==0 (
 	start %FAIR_HOME:"=%venv\scripts\python.exe %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
 )
 
+echo Writing Session and Port Info
 echo %PORT% > %FAIR_HOME:"=%session_port.log
 echo %ADDRESS% > %FAIR_HOME:"=%session_address.log
 
