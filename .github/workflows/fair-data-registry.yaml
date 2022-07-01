@@ -100,6 +100,6 @@ jobs:
       - name: Start registry and test
         shell: cmd
         run:  |
-            CALL %INSTALL_DIR%\registry\scripts\start_fair_registry_windows.bat -p %REGISTRY_PORT% -a 127.0.0.1 --no-log
+            start %INSTALL_DIR%\registry\scripts\start_fair_registry_windows.bat -p %REGISTRY_PORT% -a 127.0.0.1
             curl http://127.0.0.1:%REGISTRY_PORT%/api/
 
