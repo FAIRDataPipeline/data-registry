@@ -93,7 +93,7 @@ set COMMAND=python %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS%
 @echo Spawning Server at %FULL_ADDRESS%
 if %LOG%==0 (
 	echo Disabling Logging
-	python -c 'import subprocess; subprocess.Popen(%COMMAND%, stdout=subprocess.PIPE,stderr=subprocess.STDOUT,shell=False)'
+	python -c "import subprocess; subprocess.Popen(%COMMAND%, stdout=subprocess.PIPE,stderr=subprocess.STDOUT,shell=False)"
 ) else (
 	python %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
 )
