@@ -19,6 +19,11 @@ echo curl, %ver% is installed, continuing...
 
 set FAIR_HOME="%~dp0\..\"
 
+:: Resolve Absolute Filepath
+pushd %FAIR_HOME%
+	set FAIR_HOME=%CD%
+popd
+
 echo calling "%FAIR_HOME:"=%venv\Scripts\activate.bat" to activate virtual enviroment
 call %FAIR_HOME:"=%venv\Scripts\activate.bat
 
@@ -88,13 +93,13 @@ call refreshenv
 echo calling "%FAIR_HOME:"=%venv\Scripts\activate.bat" to activate virtual enviroment
 call %FAIR_HOME:"=%venv\Scripts\activate.bat
 
-set COMMAND=['python', '%FAIR_HOME:"=%manage.py', 'runserver', '%FULL_ADDRESS%']
+set COMMAND=['sys.executable', '%FAIR_HOME:"=%manage.py', 'runserver', '%FULL_ADDRESS%']
 
 @echo Spawning Server at %FULL_ADDRESS%
 if %LOG%==0 (
 	echo Disabling Logging
 	echo using command %COMMAND% to spawn server
-	python -c "import subprocess;start_ = subprocess.Popen(%COMMAND%, stdout=subprocess.PIPE,stderr=subprocess.PIPE,shell=False)"
+	python -c "import subprocess, sys;start_ = subprocess.Popen(%COMMAND%, stdout=subprocess.PIPE,stderr=subprocess.PIPE,shell=False)"
 ) else (
 	python %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
 )
