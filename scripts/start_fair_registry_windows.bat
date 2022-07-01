@@ -101,7 +101,7 @@ if %LOG%==0 (
 	echo using command %COMMAND% to spawn server
 	python -c "import subprocess, sys;start_ = subprocess.Popen(%COMMAND%, stdout=subprocess.PIPE,stderr=subprocess.PIPE,shell=False)"
 ) else (
-	python %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
+	start /b python %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
 )
 
 echo Writing Session and Port Info
