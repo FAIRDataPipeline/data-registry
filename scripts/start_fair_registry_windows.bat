@@ -109,7 +109,7 @@ set /A count=0
 	if %count%==3 (echo Server Timed Out Please try again) && (cd %prevwd%) && (GOTO :EOF)
 	set /a count=%count%+1
 	::echo count is %count%
-	timeout /t 5 >NUL
+	start /wait timeout 5
 	curl %FULL_ADDRESS% >NUL 2>&1 && (goto END) || (goto wait_for_server)	
 :END
 
