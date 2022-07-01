@@ -21,7 +21,7 @@ set FAIR_HOME="%~dp0\..\"
 
 :: Resolve Absolute Filepath
 pushd %FAIR_HOME%
-	set FAIR_HOME=%CD%
+	set FAIR_HOME=%CD%\
 popd
 
 echo calling "%FAIR_HOME:"=%venv\Scripts\activate.bat" to activate virtual enviroment
