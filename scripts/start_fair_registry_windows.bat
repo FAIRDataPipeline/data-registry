@@ -19,7 +19,7 @@ echo curl, %ver% is installed, continuing...
 
 set /a PORT=8000
 set ADDRESS=127.0.0.1
-
+set /a LOG=1
 
 :readargs
 rem if %1 is blank, we are finished
@@ -27,22 +27,44 @@ if not "%1" == "" (
     echo Reading Parameter %1...
 
 	if "%1" == "-p" (
+		if "%2" == "" (
+			echo No Branch Provided.
+			exit /b 1
+		)
 		set /a PORT=%2
+		shift
 	)
 	if "%1" == "-a" (
+		if "%2" == "" (
+			echo No Branch Provided.
+			exit /b 1
+		)
 		set ADDRESS=%2
+		shift
 	)
-	if "%1" == "-port" (
+	if "%1" == "--port" (
+		if "%2" == "" (
+			echo No Branch Provided.
+			exit /b 1
+		)
 		set /a PORT=%2
+		shift
 	)
-	if "%1" == "-address" (
+	if "%1" == "--address" (
+		if "%2" == "" (
+			echo No Branch Provided.
+			exit /b 1
+		)
 		set ADDRESS=%2
+		shift
+	)
+	if "%1" == "--no-log" (
+		set /a LOG=0
 	)
 	if "%1" == "-h" (
 		echo Usage start_fair_registry.bat [-p <port>][-a <address>]
 		exit /b
 	)
-    shift
 	shift
     goto readargs
 )
@@ -61,7 +83,12 @@ echo refreshing enviromental variables
 call refreshenv
 
 @echo Spawning Server at %FULL_ADDRESS%
-start %FAIR_HOME:"=%venv\scripts\python.exe %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS%  1> %FAIR_HOME:"=%\output.log 2>&1
+if %LOG%==0 (
+	echo Disabling Logging
+	start %FAIR_HOME:"=%venv\scripts\python.exe %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% >NUL 2>&1
+) else (
+	start %FAIR_HOME:"=%venv\scripts\python.exe %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
+)
 
 echo %PORT% > %FAIR_HOME:"=%session_port.log
 echo %ADDRESS% > %FAIR_HOME:"=%session_address.log

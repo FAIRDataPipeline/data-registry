@@ -108,7 +108,6 @@ if not "%1" == "" (
 	)
 	if "%1" == "-m" (
 		set GIT_BRANCH=main
-		shift
 	)
 	if "%1" == "--main" (
 		set GIT_BRANCH=main
