@@ -17,6 +17,11 @@ goto :EOF
 for /f "delims=" %%V in ('curl -V') do @set ver=%%V
 echo curl, %ver% is installed, continuing...
 
+set FAIR_HOME="%~dp0\..\"
+
+echo calling "%FAIR_HOME:"=%venv\Scripts\activate.bat" to activate virtual enviroment
+call %FAIR_HOME:"=%venv\Scripts\activate.bat
+
 set /a PORT=8000
 set ADDRESS=127.0.0.1
 set /a LOG=1
@@ -71,8 +76,6 @@ if not "%1" == "" (
 
 set FULL_ADDRESS=%ADDRESS%:%PORT%
 
-set FAIR_HOME="%~dp0\..\"
-
 cd %FAIR_HOME%
 
 :: Set Environment Variables needed for Django
@@ -82,8 +85,8 @@ setx DJANGO_SETTINGS_MODULE "drams.local-settings"
 echo refreshing enviromental variables
 call refreshenv
 
-echo calling "%FAIR_HOME:"=%\venv\scripts\activate.bat" to activate virtual enviroment
-call %FAIR_HOME:"=%\venv\Scripts\activate.bat
+echo calling "%FAIR_HOME:"=%venv\Scripts\activate.bat" to activate virtual enviroment
+call %FAIR_HOME:"=%venv\Scripts\activate.bat
 
 @echo Spawning Server at %FULL_ADDRESS%
 if %LOG%==0 (
