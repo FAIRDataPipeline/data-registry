@@ -97,10 +97,10 @@ jobs:
           localregistry.bat -d %INSTALL_DIR% -t %SOURCE_TAG%
         env:
           SOURCE_TAG: ${{ steps.branch_name.outputs.SOURCE_TAG }}
-      - name: Start registry
+      - name: Start registry and test
         shell: cmd
         run:  |
             %INSTALL_DIR%\registry\scripts\start_fair_registry_windows.bat -p %REGISTRY_PORT%
-      - name: Test registry
-        run: curl http://localhost:%REGISTRY_PORT%/api/
+            curl http://127.0.0.1:%REGISTRY_PORT%/api/
+            %INSTALL_DIR%\registry\scripts\stop_fair_registry_windows.bat
 
