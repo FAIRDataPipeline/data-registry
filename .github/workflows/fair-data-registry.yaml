@@ -65,7 +65,7 @@ jobs:
     runs-on: windows-latest
     env:
       REGISTRY_PORT: 8001
-      INSTALL_DIR: fair\registry
+      INSTALL_DIR: fair
     steps:
       - uses: actions/setup-python@v2
         with:
