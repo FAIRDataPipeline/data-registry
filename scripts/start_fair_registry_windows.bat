@@ -88,7 +88,7 @@ call refreshenv
 echo calling "%FAIR_HOME:"=%venv\Scripts\activate.bat" to activate virtual enviroment
 call %FAIR_HOME:"=%venv\Scripts\activate.bat
 
-set COMMAND=["python", "%FAIR_HOME:"=%manage.py", "runserver", "%FULL_ADDRESS%"]
+set COMMAND=['python', '%FAIR_HOME:"=%manage.py', 'runserver', '%FULL_ADDRESS%']
 
 @echo Spawning Server at %FULL_ADDRESS%
 if %LOG%==0 (
