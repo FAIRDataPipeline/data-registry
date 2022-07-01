@@ -84,7 +84,7 @@ jobs:
         shell: cmd
         run: |
           wget https://raw.githubusercontent.com/FAIRDataPipeline/data-registry/%SOURCE_BRANCH%/static/localregistry.bat
-          localregistry.bat -d $INSTALL_DIR -b %SOURCE_BRANCH%
+          localregistry.bat -d %INSTALL_DIR% -b %SOURCE_BRANCH%
         env:
           SOURCE_BRANCH: ${{ steps.branch_name.outputs.SOURCE_BRANCH }}
       - name: Deploy registry (Tagged Release)
@@ -92,13 +92,13 @@ jobs:
         shell: cmd
         run: |
           wget https://raw.githubusercontent.com/FAIRDataPipeline/data-registry/%SOURCE_TAG%/static/localregistry.bat
-          localregistry.bat -d $INSTALL_DIR -t %SOURCE_TAG%
+          localregistry.bat -d %INSTALL_DIR% -t %SOURCE_TAG%
         env:
           SOURCE_TAG: ${{ steps.branch_name.outputs.SOURCE_TAG }}
       - name: Start registry
         shell: cmd
         run:  |
-              $INSTALL_DIR/registry/scripts/start_fair_registry_windows.bat -p $REGISTRY_PORT
+              %INSTALL_DIR%/registry/scripts/start_fair_registry_windows.bat -p %REGISTRY_PORT%
       - name: Test registry
         run: curl http://localhost:$REGISTRY_PORT/api/
 
