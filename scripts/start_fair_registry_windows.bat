@@ -116,7 +116,7 @@ set /A count=0
 	set /a count=%count%+1
 	::echo count is %count%
 	start /wait timeout 5
-	curl %FULL_ADDRESS% >NUL 2>&1 && (goto END) || (goto wait_for_server)	
+	curl http://%FULL_ADDRESS% >NUL 2>&1 && (goto END) || (goto wait_for_server)	
 :END
 
 echo Server Started Successfully
