@@ -34,19 +34,6 @@ goto :EOF
 for /f "delims=" %%V in ('git --version') do @set ver=%%V
 echo Git, %ver% is installed, continuing...
 
-:: Test for Chocolatey
-:DOES_CHOCOLATEY_EXIST
-chocolatey -v >NUL 2>&1 && (goto :CHOCOLATEY_DOES_EXIST) || (goto :CHOCOLATEY_DOES_NOT_EXIST)
-
-:CHOCOLATEY_DOES_NOT_EXIST
-echo Chocolatey is not installed or not located in your system path, please ensure it is installed an in the system path
-goto :EOF
-
-:CHOCOLATEY_DOES_EXIST
-:: Show Chocolatey Version.
-for /f "delims=" %%V in ('chocolatey -v') do @set ver=%%V
-echo Chocolatey, %ver% is installed, continuing...
-
 ::	Set Default Directory
 set FAIR_HOME="%homedrive%%homepath%\.fair\registry"
 :: Unset any previous variables
@@ -166,26 +153,18 @@ python -m pip install -r "%FAIR_HOME:"=%\local-requirements.txt"
 cd %FAIR_HOME%
 
 :: Set Environment Variables needed for Django
-setx DJANGO_SETTINGS_MODULE "drams.local-settings"
-setx DJANGO_SUPERUSER_USERNAME admin
-setx DJANGO_SUPERUSER_PASSWORD admin
-
-:: Because Windows use refreshenv from chocolatey to refresh environmental variables without restart
-echo refreshing enviromental variables
-call refreshenv
-
-:: Reactivate Virtual Environment after refreshing environmental variables
-echo calling "%FAIR_HOME:"=%\venv\scripts\activate.bat" to activate virtual enviroment
-call %FAIR_HOME:"=%\venv\Scripts\activate.bat
+set DJANGO_SETTINGS_MODULE=drams.local-settings
+set DJANGO_SUPERUSER_USERNAME=admin
+set DJANGO_SUPERUSER_PASSWORD=admin
 
 :: Run Migrations
 echo running migrations
-python manage.py makemigrations custom_user
-python manage.py makemigrations data_management
-python manage.py migrate
-python manage.py graph_models data_management --arrow-shape crow -X "BaseModel,DataObject,DataObjectVersion" -E -o %FAIR_HOME:"=%\schema.dot
-python manage.py collectstatic --noinput > nul 2>&1
-python manage.py createsuperuser --noinput
+start /b /wait python manage.py makemigrations custom_user
+start /b /wait python manage.py makemigrations data_management
+start /b /wait python manage.py migrate
+start /b /wait python manage.py graph_models data_management --arrow-shape crow -X "BaseModel,DataObject,DataObjectVersion" -E -o %FAIR_HOME:"=%\schema.dot
+start /b /wait python manage.py collectstatic --noinput > nul 2>&1
+start /b /wait python manage.py createsuperuser --noinput
 
 :: Finish
 echo Complete Exiting Now

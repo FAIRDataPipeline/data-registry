@@ -24,12 +24,17 @@ pushd %FAIR_HOME%
 	set FAIR_HOME=%CD%\
 popd
 
+if not exist %FAIR_HOME:"=%venv\Scripts\ (
+	echo VENV Direcory does not exist, did you install using local_registry.bat?
+	exit /b 1
+)
+
 echo calling "%FAIR_HOME:"=%venv\Scripts\activate.bat" to activate virtual enviroment
 call %FAIR_HOME:"=%venv\Scripts\activate.bat
 
 set /a PORT=8000
 set ADDRESS=127.0.0.1
-set /a LOG=1
+set /a BACKGROUND=0
 
 :readargs
 rem if %1 is blank, we are finished
@@ -68,6 +73,12 @@ if not "%1" == "" (
 		set ADDRESS=%2
 		shift
 	)
+	if "%1" == "-b" (
+		set /a BACKGROUND=1
+	)
+	if "%1" == "--background" (
+		set /a BACKGROUND=1
+	)
 	if "%1" == "-h" (
 		echo Usage start_fair_registry.bat [-p <port>][-a <address>][<--no-log>]
 		exit /b
@@ -81,20 +92,15 @@ set FULL_ADDRESS=%ADDRESS%:%PORT%
 cd %FAIR_HOME%
 
 :: Set Environment Variables needed for Django
-setx DJANGO_SETTINGS_MODULE "drams.local-settings"
-
-:: Because Windows use refreshenv from chocolatey to refresh environmental variables without restart
-echo refreshing enviromental variables
-call refreshenv
-
-echo calling "%FAIR_HOME:"=%venv\Scripts\activate.bat" to activate virtual enviroment
-call %FAIR_HOME:"=%venv\Scripts\activate.bat
-
-set COMMAND=[sys.executable, '%FAIR_HOME:"=%manage.py', 'runserver', '%FULL_ADDRESS%']
+set DJANGO_SETTINGS_MODULE=drams.local-settings
 
 @echo Spawning Server at %FULL_ADDRESS%
 
-start /b python %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
+if %BACKGROUND%==0 (
+	start python %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
+) else (
+	start /b python %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
+)
 
 echo Writing Session and Port Info
 echo %PORT% > %FAIR_HOME:"=%session_port.log
@@ -117,3 +123,9 @@ call %FAIR_HOME:"=%venv\Scripts\python %FAIR_HOME:"=%manage.py get_token > %FAIR
 echo Token available at %FAIR_HOME:"=%\token
 
 cd %prevwd%
+
+if %BACKGROUND%==1 (	
+	color a0
+	echo Server Running in background close this window  
+	echo or run stop_fair_registry_windows.bat to stop the server
+)
