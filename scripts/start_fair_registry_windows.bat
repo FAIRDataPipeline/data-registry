@@ -102,15 +102,15 @@ if %BACKGROUND%==0 (
 	start /b python %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
 )
 
+echo Writing Session and Port Info
+echo %PORT% > %FAIR_HOME:"=%session_port.log
+echo %ADDRESS% > %FAIR_HOME:"=%session_address.log
+
 if %ADDRESS%==0.0.0.0 (
 	echo Bound to All Addresses ^(0.0.0.0^) setting to loopback address 127.0.0.1
 	set ADDRESS=127.0.0.1
 	set FULL_ADDRESs=127.0.0.1:%PORT%
 )
-
-echo Writing Session and Port Info
-echo %PORT% > %FAIR_HOME:"=%session_port.log
-echo %ADDRESS% > %FAIR_HOME:"=%session_address.log
 
 echo waiting for server to start
 

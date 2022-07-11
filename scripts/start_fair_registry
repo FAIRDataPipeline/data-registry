@@ -34,7 +34,13 @@ cd $FAIR_HOME
 echo "Attempting to start Registry on ${FULL_ADDRESS}"
 nohup "$FAIR_HOME"/venv/bin/python "$FAIR_HOME"/manage.py runserver ${FULL_ADDRESS} > $FAIR_HOME/output.log 2>&1 &
 echo $PORT > $FAIR_HOME/session_port.log
-echo $ADDRESS> $FAIR_HOME/session_address.log
+echo $ADDRESS > $FAIR_HOME/session_address.log
+
+if [[ "$ADDRESS" == "0.0.0.0" ]]; then
+    echo "Bound to All Addresses (0.0.0.0) setting to loopback address 127.0.0.1"
+    ADDRESS="127.0.0.1"
+    FULL_ADDRESS="${ADDRESS}:${PORT}"
+fi
 
 count=0
 until [ $count -gt 6 ] || curl http://${FULL_ADDRESS} > /dev/null 2>&1
