@@ -89,7 +89,7 @@ if not "%1" == "" (
 
 set FULL_ADDRESS=%ADDRESS%:%PORT%
 
-cd %FAIR_HOME%
+cd /d %FAIR_HOME%
 
 :: Set Environment Variables needed for Django
 set DJANGO_SETTINGS_MODULE=drams.local-settings
@@ -128,7 +128,7 @@ echo Server Started Successfully
 call python %FAIR_HOME:"=%manage.py get_token > %FAIR_HOME:"=%\token 2>&1
 echo Token available at %FAIR_HOME:"=%\token
 
-cd %prevwd%
+cd /d %prevwd%
 
 if %BACKGROUND%==1 (	
 	color a0

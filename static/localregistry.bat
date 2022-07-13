@@ -150,7 +150,7 @@ python -m pip install --upgrade pip wheel
 python -m pip install -r "%FAIR_HOME:"=%\local-requirements.txt"
 
 :: Change into FAIR HOME directory
-cd %FAIR_HOME%
+cd /d %FAIR_HOME%
 
 :: Set Environment Variables needed for Django
 set DJANGO_SETTINGS_MODULE=drams.local-settings
@@ -168,4 +168,4 @@ start /b /wait python manage.py createsuperuser --noinput
 
 :: Finish
 echo Complete Exiting Now
-cd %prevwd%
+cd /d %prevwd%
