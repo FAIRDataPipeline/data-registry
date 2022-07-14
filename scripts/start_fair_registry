@@ -54,7 +54,7 @@ curl http://${FULL_ADDRESS} > /dev/null 2>&1
 retVal=$?
 retVal=$(($retVal + 0))
 if [ $retVal -ne 0 ]; then
-    echo Error starting local registry at ${FULL_ADDRESS} error: $?
+    echo Error starting local registry at ${FULL_ADDRESS} error: $retVal
 else
     echo Local registry now accepting connections on http://${FULL_ADDRESS}
 fi
