@@ -80,7 +80,7 @@ if not "%1" == "" (
 		set /a BACKGROUND=1
 	)
 	if "%1" == "-h" (
-		echo Usage start_fair_registry.bat [-p <port>][-a <address>][<--no-log>]
+		echo Usage start_fair_registry_windows.bat [-p <port>][-a <address>][--background]
 		exit /b
 	)
 	shift
