@@ -39,8 +39,9 @@ echo $ADDRESS > $FAIR_HOME/session_address.log
 if [[ "$ADDRESS" == "0.0.0.0" ]]; then
     echo "Bound to All Addresses (0.0.0.0) setting to loopback address 127.0.0.1"
     ADDRESS="127.0.0.1"
-    FULL_ADDRESS="127.0.0.1:${PORT}"
 fi
+
+FULL_ADDRESS="${ADDRESS}:${PORT}"
 
 count=0
 until [ $count -gt 6 ] || curl http://${FULL_ADDRESS} > /dev/null 2>&1
@@ -52,7 +53,7 @@ done
 curl http://${FULL_ADDRESS} > /dev/null 2>&1
 retVal=$?
 if [ $retVal -ne 0 ]; then
-    echo Error starting local registry
+    echo Error starting local registry at ${FULL_ADDRESS} error: $?
 else
     echo Local registry now accepting connections on http://${FULL_ADDRESS}
 fi
