@@ -39,7 +39,7 @@ echo $ADDRESS > $FAIR_HOME/session_address.log
 if [[ "$ADDRESS" == "0.0.0.0" ]]; then
     echo "Bound to All Addresses (0.0.0.0) setting to loopback address 127.0.0.1"
     ADDRESS="127.0.0.1"
-    FULL_ADDRESS="${ADDRESS}:${PORT}"
+    FULL_ADDRESS="127.0.0.1:${PORT}"
 fi
 
 count=0
