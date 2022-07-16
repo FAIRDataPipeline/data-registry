@@ -13,9 +13,6 @@ Push-Location $FAIR_HOME
 $FAIR_HOME = $pwd.path
 Pop-Location
 
-Write-Host "calling ${FAIR_HOME}\venv\scripts\activate.ps1 to activate virtual environment"
-& ${FAIR_HOME}\venv\Scripts\activate.ps1
-
 if ($p -ne 0) {
 	if ($port -ne 0) {
 		$REG_PORT = $port
@@ -54,15 +51,15 @@ Push-Location $FAIR_HOME
 Write-Host "Spawning Server at ${FULL_ADDRESS}"
 
 if ($REG_BACKGROUND) {
-	Start-Process "python" -NoNewWindow -Args "${FAIR_HOME}\manage.py runserver ${FULL_ADDRESS}" -RedirectStandardError "${FAIR_HOME}\output_error.log" -RedirectStandardOutput "${FAIR_HOME}\output.log"
+	Start-Process "${FAIR_HOME}\venv\Scripts\python" -NoNewWindow -Args "${FAIR_HOME}\manage.py runserver ${FULL_ADDRESS}" -RedirectStandardError "${FAIR_HOME}\output_error.log" -RedirectStandardOutput "${FAIR_HOME}\output.log"
 } else {
-	Start-Process "python" -Args "${FAIR_HOME}\manage.py runserver ${FULL_ADDRESS}" -RedirectStandardError "${FAIR_HOME}\output_error.log" -RedirectStandardOutput "${FAIR_HOME}\output.log"
+	Start-Process "${FAIR_HOME}\venv\Scripts\python" -Args "${FAIR_HOME}\manage.py runserver ${FULL_ADDRESS}" -RedirectStandardError "${FAIR_HOME}\output_error.log" -RedirectStandardOutput "${FAIR_HOME}\output.log"
 }
 
 Out-File -FilePath "${FAIR_HOME}\session_address.log" -InputObject $REG_ADDRESS -Encoding ASCII
 Out-File -FilePath "${FAIR_HOME}\session_port.log" -InputObject $REG_PORT -Encoding ASCII
 
-if ($REG_ADDRESS = "0.0.0.0") {
+if ($REG_ADDRESS -eq "0.0.0.0") {
 	Write-Host "Bound to all Addresses (0.0.0.0) setting to loopback address 127.0.0.1"
 	$REG_ADDRESS = "127.0.0.1"
 	$FULL_ADDRESS = "127.0.0.1:${REG_PORT}"
@@ -92,7 +89,7 @@ if ($Response.StatusCode -ne 200) {
 }
 
 Write-Host "Server Started Successfully"
-Start-Process "python" -NoNewWindow -Args "${FAIR_HOME}\manage.py get_token" -RedirectStandardOutput "${FAIR_HOME}\token"
+Start-Process "${FAIR_HOME}\venv\Scripts\python" -NoNewWindow -Args "${FAIR_HOME}\manage.py get_token" -RedirectStandardOutput "${FAIR_HOME}\token"
 Write-Host "Token Available at ${FAIR_HOME}\token"
 
 if ($REG_BACKGROUND) {

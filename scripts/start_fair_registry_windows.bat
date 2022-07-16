@@ -29,9 +29,6 @@ if not exist %FAIR_HOME:"=%venv\Scripts\ (
 	exit /b 1
 )
 
-echo calling "%FAIR_HOME:"=%venv\Scripts\activate.bat" to activate virtual enviroment
-call %FAIR_HOME:"=%venv\Scripts\activate.bat
-
 set /a PORT=8000
 set ADDRESS=127.0.0.1
 set /a BACKGROUND=0
@@ -97,9 +94,9 @@ set DJANGO_SETTINGS_MODULE=drams.local-settings
 @echo Spawning Server at %FULL_ADDRESS%
 
 if %BACKGROUND%==0 (
-	start python %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
+	start %FAIR_HOME:"=%\venv\Scripts\python %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
 ) else (
-	start /b python %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
+	start /b %FAIR_HOME:"=%\venv\Scripts\python %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
 )
 
 echo Writing Session and Port Info
@@ -125,7 +122,7 @@ set /A count=0
 
 echo Server Started Successfully
 
-call python %FAIR_HOME:"=%manage.py get_token > %FAIR_HOME:"=%\token 2>&1
+call %FAIR_HOME:"=%\venv\Scripts\python %FAIR_HOME:"=%manage.py get_token > %FAIR_HOME:"=%\token 2>&1
 echo Token available at %FAIR_HOME:"=%\token
 
 cd /d %prevwd%
