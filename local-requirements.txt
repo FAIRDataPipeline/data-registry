@@ -19,7 +19,7 @@ lxml==4.8.0
 mysql-connector-python==8.0.20
 networkx==2.4
 oauthlib==3.1.0
-protobuf==3.12.2
+protobuf==3.15.0
 prov==1.5.3
 pydot==1.4.1
 pyparsing==2.4.7
