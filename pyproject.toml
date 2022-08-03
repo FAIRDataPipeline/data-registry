@@ -1,8 +1,21 @@
 [tool.poetry]
-authors = ["PLACEHOLDER <NAME.SURNAME@MYCOMPANY.COM>"]
-description = ""
+authors = [
+  "Richard Blackwell <rtblackwell@users.noreply.github.com>",
+  "Alys Brett <alysbrett@users.noreply.github.com>",
+  "James Cook <jwscook@users.noreply.github.com>",
+  "Nathan Cummings <nathan-cummings-ukaea@users.noreply.github.com>",
+  "Ryan Field <ryan.field@glasgow.ac.uk>",
+  "Alejandra Gonzalez-Beltran <agbeltran@users.noreply.github.com>",
+  "Jonathan Hollocombe <jholloc@users.noreply.github.com>",
+  "Andrew Lahiff <andrewl-uk@users.noreply.github.com>",
+  "Richard Reeve <Richard.Reeve@glasgow.ac.uk>",
+  "Antony Wilson <antony-wilson@users.noreply.github.com>",
+  "Kristian Zarębski <kristian.zarebski@ukaea.uk>",
+  "Robert D Turner <r.d.turner@shef.ac.uk>",
+  ]
+description = "Codebase for the FAIR data-registry"
 name = "data-registry"
-version = "v1.0-rc7"
+version = "v1.0-rc9"
 
 [tool.poetry.dependencies]
 Django = "3.1.13"
