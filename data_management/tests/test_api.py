@@ -867,6 +867,7 @@ class ProvAPITests(TestCase):
     PROV_USED_ENTITY = "prov:usedEntity"
     PROV_QUALIFIED_NAME = "prov:QUALIFIED_NAME"
     RDF_TYPE = "rdf:type"
+    TEXT_FILE = "text file"
     XSD_DATE_TIME = "xsd:dateTime"
 
     def setUp(self):
@@ -912,7 +913,7 @@ class ProvAPITests(TestCase):
             self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
             self.PROV_AT_LOCATION: "https://data.scrc.uk/api/text_file/input/2",
             self.DCTERMS_DESCRIPTION: "input 2 object",
-            self.DCTERMS_FORMAT: "text file",
+            self.DCTERMS_FORMAT: self.TEXT_FILE,
             self.FAIR_NAMESPACE: "prov",
             self.DCTERMS_TITLE: "this/is/cr/test/input/2",
             self.DCAT_HAS_VERSION: "0.2.0",
@@ -925,7 +926,7 @@ class ProvAPITests(TestCase):
             self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
             self.PROV_AT_LOCATION: "https://data.scrc.uk/api/text_file/input/3",
             self.DCTERMS_DESCRIPTION: "input 3 object",
-            self.DCTERMS_FORMAT: "text file",
+            self.DCTERMS_FORMAT: self.TEXT_FILE,
             self.FAIR_NAMESPACE: "prov",
             self.DCTERMS_TITLE: "this/is/cr/test/input/3",
             self.DCAT_HAS_VERSION: "0.2.0",
@@ -991,7 +992,7 @@ class ProvAPITests(TestCase):
         self.assertEqual(prov_out, expected_result)
 
         expected_result = {
-            self.DCTERMS_FORMAT: "text file",
+            self.DCTERMS_FORMAT: self.TEXT_FILE,
             self.PROV_AT_LOCATION: "https://data.scrc.uk/api/text_file/16/?format=text",
             self.RDF_TYPE: {
                 "$": "dcmitype:Software",
@@ -1360,6 +1361,10 @@ endDocument"""
 
 
 class RoCrateAPITest(TestCase):
+
+    APPLICATION_JSON_LD = "application/ld+json"
+    CHARSET_UTF8 = "charset=utf8"
+
     def setUp(self):
         self.user = get_user_model().objects.create(username="Test User")
         init_prov_db()
@@ -1368,14 +1373,18 @@ class RoCrateAPITest(TestCase):
         client = APIClient()
         client.force_authenticate(user=self.user)
         url = reverse("code_run_ro_crate", kwargs={"pk": 1})
-        response = client.get(url, format="json-ld", HTTP_ACCEPT="application/ld+json")
+        response = client.get(
+            url, format="json-ld", HTTP_ACCEPT=self.APPLICATION_JSON_LD)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response["Content-Type"], "application/ld+json; charset=utf8")
+        self.assertEqual(
+            response["Content-Type"], f"{self.APPLICATION_JSON_LD}; {self.CHARSET_UTF8}")
 
     def test_get_json_ld_dp(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
         url = reverse("data_product_ro_crate", kwargs={"pk": 2})
-        response = client.get(url, format="json-ld", HTTP_ACCEPT="application/ld+json")
+        response = client.get(
+            url, format="json-ld", HTTP_ACCEPT=self.APPLICATION_JSON_LD)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response["Content-Type"], "application/ld+json; charset=utf8")
+        self.assertEqual(
+            response["Content-Type"], f"{self.APPLICATION_JSON_LD}; {self.CHARSET_UTF8}")
