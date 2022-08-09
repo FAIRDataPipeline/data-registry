@@ -52,6 +52,10 @@ from data_management.views import external_object
 from . import models
 
 
+CACHE_DIR = "/tmp"
+RO_TYPE = "@type"
+
+
 def _add_authors(authors, crate, entity, registry_url):
     """
     Add the authors to the crate and associate them with the entity.
@@ -129,11 +133,11 @@ def _add_licenses(crate, crate_entity, file_object, registry_url):
             crate,
             license_id,
             properties={
-                "@type": "CreativeWork",
+                RO_TYPE: "CreativeWork",
                 "description": license_.licence_info,
                 "identifier": license_id,
                 "name": f"license {license_.id}",
-            },  # TODO add name to model
+            },
         )
 
         crate.add(license_entity)
@@ -144,16 +148,13 @@ def _add_licenses(crate, crate_entity, file_object, registry_url):
     if isinstance(crate_entity, ROCrate) and crate_entity.license is not None:
         license_entities.extend(crate_entity.license)
 
-    if len(license_entities) == 0:
-        pass
-
-    elif len(license_entities) == 1:
+    if len(license_entities) == 1:
         if isinstance(crate_entity, ROCrate):
             crate_entity.license = license_entities[0]
         else:
             crate_entity["license"] = license_entities[0]
 
-    else:
+    elif len(license_entities) > 1:
         if isinstance(crate_entity, ROCrate):
             crate_entity.license = license_entities
         else:
@@ -172,7 +173,7 @@ def _add_metadata_license(crate):
         crate,
         url,
         properties={
-            "@type": "CreativeWork",
+            RO_TYPE: "CreativeWork",
             "description": "CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
             "identifier": url,
             "name": "CC0 Public Domain Dedication",
@@ -198,7 +199,7 @@ def _get_default_license(crate):
         crate,
         url,
         properties={
-            "@type": "CreativeWork",
+            RO_TYPE: "CreativeWork",
             "description": "Attribution 4.0 International",
             "identifier": url,
             "name": "CC BY 4.0",
@@ -229,12 +230,12 @@ def _get_code_repo_release(crate, code_repo, registry_url):
 
     if code_repo_release is None:
         properties = {
-            "@type": "SoftwareApplication",
+            RO_TYPE: "SoftwareApplication",
             "url": code_repo_id,
         }
     else:
         properties = {
-            "@type": "SoftwareApplication",
+            RO_TYPE: "SoftwareApplication",
             "url": code_repo_id,
             "name": code_repo_release.name,
             "version": code_repo_release.version,
@@ -275,7 +276,7 @@ def _get_code_run(crate_data_product, crate, code_run, registry_url):
         crate,
         code_run_id,
         properties={
-            "@type": "CreateAction",
+            RO_TYPE: "CreateAction",
             "name": f"code run {code_run.id}",
             "startTime": code_run.run_date.isoformat(),
             "description": code_run.description,
@@ -288,7 +289,7 @@ def _get_code_run(crate_data_product, crate, code_run, registry_url):
 
     if len(user_authors) == 0:
         agent_id = f"{registry_url}api/user/{code_run.updated_by.id}"
-        run_agent = crate.add(
+        crate.add(
             Person(
                 crate, agent_id, properties={"name": code_run.updated_by.full_name()}
             )
@@ -471,7 +472,7 @@ def _get_software(crate, software_object, registry_url, software_type):
         source_loc,
         dest_path=dest_path,
         properties={
-            "@type": ["File", "SoftwareSourceCode"],
+            RO_TYPE: ["File", "SoftwareSourceCode"],
             "name": str(software_object.storage_location).split("/")[-1],
         },
     )
@@ -648,9 +649,9 @@ def generate_ro_crate_from_dp(data_product, request):
 def serialize_ro_crate(crate, format_):
     if format_ == "zip":
         try:
-            file_name = crate.write_zip(f"/tmp/{crate.name}/{crate.version}.zip")
+            file_name = crate.write_zip(f"{CACHE_DIR}/{crate.name}/{crate.version}.zip")
         except AttributeError:
-            file_name = crate.write_zip(f"/tmp/{crate.name}.zip")
+            file_name = crate.write_zip(f"{CACHE_DIR}/{crate.name}.zip")
         zip_file = open(file_name, "rb")
         return zip_file
     if format_ == "json-ld":
