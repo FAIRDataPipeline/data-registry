@@ -53,7 +53,6 @@ from data_management.views import external_object
 from . import models
 
 
-CACHE_DIR = "/tmp"
 RO_TYPE = "@type"
 
 
