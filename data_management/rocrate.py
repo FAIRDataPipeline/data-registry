@@ -132,8 +132,8 @@ def _add_licenses(crate, crate_entity, file_object, registry_url):
                 "@type": "CreativeWork",
                 "description": license_.licence_info,
                 "identifier": license_id,
-                "name": "Fred",
-            },  # TODO add name
+                "name": f"license {license_.id}",
+            },  # TODO add name to model
         )
 
         crate.add(license_entity)
@@ -372,7 +372,7 @@ def _get_external_object(crate, data_product):
         properties["description"] = external_object.description
 
     if external_object.original_store:
-        properties["original_store"] = external_object.original_store
+        properties["original_store"] = str(external_object.original_store)
 
     crate_external_object = crate.add_file(source_loc, properties=properties)
 
@@ -391,7 +391,10 @@ def _get_local_data_product(crate, data_product, registry_url, output):
     @return an RO Crate file entity representing the data product
 
     """
-    if data_product.object.storage_location.public is True:
+    if (
+        data_product.object.storage_location.public is True
+        and len(str(data_product.object.storage_location).split("file:")) > 1
+    ):
         source_loc = str(data_product.object.storage_location).split("file:")[1]
 
         if output:

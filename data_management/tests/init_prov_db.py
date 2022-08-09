@@ -147,15 +147,24 @@ def init_db():
     )
     o_input_1.authors.add(a1)
     o_input_2 = Object.objects.create(
-        updated_by=user, storage_location=sl_input_2, description="input 2 object"
+        updated_by=user,
+        storage_location=sl_input_2,
+        description="input 2 object",
+        file_type=text_file,
     )
     o_input_2.authors.add(a2)
     o_input_3 = Object.objects.create(
-        updated_by=user, storage_location=sl_input_3, description="input 3 object"
+        updated_by=user,
+        storage_location=sl_input_3,
+        description="input 3 object",
+        file_type=text_file,
     )
     o_input_3.authors.add(a3)
     o_input_4 = Object.objects.create(
-        updated_by=user, storage_location=sl_input_4, description="input 4 object"
+        updated_by=user,
+        storage_location=sl_input_4,
+        description="input 4 object",
+        file_type=text_file,
     )
     o_output_1 = Object.objects.create(
         updated_by=user, storage_location=sl_output_1, description="output 1 object"
@@ -307,9 +316,7 @@ def init_db():
         code_repo=o_code_2,
         submission_script=o_script,
     )
-    cr2.inputs.set(
-        [o_input_1.components.first()]
-    )
+    cr2.inputs.set([o_input_1.components.first()])
     cr2.outputs.set([o_output_3.components.first()])
 
     cr3 = CodeRun.objects.create(
@@ -317,9 +324,7 @@ def init_db():
         run_date="2021-07-17T19:21:11Z",
         submission_script=o_script,
     )
-    cr3.inputs.set(
-        [o_input_1.components.first()]
-    )
+    cr3.inputs.set([o_input_1.components.first()])
     cr3.outputs.set([o_output_4.components.first()])
 
     cr4 = CodeRun.objects.create(
@@ -327,10 +332,7 @@ def init_db():
         run_date="2021-07-17T19:41:11Z",
         submission_script=o_script,
     )
-    cr4.inputs.set(
-        [o_output_3.components.first(),
-         o_output_4.components.first()]
-    )
+    cr4.inputs.set([o_output_3.components.first(), o_output_4.components.first()])
     cr4.outputs.set([o_output_5.components.first()])
 
     cr5 = CodeRun.objects.create(
@@ -338,9 +340,7 @@ def init_db():
         run_date="2021-07-17T19:51:11Z",
         submission_script=o_script,
     )
-    cr5.inputs.set(
-        [o_output_5.components.first()]
-    )
+    cr5.inputs.set([o_output_5.components.first()])
     cr5.outputs.set([o_output_6.components.first()])
 
 
