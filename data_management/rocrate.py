@@ -39,10 +39,11 @@ The RO Crate is available as a `zip` file.
 The contents of the ro-crate-metadata file can be viewed as `JSON` or `JSON-LD`.
 
 """
-import json
-
-import mimetypes
 from datetime import datetime
+import json
+import mimetypes
+import tempfile
+
 from rocrate.model.person import Person
 from rocrate.rocrate import ContextEntity
 from rocrate.rocrate import ROCrate
@@ -648,10 +649,8 @@ def generate_ro_crate_from_dp(data_product, request):
 
 def serialize_ro_crate(crate, format_):
     if format_ == "zip":
-        try:
-            file_name = crate.write_zip(f"{CACHE_DIR}/{crate.name}/{crate.version}.zip")
-        except AttributeError:
-            file_name = crate.write_zip(f"{CACHE_DIR}/{crate.name}.zip")
+        tmp = tempfile.NamedTemporaryFile()
+        file_name = crate.write_zip(f"{tmp}.zip")
         zip_file = open(file_name, "rb")
         return zip_file
     if format_ == "json-ld":
