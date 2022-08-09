@@ -7,6 +7,7 @@ from data_management.models import (
     DataProduct,
     ExternalObject,
     FileType,
+    Licence,
     Object,
     StorageLocation,
     StorageRoot,
@@ -189,6 +190,12 @@ def init_db():
         version="0.2.0",
     )
 
+    Licence.objects.create(
+        updated_by=user,
+        object=o_input_1,
+        licence_info="licence info",
+        )
+
     ExternalObject.objects.create(
         updated_by=user,
         data_product=dp_cr_input_1,
@@ -207,6 +214,18 @@ def init_db():
         name="this/is/cr/test/output/1",
         version="0.2.0",
     )
+
+    Licence.objects.create(
+        updated_by=user,
+        object=o_output_1,
+        licence_info="licence info 1",
+        )
+
+    Licence.objects.create(
+        updated_by=user,
+        object=o_output_1,
+        licence_info="licence info 2",
+        )
 
     ExternalObject.objects.create(
         updated_by=user,
