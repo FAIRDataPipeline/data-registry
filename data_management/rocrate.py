@@ -643,13 +643,13 @@ def generate_ro_crate_from_dp(data_product, request):
             crate_code_run, crate, code_run.inputs.all(), registry_url, False
         )
 
-        return crate
+    return crate
 
 
 def serialize_ro_crate(crate, format_):
     if format_ == "zip":
         tmp = tempfile.NamedTemporaryFile()
-        file_name = crate.write_zip(f"{tmp}.zip")
+        file_name = crate.write_zip(f"{tmp.name}.zip")
         zip_file = open(file_name, "rb")
         return zip_file
     if format_ == "json-ld":
