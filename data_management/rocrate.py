@@ -54,6 +54,7 @@ from . import models
 
 
 RO_TYPE = "@type"
+FILE = "file:"
 
 
 def _add_authors(authors, crate, entity, registry_url):
@@ -394,9 +395,9 @@ def _get_local_data_product(crate, data_product, registry_url, output):
     """
     if (
         data_product.object.storage_location.public is True
-        and len(str(data_product.object.storage_location).split("file:")) > 1
+        and len(str(data_product.object.storage_location).split(FILE)) > 1
     ):
-        source_loc = str(data_product.object.storage_location).split("file:")[1]
+        source_loc = str(data_product.object.storage_location).split(FILE)[1]
 
         if output:
             dest_path = f"outputs/{source_loc.split('/')[-1]}"
@@ -460,9 +461,9 @@ def _get_software(crate, software_object, registry_url, software_type):
     """
     if (
         software_object.storage_location.public is True
-        and len(str(software_object.storage_location).split("file:")) > 1
+        and len(str(software_object.storage_location).split(FILE)) > 1
     ):
-        source_loc = str(software_object.storage_location).split("file:")[1]
+        source_loc = str(software_object.storage_location).split(FILE)[1]
         dest_path = f"inputs/{software_type}/{source_loc.split('/')[-1]}"
 
     else:
