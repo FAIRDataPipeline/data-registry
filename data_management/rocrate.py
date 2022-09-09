@@ -458,8 +458,11 @@ def _get_software(crate, software_object, registry_url, software_type):
     @return an RO Crate file entity representing the model configuration
 
     """
-    if software_object.storage_location.public is True:
-        source_loc = str(software_object.storage_location)
+    if (
+        software_object.storage_location.public is True
+        and len(str(software_object.storage_location).split("file:")) > 1
+    ):
+        source_loc = str(software_object.storage_location).split("file:")[1]
         dest_path = f"inputs/{software_type}/{source_loc.split('/')[-1]}"
 
     else:
