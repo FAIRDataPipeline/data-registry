@@ -83,34 +83,6 @@ def _add_authors(authors, crate, entity, registry_url):
     entity["author"] = cr_authors
 
 
-def _add_data_products(crate_code_run, crate, object_components, registry_url, output):
-    """
-    Add input data products to the RO Crate code run entity.
-
-    @param crate_code_run: RO Crate entity representing the code run
-    @param crate: the RO Crate object
-    @param object_components: a list of object_components from the ObjectComponent table
-    @param registry_url: a str containing the registry URL
-    @param output (bool): true if the data product is an output
-
-    """
-    all_data_products = []
-    for component in object_components:
-        obj = component.object
-        data_products = obj.data_products.all()
-
-        for data_product in data_products:
-            crate_data_product = _get_data_product(
-                crate, data_product, registry_url, output
-            )
-            all_data_products.append(crate_data_product)
-
-    if output:
-        crate_code_run["result"] = all_data_products
-    else:
-        crate_code_run["object"] = all_data_products
-
-
 def _add_licenses(crate, crate_entity, file_object, registry_url):
     """
     Add licenses from the file_object to the crate_entity.
@@ -345,6 +317,32 @@ def _get_data_product(crate, data_product, registry_url, output):
     return crate_data_product
 
 
+def _get_data_products(crate, object_components, registry_url, output):
+    """
+    Add input data products to the RO Crate code run entity.
+
+    @param crate: the RO Crate object
+    @param object_components: a list of object_components from the ObjectComponent table
+    @param registry_url: a str containing the registry URL
+    @param output (bool): true if the data product is an output
+
+    @return a list of RO Crate file entities representing the data products
+
+    """
+    all_data_products = []
+    for component in object_components:
+        obj = component.object
+        data_products = obj.data_products.all()
+
+        for data_product in data_products:
+            crate_data_product = _get_data_product(
+                crate, data_product, registry_url, output
+            )
+            all_data_products.append(crate_data_product)
+
+    return all_data_products
+
+
 def _get_external_object(crate, data_product):
     """
     Create an RO Crate file entity for the given data product if it is an external
@@ -534,7 +532,7 @@ def generate_ro_crate_from_cr(code_run, request):
 
     _add_metadata_license(crate)
 
-    instruments = []
+    input_data_products = []
     crate_data_product = None
 
     # add the code run
@@ -542,32 +540,34 @@ def generate_ro_crate_from_cr(code_run, request):
 
     # add the code repo release
     if code_run.code_repo is not None:
-        code_release = _get_code_repo_release(crate, code_run.code_repo, registry_url)
-        instruments.append(code_release)
+        crate_code_run["instrument"] = _get_code_repo_release(
+            crate, code_run.code_repo, registry_url
+        )
 
     # add the model config
     if code_run.model_config is not None:
         model_config = _get_software(
             crate, code_run.model_config, registry_url, "model_config"
         )
-        instruments.append(model_config)
+        input_data_products.append(model_config)
 
     # add the submission script
     submission_script = _get_software(
         crate, code_run.submission_script, registry_url, "submission_script"
     )
-    instruments.append(submission_script)
+    input_data_products.append(submission_script)
 
-    crate_code_run["instrument"] = instruments
-
-    # add input files
-    _add_data_products(
-        crate_code_run, crate, code_run.inputs.all(), registry_url, False
+    # get input files
+    input_data_products.extend(
+        _get_data_products(crate, code_run.inputs.all(), registry_url, False)
     )
 
+    # add input files
+    crate_code_run["object"] = input_data_products
+
     # add output files
-    _add_data_products(
-        crate_code_run, crate, code_run.outputs.all(), registry_url, True
+    crate_code_run["result"] = _get_data_products(
+        crate, code_run.outputs.all(), registry_url, True
     )
 
     return crate
@@ -643,8 +643,8 @@ def generate_ro_crate_from_dp(data_product, request):
         crate_code_run["instrument"] = instruments
 
         # add input files
-        _add_data_products(
-            crate_code_run, crate, code_run.inputs.all(), registry_url, False
+        crate_code_run["object"] = _get_data_products(
+            crate, code_run.inputs.all(), registry_url, False
         )
 
     return crate
