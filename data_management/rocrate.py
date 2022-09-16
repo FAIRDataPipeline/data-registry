@@ -69,13 +69,16 @@ def _add_authors(authors, crate, entity, registry_url):
     """
     cr_authors = []
     for author in authors:
-        author_id = f"{registry_url}api/author/{author.id}"
+        if author.identifier is not None:
+            # if present use the identifier as the id
+            author_id = author.identifier
+        else:
+            author_id = f"{registry_url}api/author/{author.id}"
         cr_author = crate.add(
             Person(crate, author_id, properties={"name": author.name})
         )
-        if author.identifier is not None:
-            cr_author["identifier"] = author.identifier
-        cr_authors.append({"@id": author_id})
+
+        cr_authors.append(cr_author)
 
     entity["author"] = cr_authors
 
@@ -181,11 +184,8 @@ def _add_metadata_license(crate):
         },
     )
 
-    for entity in crate.default_entities:
-        if entity.id == "ro-crate-metadata.json":
-            crate.add(metadata_license)
-            entity["license"] = metadata_license
-            return
+    crate.add(metadata_license)
+    crate.metadata["license"] = metadata_license
 
 
 def _get_default_license(crate):
@@ -347,7 +347,10 @@ def _get_data_product(crate, data_product, registry_url, output):
 
 def _get_external_object(crate, data_product):
     """
-    Create an RO Crate file entity for the given data product.
+    Create an RO Crate file entity for the given data product if it is an external
+    product.
+
+    If the data product is not an external product then `None` will be returned.
 
     @param crate: the RO Crate object
     @param data_product: a data_product from the DataProduct table
@@ -372,9 +375,6 @@ def _get_external_object(crate, data_product):
 
     if external_object.description:
         properties["description"] = external_object.description
-
-    if external_object.original_store:
-        properties["original_store"] = str(external_object.original_store)
 
     crate_external_object = crate.add_file(source_loc, properties=properties)
 
