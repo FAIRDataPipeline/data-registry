@@ -197,25 +197,29 @@ class CodeRunROCrateView(views.APIView):
 ***The RO Crate for a `CodeRun`.***
 
 An RO Crate is research object (RO) that has been packaged up, in this case as a zip
-file. This research object is centred around a `CodeRun` All output `DataProduct` files
+file. This research object is centred around a `CodeRun`. All output `DataProduct` files
 are packaged up along with any other local files that were used to produce them.
 Also included in the RO Crate is the metadata file `ro-crate-metadata.json`. The
 `ro-crate-metadata.json` file is made available under the
 [CC0 Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/).
 Please note individual files may have their own licenses.
 All of the packaged files are represented as `File` data entities in the metadata file.
-Any external files will have a link to them in the metadata file, but will not be
-packaged in the zip file.
+
+External files may point directly to data, in which case they will be used directly as
+inputs to a `CodeRun`. External files will have a link to them in the metadata file, but
+will not be packaged in the zip file. However, it maybe that data has had to be
+extracted from an external file before it can be used by a `CodeRun`, i.e. from a
+journal article, In which case there will be an associated `DataProduct` that would have
+been made to contain the data so that it can be used in a `CodeRun`. If this is the case
+the relationship between the external file and `DataProduct` is modelled as a RO Crate 
+ContextEntity` of type `CreateAction`.
 
 The `CodeRun` has been modelled as a RO Crate `ContextEntity` of type `CreateAction`,
 see
 [software-used-to-create-files](https://www.researchobject.org/ro-crate/1.1/provenance.html#software-used-to-create-files).
 
 A `CreateAction` has `instrument` property, which represents the software used to
-generate the product. For our purposes `instrument`s include the link to the repo, the
-submission script and configuration file. The submission script metadata is based on
-information from
-[describing-scripts-and-workflows](https://www.researchobject.org/ro-crate/1.1/workflows.html#describing-scripts-and-workflows).
+generate the product. For our purposes `instrument` is the link to the repo.
 
 `CreateAction` (`CodeRun`) properties:
 
@@ -252,18 +256,22 @@ The `ro-crate-metadata.json` file is made available under the
 [CC0 Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/).
 Please note individual files may have their own licenses.
 All of the packaged files are represented as `File` data entities in the metadata file.
-Any external files will have a link to them in the metadata file, but will not be
-packaged in the zip file.
+
+External files may point directly to data, in which case they will be used directly as
+inputs to a `CodeRun`. External files will have a link to them in the metadata file, but
+will not be packaged in the zip file. However, it maybe that data has had to be
+extracted from an external file before it can be used by a `CodeRun`, i.e. from a
+journal article, In which case there will be an associated `DataProduct` that would have
+been made to contain the data so that it can be used in a `CodeRun`. If this is the case
+the relationship between the external file and `DataProduct` is modelled as a RO Crate 
+ContextEntity` of type `CreateAction`.
 
 The `CodeRun` has been modelled as a RO Crate `ContextEntity` of type `CreateAction`,
 see
 [software-used-to-create-files](https://www.researchobject.org/ro-crate/1.1/provenance.html#software-used-to-create-files).
 
 A `CreateAction` has `instrument` property, which represents the software used to
-generate the product. For our purposes `instrument`s include the link to the repo, the
-submission script and configuration file. The submission script metadata is based on
-information from
-[describing-scripts-and-workflows](https://www.researchobject.org/ro-crate/1.1/workflows.html#describing-scripts-and-workflows).
+generate the product. For our purposes `instrument` is the link to the repo.
 
 `CreateAction` (`CodeRun`) properties:
 
