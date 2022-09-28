@@ -645,7 +645,7 @@ requests = ">=2.0.1,<3.0.0"
 
 [[package]]
 name = "rocrate"
-version = "0.6.1"
+version = "0.7.0"
 description = "RO-Crate metadata generator/parser"
 category = "main"
 optional = false
