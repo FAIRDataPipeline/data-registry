@@ -1380,6 +1380,18 @@ class RoCrateAPITest(TestCase):
             response["Content-Type"],
             f"{self.APPLICATION_JSON_LD}; {self.CHARSET_UTF8}")
 
+
+    def test_get_json_ld_cr2(self):
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse("code_run_ro_crate", kwargs={"pk": 6})
+        response = client.get(
+            url, format="json-ld", HTTP_ACCEPT=self.APPLICATION_JSON_LD)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            f"{self.APPLICATION_JSON_LD}; {self.CHARSET_UTF8}")
+
     def test_get_zip_cr(self):
         client = APIClient()
         client.force_authenticate(user=self.user)

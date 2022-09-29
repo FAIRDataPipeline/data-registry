@@ -22,8 +22,8 @@ will not be packaged in the zip file. However, it maybe that data has had to be
 extracted from an external file before it can be used by a `CodeRun`, i.e. from a
 journal article, In which case there will be an associated `DataProduct` that would have
 been made to contain the data so that it can be used in a `CodeRun`. If this is the case
-the relationship between the external file and `DataProduct` is modelled as a RO Crate 
-ContextEntity` of type `CreateAction`.
+the relationship between the external file and `DataProduct` is modelled as a RO Crate
+`ContextEntity` of type `CreateAction`.
 
 The `CodeRun` has been modelled as a RO Crate `ContextEntity` of type `CreateAction`,
 see

@@ -28,7 +28,7 @@ def reset_db():
 def init_db():
     user = get_user_model().objects.first()
     usera = get_user_model().objects.create(username="testusera")
-    get_user_model().objects.create(username="testuserb")
+    userb = get_user_model().objects.create(username="testuserb")
     get_user_model().objects.create(username="testuserc")
 
     sr_github = StorageRoot.objects.create(
@@ -46,6 +46,11 @@ def init_db():
         root="https://example.org/",
     )
 
+    sr_file = StorageRoot.objects.create(
+        updated_by=user,
+        root="file:/",
+    )
+
     sl_file_1 = StorageLocation.objects.create(
         updated_by=user,
         path="file_strore/1.txt",
@@ -58,6 +63,13 @@ def init_db():
         path="file_strore/2.txt",
         hash="346df017da291fe0e9d1169846efb12f3377aef2",
         storage_root=sr_example,
+    )
+
+    sl_file_3 = StorageLocation.objects.create(
+        updated_by=user,
+        path="file_strore/3.txt",
+        hash="346df017da291fe0e9d1169846efb12f3377aef3",
+        storage_root=sr_file,
     )
 
     sl_code = StorageLocation.objects.create(
@@ -74,11 +86,26 @@ def init_db():
         storage_root=sr_textfiles,
     )
 
+    sl_model_config_2 = StorageLocation.objects.create(
+        updated_by=user,
+        path="model_config",
+        hash="5b6fafc594cdb619104ceeef7a4802f4086e90z8",
+        public=False,
+        storage_root=sr_file,
+    )
+
     sl_script = StorageLocation.objects.create(
         updated_by=user,
         path="16/?format=text",
         hash="5b6fafc594cdb619104ceeef7a4802f4086e90e9",
         storage_root=sr_textfiles,
+    )
+
+    sl_script_2 = StorageLocation.objects.create(
+        updated_by=user,
+        path="submission_script",
+        hash="5b6fafc594cdb619104ceeef7a4802f4086e90z9",
+        storage_root=sr_file,
     )
 
     sl_input_1 = StorageLocation.objects.create(
@@ -109,6 +136,21 @@ def init_db():
         storage_root=sr_textfiles,
     )
 
+    sl_input_5 = StorageLocation.objects.create(
+        updated_by=user,
+        path="input/5",
+        hash="5b6fafc594cdb619104ceeef7a4802f4086e90a5",
+        public=False,
+        storage_root=sr_file,
+    )
+
+    sl_input_6 = StorageLocation.objects.create(
+        updated_by=user,
+        path="input/6",
+        hash="5b6fafc594cdb619104ceeef7a4802f4086e90a6",
+        storage_root=sr_file,
+    )
+
     sl_output_1 = StorageLocation.objects.create(
         updated_by=user,
         path="output/1",
@@ -123,16 +165,41 @@ def init_db():
         storage_root=sr_textfiles,
     )
 
+    sl_output_3 = StorageLocation.objects.create(
+        updated_by=user,
+        path="output/3",
+        hash="5b6fafc594cdb619104ceeef7a4802f4086e90b3",
+        public=False,
+        storage_root=sr_file,
+    )
+
+    sl_output_4 = StorageLocation.objects.create(
+        updated_by=user,
+        path="output/4",
+        hash="5b6fafc594cdb619104ceeef7a4802f4086e90b4",
+        storage_root=sr_file,
+    )
+
     text_file = FileType.objects.create(
         updated_by=user,
         extension="txt",
         name="text file",
     )
 
+    duff_file = FileType.objects.create(
+        updated_by=user,
+        extension="duff",
+        name="duff file",
+    )
+
     a1 = Author.objects.create(updated_by=user, name="Ivana Valenti")
     a2 = Author.objects.create(updated_by=user, name="Maria Cipriani")
     a3 = Author.objects.create(updated_by=user, name="Rosanna Massabeti")
+    a4 = Author.objects.create(
+        updated_by=user, name="James Brown", identifier="https://example.org/testuserid"
+    )
     UserAuthor.objects.get_or_create(updated_by=user, user=usera, author=a1)
+    UserAuthor.objects.get_or_create(updated_by=user, user=userb, author=a4)
 
     o_code = Object.objects.create(updated_by=user, storage_location=sl_code)
     o_code_2 = Object.objects.create(updated_by=user, storage_location=sl_code)
@@ -167,6 +234,21 @@ def init_db():
         description="input 4 object",
         file_type=text_file,
     )
+    o_input_5 = Object.objects.create(
+        updated_by=user,
+        storage_location=sl_input_5,
+        description="input 5 object",
+        file_type=text_file,
+    )
+    o_input_5.authors.add(a4)
+    o_input_6 = Object.objects.create(
+        updated_by=user,
+        storage_location=sl_input_6,
+        description="input 6 object",
+        file_type=duff_file,
+    )
+    o_input_6.authors.add(a4)
+
     o_output_1 = Object.objects.create(
         updated_by=user, storage_location=sl_output_1, description="output 1 object"
     )
@@ -179,6 +261,28 @@ def init_db():
     o_output_4 = Object.objects.create(updated_by=user)
     o_output_5 = Object.objects.create(updated_by=user)
     o_output_6 = Object.objects.create(updated_by=user)
+    o_output_7 = Object.objects.create(
+        updated_by=user,
+        storage_location=sl_output_3,
+        description="output 7 object",
+        file_type=text_file,
+    )
+    o_output_7.authors.add(a3)
+    o_output_8 = Object.objects.create(
+        updated_by=user,
+        storage_location=sl_output_4,
+        description="output 8 object",
+        file_type=text_file,
+    )
+    o_output_8.authors.add(a3)
+
+    o_model_config_2 = Object.objects.create(
+        updated_by=user, storage_location=sl_model_config_2
+    )
+
+    o_script_2 = Object.objects.create(
+        updated_by=user, storage_location=sl_script_2, description="submission script"
+    )
 
     n_prov = Namespace.objects.create(updated_by=user, name="prov")
 
@@ -194,7 +298,8 @@ def init_db():
         updated_by=user,
         object=o_input_1,
         licence_info="licence info",
-        )
+        identifier="https://example.org/licence",
+    )
 
     ExternalObject.objects.create(
         updated_by=user,
@@ -219,13 +324,13 @@ def init_db():
         updated_by=user,
         object=o_output_1,
         licence_info="licence info 1",
-        )
+    )
 
     Licence.objects.create(
         updated_by=user,
         object=o_output_1,
         licence_info="licence info 2",
-        )
+    )
 
     ExternalObject.objects.create(
         updated_by=user,
@@ -303,6 +408,22 @@ def init_db():
         version="0.6.0",
     )
 
+    DataProduct.objects.create(
+        updated_by=user,
+        object=o_output_7,
+        namespace=n_prov,
+        name="this/is/cr/test/output/7",
+        version="0.7.0",
+    )
+
+    DataProduct.objects.create(
+        updated_by=user,
+        object=o_output_8,
+        namespace=n_prov,
+        name="this/is/cr/test/output/8",
+        version="0.8.0",
+    )
+
     CodeRepoRelease.objects.create(
         updated_by=user,
         name="ScottishCovidResponse/SCRCdata",
@@ -361,6 +482,45 @@ def init_db():
     )
     cr5.inputs.set([o_output_5.components.first()])
     cr5.outputs.set([o_output_6.components.first()])
+
+    dp_cr_input_5 = DataProduct.objects.create(
+        updated_by=user,
+        object=o_input_5,
+        namespace=n_prov,
+        name="this/is/cr/test/input/5",
+        version="0.2.0",
+    )
+
+    ExternalObject.objects.create(
+        updated_by=user,
+        data_product=dp_cr_input_5,
+        alternate_identifier="this_is_cr_test_input_5",
+        alternate_identifier_type="text",
+        release_date=parser.isoparse("2020-07-10T18:38:00Z"),
+        title="this is cr test input 5",
+        description="this is code run test input 5",
+        original_store=sl_file_3,
+        primary_not_supplement=False,
+    )
+
+    DataProduct.objects.create(
+        updated_by=user,
+        object=o_input_6,
+        namespace=n_prov,
+        name="this/is/cr/test/input/6",
+        version="0.2.0",
+    )
+
+    cr6 = CodeRun.objects.create(
+        updated_by=userb,
+        run_date="2021-07-17T19:59:11Z",
+        description="Test run",
+        code_repo=o_code_2,
+        model_config=o_model_config_2,
+        submission_script=o_script_2,
+    )
+    cr6.inputs.set([o_input_5.components.first(), o_input_6.components.first()])
+    cr6.outputs.set([o_output_7.components.first(), o_output_8.components.first()])
 
 
 if __name__ == "__main__":
