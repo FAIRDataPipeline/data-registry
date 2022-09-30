@@ -59,6 +59,7 @@ from . import models
 
 RO_TYPE = "@type"
 FILE = "file:"
+SHA256 = {"sha256": "https://schema.org/sha256"}
 
 
 def _add_authors(authors, crate, entity, registry_url):
@@ -477,7 +478,8 @@ def _get_local_data_product(crate, data_product, registry_url, output):
     }
 
     if data_product.object.storage_location.hash is not None:
-        properties["hash"] = data_product.object.storage_location.hash
+        properties["sha256"] = data_product.object.storage_location.hash
+        crate.metadata.extra_terms.update(SHA256)
 
     if data_product.object.description is not None:
         properties["description"] = data_product.object.description
@@ -554,7 +556,8 @@ def _get_software(crate, software_object, registry_url, software_type):
         )
 
     if software_object.storage_location.hash is not None:
-        crate_software_object["hash"] = software_object.storage_location.hash
+        crate_software_object["sha256"] = software_object.storage_location.hash
+        crate.metadata.extra_terms.update(SHA256)
 
     _add_licenses(crate, crate_software_object, software_object, registry_url)
 
