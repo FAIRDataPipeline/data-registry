@@ -232,6 +232,11 @@ The RO Crate is available as a `zip` file.
 
 The contents of the ro-crate-metadata file can be viewed as `JSON` or `JSON-LD`.
 
+### Query parameters:
+
+`depth` (optional): An integer used to determine how many code runs to include,
+the default is 1.
+
     """
     renderer_classes = [renderers.BrowsableAPIRenderer, renderers.JSONRenderer,
                         JSONLDRenderer, ZipRenderer]
@@ -239,7 +244,16 @@ The contents of the ro-crate-metadata file can be viewed as `JSON` or `JSON-LD`.
     def get(self, request, pk):
         code_run = get_object_or_404(models.CodeRun, pk=pk)
 
-        crate = generate_ro_crate_from_cr(code_run, request)
+        default_depth = 1
+        depth = request.query_params.get('depth', default_depth)
+        try:
+            depth = int(depth)
+        except ValueError:
+            depth = default_depth
+        if depth < 1:
+            depth = 1
+
+        crate = generate_ro_crate_from_cr(code_run, depth, request)
 
         return Response(serialize_ro_crate(crate, request.accepted_renderer.format))
 
@@ -284,6 +298,11 @@ The RO Crate is available as a `zip` file.
 
 The contents of the ro-crate-metadata file can be viewed as `JSON` or `JSON-LD`.
 
+### Query parameters:
+
+`depth` (optional): An integer used to determine how many code runs to include,
+the default is 1.
+
     """
 
     renderer_classes = [renderers.BrowsableAPIRenderer, renderers.JSONRenderer,
@@ -292,7 +311,16 @@ The contents of the ro-crate-metadata file can be viewed as `JSON` or `JSON-LD`.
     def get(self, request, pk):
         data_product = get_object_or_404(models.DataProduct, pk=pk)
 
-        crate = generate_ro_crate_from_dp(data_product, request)
+        default_depth = 1
+        depth = request.query_params.get('depth', default_depth)
+        try:
+            depth = int(depth)
+        except ValueError:
+            depth = default_depth
+        if depth < 1:
+            depth = 1
+
+        crate = generate_ro_crate_from_dp(data_product, depth, request)
 
         return Response(serialize_ro_crate(crate, request.accepted_renderer.format))
 
