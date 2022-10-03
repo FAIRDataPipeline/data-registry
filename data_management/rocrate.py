@@ -755,7 +755,7 @@ def generate_ro_crate_from_cr(code_run, depth, request):
 
     _add_metadata_license(crate)
 
-    _generate_ro_crate_from_cr(code_run, crate, depth, registry_url)
+    _generate_ro_crate_from_cr(code_run, crate, registry_url)
 
     if depth == 1:
         return crate
