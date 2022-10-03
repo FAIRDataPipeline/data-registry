@@ -312,13 +312,12 @@ def _generate_ro_crate_from_dp(data_product, crate, registry_url, output_flag):
         crate_code_run["object"] = input_files
 
 
-def _generate_ro_crate_from_cr(code_run, crate, depth, registry_url):
+def _generate_ro_crate_from_cr(code_run, crate, registry_url):
     """
     Crate an RO Crate based around the code run.
 
     @param code_run: a code_run from the CodeRun table
     @param crate: the RO Crate object
-    @param depth: The depth for the crate. How many levels of code runs to include.
     @param request: A request object
 
     @return the RO Crate object
@@ -779,7 +778,6 @@ def generate_ro_crate_from_cr(code_run, depth, request):
         depth = depth - 1
 
     return crate
-
 
 
 def generate_ro_crate_from_dp(data_product, depth, request):
