@@ -252,6 +252,117 @@ def _get_default_license(crate):
     return default_license
 
 
+def _generate_ro_crate_from_dp(data_product, crate, registry_url, output_flag):
+    """
+    Update an RO Crate based around the data product.
+
+    @param data_product: a data_product from the DataProduct table
+    @param crate: the RO Crate object
+    @param registry_url: a str containing the registry URL
+    @param output_flag (bool): true if the data product is an output
+
+    """
+    crate_data_product = _get_data_product(
+        crate, data_product, registry_url, output_flag
+    )
+
+    # add the activity, i.e. the code run
+    components = data_product.object.components.all()
+
+    for component in components:
+        try:
+            code_run = component.outputs_of.all()[0]
+        except IndexError:
+            # there is no code run for this component so we cannot add any more
+            # provenance data
+            continue
+
+        input_files = []
+
+        # add the code run
+        crate_code_run = _get_code_run(
+            crate_data_product, crate, code_run, registry_url
+        )
+
+        # add the code repo release
+        if code_run.code_repo is not None:
+            crate_code_run["instrument"] = _get_code_repo_release(
+                crate, code_run.code_repo, registry_url
+            )
+
+        # add the model config
+        if code_run.model_config is not None:
+            model_config = _get_software(
+                crate, code_run.model_config, registry_url, "model_config"
+            )
+            input_files.append(model_config)
+
+        # add the submission script
+        submission_script = _get_software(
+            crate, code_run.submission_script, registry_url, "submission_script"
+        )
+        input_files.append(submission_script)
+
+        # get data files
+        input_files.extend(
+            _get_data_products(crate, code_run.inputs.all(), registry_url, False)
+        )
+
+        # add input files
+        crate_code_run["object"] = input_files
+
+
+def _generate_ro_crate_from_cr(code_run, crate, depth, registry_url):
+    """
+    Crate an RO Crate based around the code run.
+
+    @param code_run: a code_run from the CodeRun table
+    @param crate: the RO Crate object
+    @param depth: The depth for the crate. How many levels of code runs to include.
+    @param request: A request object
+
+    @return the RO Crate object
+
+    """
+    input_files = []
+    crate_data_product = None
+
+    # add the code run
+    crate_code_run = _get_code_run(crate_data_product, crate, code_run, registry_url)
+
+    # add the code repo release
+    if code_run.code_repo is not None:
+        crate_code_run["instrument"] = _get_code_repo_release(
+            crate, code_run.code_repo, registry_url
+        )
+
+    # add the model config
+    if code_run.model_config is not None:
+        model_config = _get_software(
+            crate, code_run.model_config, registry_url, "model_config"
+        )
+        input_files.append(model_config)
+
+    # add the submission script
+    submission_script = _get_software(
+        crate, code_run.submission_script, registry_url, "submission_script"
+    )
+    input_files.append(submission_script)
+
+    # get data files
+    input_files.extend(
+        _get_data_products(crate, code_run.inputs.all(), registry_url, False)
+    )
+
+    # add input files
+    crate_code_run["object"] = input_files
+
+    # add output files
+    crate_code_run["result"] = _get_data_products(
+        crate, code_run.outputs.all(), registry_url, True
+    )
+
+
 def _get_code_repo_release(crate, code_repo, registry_url):
     """
     Create an RO Crate ContextEntity representing a code repo release.
@@ -443,6 +554,51 @@ def _get_external_object(crate, data_product, registry_url):
     return _add_external_object(crate, external_object)
 
 
+def _get_input_files_for_code_run(code_run):
+    """
+    Get the list of data products used to produce the given code run.
+
+    @param code_run: a code run from the CodeRun table
+
+    @return a list of data products
+
+    """
+    all_code_run_inputs = []
+    for component in code_run.inputs.all():
+        all_code_run_inputs.extend(component.object.data_products.all())
+
+    return all_code_run_inputs
+
+
+def _get_input_files_for_data_product(data_product):
+    """
+    Get the list of data products used to produce the given data product.
+
+    @param data_product: a data product from the DataProduct table
+
+    @return a list of data products
+
+    """
+    all_input_files = []
+
+    for initial_dp_component in data_product.object.components.all():
+        try:
+            code_run = initial_dp_component.outputs_of.all()[0]
+        except IndexError:
+            # there is no code run for this component so we cannot add any more
+            # data inputs data
+            continue
+
+        # now get the inputs for this code run
+        all_code_run_inputs = []
+        for component in code_run.inputs.all():
+            all_code_run_inputs.extend(component.object.data_products.all())
+
+        all_input_files.extend(all_code_run_inputs)
+
+    return all_input_files
+
+
 def _get_local_data_product(crate, data_product, registry_url, output):
     """
     Create an RO Crate file entity representing the data product.
@@ -571,11 +727,13 @@ def _get_software(crate, software_object, registry_url, software_type):
     return crate_software_object
 
 
-def generate_ro_crate_from_cr(code_run, request):
+def generate_ro_crate_from_cr(code_run, depth, request):
     """
     Crate an RO Crate based around the code run.
 
     @param code_run: a code_run from the CodeRun table
+    @param depth: The depth for the crate. How many levels of code runs to include.
+    @param request: A request object
 
     @return the RO Crate object
 
@@ -598,52 +756,39 @@ def generate_ro_crate_from_cr(code_run, request):
 
     _add_metadata_license(crate)
 
-    input_files = []
-    crate_data_product = None
+    _generate_ro_crate_from_cr(code_run, crate, depth, registry_url)
 
-    # add the code run
-    crate_code_run = _get_code_run(crate_data_product, crate, code_run, registry_url)
+    if depth == 1:
+        return crate
 
-    # add the code repo release
-    if code_run.code_repo is not None:
-        crate_code_run["instrument"] = _get_code_repo_release(
-            crate, code_run.code_repo, registry_url
-        )
+    input_data_products = _get_input_files_for_code_run(code_run)
 
-    # add the model config
-    if code_run.model_config is not None:
-        model_config = _get_software(
-            crate, code_run.model_config, registry_url, "model_config"
-        )
-        input_files.append(model_config)
+    # add extra layers to the report if requested by the user
+    while depth > 1:
+        next_level_input_data_products = []
 
-    # add the submission script
-    submission_script = _get_software(
-        crate, code_run.submission_script, registry_url, "submission_script"
-    )
-    input_files.append(submission_script)
+        for data_product in input_data_products:
+            _generate_ro_crate_from_dp(data_product, crate, registry_url, False)
 
-    # get data files
-    input_files.extend(
-        _get_data_products(crate, code_run.inputs.all(), registry_url, False)
-    )
+            next_level_input_data_products.extend(
+                _get_input_files_for_data_product(data_product)
+            )
 
-    # add input files
-    crate_code_run["object"] = input_files
-
-    # add output files
-    crate_code_run["result"] = _get_data_products(
-        crate, code_run.outputs.all(), registry_url, True
-    )
+        # reset the input files for the next level
+        input_data_products = next_level_input_data_products
+        depth = depth - 1
 
     return crate
 
 
-def generate_ro_crate_from_dp(data_product, request):
+
+def generate_ro_crate_from_dp(data_product, depth, request):
     """
     Crate an RO Crate based around the data product.
 
     @param data_product: a data_product from the DataProduct table
+    @param depth: The depth for the crate. How many levels of code runs to include.
+    @param request: A request object
 
     @return the RO Crate object
 
@@ -666,52 +811,27 @@ def generate_ro_crate_from_dp(data_product, request):
     _add_metadata_license(crate)
 
     # add the the main data product
-    crate_data_product = _get_data_product(crate, data_product, registry_url, True)
+    _generate_ro_crate_from_dp(data_product, crate, registry_url, True)
 
-    # add the activity, i.e. the code run
-    components = data_product.object.components.all()
+    if depth == 1:
+        return crate
 
-    for component in components:
-        try:
-            code_run = component.outputs_of.all()[0]
-        except IndexError:
-            # there is no code run for this component so we cannot add any more
-            # provenance data
-            continue
+    input_data_products = _get_input_files_for_data_product(data_product)
 
-        input_files = []
+    # add extra layers to the report if requested by the user
+    while depth > 1:
+        next_level_input_data_products = []
 
-        # add the code run
-        crate_code_run = _get_code_run(
-            crate_data_product, crate, code_run, registry_url
-        )
+        for data_product in input_data_products:
+            _generate_ro_crate_from_dp(data_product, crate, registry_url, False)
 
-        # add the code repo release
-        if code_run.code_repo is not None:
-            crate_code_run["instrument"] = _get_code_repo_release(
-                crate, code_run.code_repo, registry_url
+            next_level_input_data_products.extend(
+                _get_input_files_for_data_product(data_product)
             )
 
-        # add the model config
-        if code_run.model_config is not None:
-            model_config = _get_software(
-                crate, code_run.model_config, registry_url, "model_config"
-            )
-            input_files.append(model_config)
-
-        # add the submission script
-        submission_script = _get_software(
-            crate, code_run.submission_script, registry_url, "submission_script"
-        )
-        input_files.append(submission_script)
-
-        # get data files
-        input_files.extend(
-            _get_data_products(crate, code_run.inputs.all(), registry_url, False)
-        )
-
-        # add input files
-        crate_code_run["object"] = input_files
+        # reset the input files for the next level
+        input_data_products = next_level_input_data_products
+        depth = depth - 1
 
     return crate
 
