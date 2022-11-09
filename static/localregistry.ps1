@@ -122,5 +122,6 @@ python manage.py migrate
 python manage.py graph_models data_management --arrow-shape crow -X "BaseModel,DataObject,DataObjectVersion" -E -o ${FAIR_HOME}\schema.dot
 python manage.py collectstatic --noinput *> $null
 python manage.py createsuperuser --noinput
+python manage.py set_site_info
 
 Pop-Location

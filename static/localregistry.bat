@@ -165,6 +165,7 @@ start /b /wait python manage.py migrate
 start /b /wait python manage.py graph_models data_management --arrow-shape crow -X "BaseModel,DataObject,DataObjectVersion" -E -o %FAIR_HOME:"=%\schema.dot
 start /b /wait python manage.py collectstatic --noinput > nul 2>&1
 start /b /wait python manage.py createsuperuser --noinput
+start /b /wait python manage.py set_site_info
 
 :: Finish
 echo Complete Exiting Now

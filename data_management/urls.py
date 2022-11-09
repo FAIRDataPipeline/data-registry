@@ -6,6 +6,7 @@ from rest_framework import routers
 from . import views, models, tables
 from .rest import views as api_views
 from . import settings
+from django.conf import settings as conf_settings
 
 router = routers.DefaultRouter()
 router.register(r'users', api_views.UserViewSet)
@@ -15,10 +16,7 @@ for name in models.all_models:
     url_name = camel_case_to_spaces(name).replace(' ', '_')
     router.register(url_name, getattr(api_views, name + 'ViewSet'), basename=name.lower())
 
-if settings.REMOTE_REGISTRY:
-    cache_duration = 300
-else:
-    cache_duration = 0
+cache_duration = conf_settings.CACHE_DURATION
 
 urlpatterns = [
     path('', views.index, name='index'),
