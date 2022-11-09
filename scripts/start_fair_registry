@@ -2,7 +2,7 @@
 
 PORT=8000
 ADDRESS="127.0.0.1"
-DRAMS="drams.local-settings"
+SETTINGS="drams.local-settings"
 ORIGINAL_PWD=`pwd`
 
 while getopts ":a:p:s:h:address:port:settings:help" opt; do
