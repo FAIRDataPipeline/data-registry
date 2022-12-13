@@ -59,7 +59,7 @@ from . import models
 
 RO_TYPE = "@type"
 FILE = "file:"
-SHA1 = {"sha1": "http://xmlns.com/foaf/0.1/#term_sha1"}
+SHA1 = {"sha1": "http://xmlns.com/foaf/0.1/#term_sha1"}  # NOSONAR
 
 
 def _add_authors(authors, crate, entity, registry_url):
