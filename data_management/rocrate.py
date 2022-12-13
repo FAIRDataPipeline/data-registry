@@ -450,12 +450,14 @@ def _get_code_run(crate_data_product, crate, code_run, registry_url):
 
     else:
         # we have an author linked to the user
-        agent_id = f"{registry_url}api/author/{user_authors[0].author.id}"
-        run_agent = crate.add(
+        if user_authors[0].author.identifier is not None:
+            # if present use the identifier as the id
+            agent_id = user_authors[0].author.identifier
+        else:
+            agent_id = f"{registry_url}api/author/{user_authors[0].author.id}"
+        crate.add(
             Person(crate, agent_id, properties={"name": user_authors[0].author.name})
         )
-        if user_authors[0].author.identifier is not None:
-            run_agent["identifier"] = user_authors[0].author.identifier
 
     crate_code_run["agent"] = {"@id": agent_id}
 
