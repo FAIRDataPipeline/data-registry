@@ -47,6 +47,7 @@ from datetime import datetime
 import json
 import mimetypes
 import tempfile
+import os
 
 from rocrate.model.person import Person
 from rocrate.rocrate import ContextEntity
@@ -423,20 +424,32 @@ def _get_code_run(crate_data_product, crate, code_run, registry_url):
     @return an RO Crate ContextEntity representing the code run
 
     """
+    if registry_url.startswith("http://127.0.0.1"):
+        code_run_file = tempfile.NamedTemporaryFile()
+        crate_code_run = crate.add_file(
+            code_run_file,
+            dest_path=f"code_run/code_run_{code_run.id}.json",
+            properties={
+                RO_TYPE: ["File", "CreateAction"],
+                "name": f"code run {code_run.id}",
+                "startTime": code_run.run_date.isoformat(),
+                "description": code_run.description,
+            },
+        )
 
-    code_run_id = f"{registry_url}api/code_run/{code_run.id}"
-    crate_code_run = ContextEntity(
-        crate,
-        code_run_id,
-        properties={
-            RO_TYPE: "CreateAction",
-            "name": f"code run {code_run.id}",
-            "startTime": code_run.run_date.isoformat(),
-            "description": code_run.description,
-        },
-    )
-
-    crate.add(crate_code_run)
+    else:
+        code_run_id = f"{registry_url}api/code_run/{code_run.id}"
+        crate_code_run = ContextEntity(
+            crate,
+            code_run_id,
+            properties={
+                RO_TYPE: "CreateAction",
+                "name": f"code run {code_run.id}",
+                "startTime": code_run.run_date.isoformat(),
+                "description": code_run.description,
+            },
+        )
+        crate.add(crate_code_run)
 
     user_authors = models.UserAuthor.objects.filter(user=code_run.updated_by)
 
@@ -838,10 +851,31 @@ def generate_ro_crate_from_dp(data_product, depth, request):
 
 def serialize_ro_crate(crate, format_):
     if format_ == "zip":
+        files_to_unlink = []
+        for entity in crate.get_entities():
+            if entity.get("@id").startswith("code_run") and "File" in entity.get(
+                RO_TYPE
+            ):
+                encode_code_run = json.dumps(entity.as_jsonld(), indent=2).encode(
+                    "utf-8"
+                )
+                code_run_file = tempfile.NamedTemporaryFile(delete=False)
+                code_run_file.write(encode_code_run)
+                code_run_file.close()
+                entity.source = code_run_file.name
+                files_to_unlink.append(code_run_file.name)
+                break
+
         tmp = tempfile.NamedTemporaryFile()
         file_name = crate.write_zip(f"{tmp.name}.zip")
         zip_file = open(file_name, "rb")
+
+        for file_to_unlink in files_to_unlink:
+            os.unlink(file_to_unlink)
+
         return zip_file
+
     if format_ == "json-ld":
         return json.dumps(crate.metadata.generate())
+
     return crate.metadata.generate()
