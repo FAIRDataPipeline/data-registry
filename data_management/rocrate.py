@@ -60,6 +60,7 @@ from . import models
 RO_TYPE = "@type"
 FILE = "file:"
 SHA1 = {"sha1": "http://xmlns.com/foaf/0.1/#term_sha1"}  # NOSONAR
+CLI_URL = "https://github.com/FAIRDataPipeline/FAIR-CLI"
 
 
 def _add_authors(authors, crate, entity, registry_url):
@@ -121,6 +122,21 @@ def _add_data_extraction_action(crate, data_product, external_object, registry_u
     crate_data_extraction["result"] = crate_data_product
     crate_data_extraction["object"] = _add_external_object(crate, external_object)
 
+    # add the instrument
+    properties = {
+        RO_TYPE: "SoftwareApplication",
+        "url": CLI_URL,
+    }
+
+    crate_instrument = ContextEntity(
+        crate,
+        CLI_URL,
+        properties=properties,
+    )
+
+    crate_data_extraction["instrument"] = crate_instrument
+
+    crate.add(crate_instrument)
     crate.add(crate_data_extraction)
 
     return crate_data_product
