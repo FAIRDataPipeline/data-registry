@@ -14,6 +14,7 @@ from django_filters.rest_framework import DjangoFilterBackend, filterset
 from django_filters import constants, filters
 from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 
@@ -323,6 +324,32 @@ the default is 1.
         crate = generate_ro_crate_from_dp(data_product, depth, request)
 
         return Response(serialize_ro_crate(crate, request.accepted_renderer.format))
+
+
+class DataExtractionView(views.APIView):
+
+    def get(self, request, pk):
+        data_product = get_object_or_404(models.DataProduct, pk=pk)
+
+        # check for external object linked to the data product
+        try:
+            external_object = data_product.external_object
+        except (models.DataProduct.external_object.RelatedObjectDoesNotExist,):
+            # no external object
+            raise Http404("DataProduct was not derived from an external object")
+
+        if external_object.primary_not_supplement is True:
+            # the data_product was NOT derived from the external object
+            raise Http404("DataProduct was not derived from an external object")
+
+        context = {"id": f"{request.build_absolute_uri('/')}api/data_extraction/{data_product.id}",
+                   "name": f"data extraction {pk}",
+                   "startTime": data_product.last_updated.isoformat(),
+                   "description": "import/extract data from an external source",
+                   "data_product": f"{request.build_absolute_uri('/')}api/data_product/{data_product.id}",
+                   "external_product": f"{request.build_absolute_uri('/')}api/external_object/{external_object.id}",
+                   }
+        return Response(context)
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):

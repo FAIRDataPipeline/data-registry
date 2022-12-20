@@ -28,6 +28,7 @@ urlpatterns = [
     path('api/prov-report/<int:pk>/', cache_page(cache_duration)(api_views.ProvReportView.as_view()), name='prov_report'),
     path('api/ro-crate/data-product/<int:pk>/', cache_page(cache_duration)(api_views.DataProductROCrateView.as_view()), name='data_product_ro_crate'),
     path('api/ro-crate/code-run/<int:pk>/', cache_page(cache_duration)(api_views.CodeRunROCrateView.as_view()), name='code_run_ro_crate'),
+    path('api/data_extraction/<int:pk>/', cache_page(cache_duration)(api_views.DataExtractionView.as_view()), name='data_extraction'),
     path('get-token', views.get_token, name='get_token'),
     path('revoke-token', views.revoke_token, name='revoke_token'),
     path('docs/', cache_page(cache_duration)(views.doc_index), name='docs_index'),
