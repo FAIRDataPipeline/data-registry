@@ -59,7 +59,7 @@ from . import models
 
 RO_TYPE = "@type"
 FILE = "file:"
-SHA1 = {"sha1": "http://xmlns.com/foaf/0.1/#term_sha1"}  # NOSONAR
+SHA1 = {"sha1": "https://w3id.org/ro/terms/workflow-run#sha1"}
 CLI_URL = "https://github.com/FAIRDataPipeline/FAIR-CLI"
 
 
