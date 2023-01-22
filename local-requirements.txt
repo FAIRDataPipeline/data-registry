@@ -21,7 +21,7 @@ networkx==2.4
 oauthlib==3.1.0
 protobuf==3.12.2
 prov==1.5.3
-pydot==1.4.1
+pydot==1.4.2
 pyparsing==2.4.7
 python-dateutil==2.8.1
 python3-openid==3.1.0
