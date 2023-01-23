@@ -17,11 +17,11 @@ idna==2.9
 isodate==0.6.0
 lxml==4.9.1
 mysql-connector-python==8.0.20
-networkx==2.4
+networkx==3.0
 oauthlib==3.1.0
 protobuf==3.12.2
-prov==1.5.3
-pydot==1.4.1
+prov==2.0
+pydot==1.4.2
 pyparsing==2.4.7
 python-dateutil==2.8.1
 python3-openid==3.1.0
@@ -38,3 +38,4 @@ Markdown==3.2.2
 setuptools~=54.2.0
 whitenoise==5.2.0
 coverage
+rocrate==0.7.0

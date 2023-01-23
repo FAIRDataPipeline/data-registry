@@ -51,16 +51,24 @@ class IssueSerializer(BaseSerializerUUID):
 
 
 class CodeRunSerializer(BaseSerializer):
+    ro_crate = serializers.SerializerMethodField()
 
     class Meta(BaseSerializer.Meta):
         model = models.CodeRun
 
     uuid = serializers.UUIDField(initial=uuid4, default=uuid4)
 
+    def get_ro_crate(self, obj):
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.ro_crate())
+        return obj.ro_crate()
+
 
 class DataProductSerializer(BaseSerializer):
     internal_format = serializers.SerializerMethodField()
     prov_report = serializers.SerializerMethodField()
+    ro_crate = serializers.SerializerMethodField()
 
     class Meta(BaseSerializer.Meta):
         model = models.DataProduct
@@ -77,6 +85,12 @@ class DataProductSerializer(BaseSerializer):
         if request:
             return request.build_absolute_uri(obj.prov_report())
         return obj.prov_report()
+
+    def get_ro_crate(self, obj):
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.ro_crate())
+        return obj.ro_crate()
 
 
 for name, cls in models.all_models.items():
