@@ -98,7 +98,8 @@ if ($m -Or $main) {
 	$GIT_BRANCH = "main"
 }
 if ($h) {
-	Write-Host "Usage local_registry.ps1"
+	Write-Host "Windows powershell script to install a remote registry with options to specify the Directory, DRAMS settings file and superuser username and password"
+	Write-Host "Usage remoteregistry.ps1"
 	Write-Host "-s|--settings <drams-settings-file> [-d|--directory <directory>][-b|--branch <git-branch>][-t|--tag <git-tag>][-u|--username <superuser-username> -p|--password <superuser-password>]"
 	exit 0
 }

@@ -71,7 +71,8 @@ if ($m -Or $main) {
 	$GIT_BRANCH = "main"
 }
 if ($h) {
-	Write-Host "Usage local_registry.ps1"
+	Write-Host "Windows powershell script to install the local registry with options to specify the directory and git branch or tag"
+	Write-Host "Usage localregistry.ps1"
 	Write-Host "[-d <directory>][-b <git-branch>][-t <git-tag>]"
 	exit 0
 }

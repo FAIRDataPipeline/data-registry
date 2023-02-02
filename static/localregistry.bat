@@ -100,9 +100,10 @@ if not "%1" == "" (
 		set GIT_BRANCH=main
 	)
 	if "%1" == "-h" (
-		echo Usage local_registry.bat
-        echo [-d <directory>][-b <git-branch>][-t <git-tag>]
-		exit /b
+		echo Windows batch script to install the local registry with options to specify the directory and git branch or tag
+		echo Usage localregistry.bat
+        echo [-d ^<directory^>][-b ^<git-branch^>][-t ^<git-tag^>]
+		exit /b 1
 	)
 	
 	shift

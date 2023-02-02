@@ -11,7 +11,9 @@ while [ -n "$1" ]; do
         INSTALL_DIR=$2
         ;;
         -h|--help)
-            echo "/bin/bash -c localregistry.sh -s|--settings <drams-settings-file>"
+            echo "Script to install a remote registry with options to specify the Directory, DRAMS settings file and superuser username and password"
+            echo "Usage:"
+            echo "/bin/bash -c remoteregistry.sh -s|--settings <drams-settings-file>"
             echo "[-d|--directory <directory>][-b|--branch <git-branch>][-t|--tag <git-tag>][-u|--username <superuser-username> -p|--password <superuser-password>]"                              
             echo ""
             echo "Arguments:"

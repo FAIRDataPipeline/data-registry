@@ -152,8 +152,9 @@ if not "%1" == "" (
 		set GIT_BRANCH=main
 	)
 	if "%1" == "-h" (
-		echo Usage local_registry.bat
-        echo -s|--settings <drams-settings-file> [-d|--directory <directory>][-b|--branch <git-branch>][-t|--tag <git-tag>][-u|--username <superuser-username> -p|--password <superuser-password>]
+		echo Script to install a remote registry with options to specify the Directory, DRAMS settings file and superuser username and password
+		echo Usage remoteregistry.bat
+        echo -s^|--settings ^<drams-settings-file^> [-d^|--directory ^<directory^>][-b^|--branch ^<git-branch^>][-t^|--tag ^<git-tag^>][-u^|--username ^<superuser-username^> -p^|--password ^<superuser-password^>]
 		exit /b
 	)
 	
@@ -181,6 +182,7 @@ if not defined SUPERUSER_USERNAME (
 
 if not defined DRAMS (
 	echo no DRAMS Settings Specified
+	exit /b 1
 )
 
 
@@ -227,7 +229,6 @@ python -m pip install -r "%FAIR_HOME:"=%\local-requirements.txt"
 :: Change into FAIR HOME directory
 cd /d %FAIR_HOME%
 
-:: Set Environment Variables needed for Django
 
 :: Set Environment Variables needed for Django
 set DJANGO_SETTINGS_MODULE=%DRAMS%
