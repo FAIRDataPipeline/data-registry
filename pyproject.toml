@@ -18,7 +18,7 @@ name = "data-registry"
 version = "v1.0"
 
 [tool.poetry.dependencies]
-Django = "3.1.13"
+Django = "3.1.14"
 Markdown = "3.2.2"
 coverage = "5.5"
 django-allauth = "0.42.0"
