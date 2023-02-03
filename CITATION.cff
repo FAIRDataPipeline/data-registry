@@ -10,6 +10,7 @@ authors:
     given-names: Nathan
   - family-names: Field
     given-names: Ryan
+    orcid: "http://orcid.org/0000-0002-4424-9890"
   - family-names: "Gonzalez-Beltran"
     given-names: Alejandra
     orcid: "http://orcid.org/0000-0003-3499-8262"
@@ -29,6 +30,6 @@ license: "BSD-2-Clause"
 message: "If you use this software, please cite it using these metadata."
 repository-code: "https://github.com/FAIRDataPipeline/data-registry/"
 title: "The FAIR Data Registry"
-version: "v1.0-rc9"
+version: "v1.0"
 doi: "10.5281/zenodo.5562750"
-date-released: "2022-08-03"
+date-released: "2023-02-03"
