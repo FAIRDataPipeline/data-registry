@@ -4,6 +4,8 @@ param (
 	[int]$port,
 	[string]$a,
 	[string]$address,
+	[string]$s
+	[string]$settings
 	[switch]$b,
 	[switch]$background,
 	[switch]$h)
@@ -32,6 +34,15 @@ if ($a -ne "") {
 } else {
 	$REG_ADDRESS = "127.0.0.1"
 }
+if ($s -ne "") {
+	if ($settings -ne "") {
+		$drams = $settings
+	} else {
+		$drams = $s
+	}
+} else {
+	$drams = "drams.local-settings"
+}
 if ($b -Or $background) {
 	$REG_BACKGROUND = $true
 } else {
@@ -39,12 +50,13 @@ if ($b -Or $background) {
 }
 if ($h) {
 	Write-Host "Usage start_fair_registry_windows.ps1"
-	Write-Host "[-p <port>][-a <address>][--background]"
+	Write-Host "[-p <port>][-a <address>][-s <DRAMS Settings>][--background]"
 	exit 0
 }
 
 $FULL_ADDRESS = "${REG_ADDRESS}:${REG_PORT}"
-$Env:DJANGO_SETTINGS_MODULE= "drams.local-settings"
+$Env:DJANGO_SETTINGS_MODULE= "$drams"
+Write-Host "Using Django Settings Module $env:DJANGO_SETTINGS_MODULE"
 
 Push-Location $FAIR_HOME
 

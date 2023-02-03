@@ -32,6 +32,7 @@ if not exist %FAIR_HOME:"=%venv\Scripts\ (
 set /a PORT=8000
 set ADDRESS=127.0.0.1
 set /a BACKGROUND=0
+set DRAMS=drams.local-settings
 
 :readargs
 rem if %1 is blank, we are finished
@@ -54,6 +55,15 @@ if not "%1" == "" (
 		set ADDRESS=%2
 		shift
 	)
+	if "%1" == "-s" (
+		if "%2" == "" (
+			echo No DRAMS settings Provided.
+			exit /b 1
+		)
+		set DRAMS=%2
+		shift
+	)
+	
 	if "%1" == "--port" (
 		if "%2" == "" (
 			echo No Port Provided.
@@ -70,6 +80,14 @@ if not "%1" == "" (
 		set ADDRESS=%2
 		shift
 	)
+	if "%1" == "--settings" (
+		if "%2" == "" (
+			echo No DRAMS Settings Provided.
+			exit /b 1
+		)
+		set DRAMS=%2
+		shift
+	)
 	if "%1" == "-b" (
 		set /a BACKGROUND=1
 	)
@@ -77,7 +95,7 @@ if not "%1" == "" (
 		set /a BACKGROUND=1
 	)
 	if "%1" == "-h" (
-		echo Usage start_fair_registry_windows.bat [-p <port>][-a <address>][--background]
+		echo Usage start_fair_registry_windows.bat [-p <port>][-a <address>][-s <drams settings>][--background]
 		exit /b
 	)
 	shift
@@ -89,7 +107,9 @@ set FULL_ADDRESS=%ADDRESS%:%PORT%
 cd /d %FAIR_HOME%
 
 :: Set Environment Variables needed for Django
-set DJANGO_SETTINGS_MODULE=drams.local-settings
+set DJANGO_SETTINGS_MODULE=%DRAMS%
+
+@echo Using Django Settings %DJANGO_SETTINGS_MODULE%
 
 @echo Spawning Server at %FULL_ADDRESS%
 

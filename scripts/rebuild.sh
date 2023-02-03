@@ -1,10 +1,21 @@
+#!/bin/bash
 cd ..
 find . -path '*/migrations/*.py*' -not -path './venv/*' -not -name '__init__.py' -delete
-rm db.sqlite3
+if [ -f "db.sqlite3" ]; then
+    rm db.sqlite3
+fi
 python3 manage.py makemigrations custom_user
 python3 manage.py makemigrations data_management
 python3 manage.py migrate
 python3 manage.py graph_models data_management --arrow-shape crow -X "BaseModel,DataObject,DataObjectVersion" -E -o schema.dot
-dot schema.dot -Tsvg -o static/images/schema.svg
-dot schema.dot -Tpng -o static/images/schema.png
-python3 manage.py createsuperuser --username admin
+
+if [ ! -z $(echo ${FAIR_USE_SUPERUSER} | xargs) ]; then
+    python3 manage.py createsuperuser --noinput
+fi
+python3 manage.py set_site_info
+
+if command -v dot &> /dev/null
+then
+    dot schema.dot -Tsvg -o static/images/schema.svg
+    dot schema.dot -Tpng -o static/images/schema.png
+fi

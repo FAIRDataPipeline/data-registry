@@ -12,6 +12,7 @@ python3 manage.py migrate
 python3 manage.py graph_models data_management --arrow-shape crow -X "BaseModel,DataObject,DataObjectVersion" -E -o schema.dot
 python3 manage.py collectstatic --noinput > /dev/null 2>&1
 python3 manage.py createsuperuser --noinput
+python3 manage.py set_site_info
 
 if command -v dot &> /dev/null
 then

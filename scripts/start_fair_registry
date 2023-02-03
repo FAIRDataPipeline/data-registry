@@ -2,13 +2,16 @@
 
 PORT=8000
 ADDRESS="127.0.0.1"
+SETTINGS="drams.local-settings"
 ORIGINAL_PWD=`pwd`
 
-while getopts ":a:address:p:port:h:help" opt; do
-  case $opt in
-    a|address) ADDRESS="$OPTARG"
+while getopts ":a:p:s:h:address:port:settings:help" opt; do
+  case ${opt} in
+    a|address) ADDRESS="${OPTARG}"
     ;;
-    p|port) PORT="$OPTARG"
+    p|port) PORT="${OPTARG}"
+    ;;
+    s|settings) SETTINGS="$OPTARG"
     ;;
     h|help)
         echo "start_fair_registry [-p <port>][-a <address>]"
@@ -26,7 +29,8 @@ if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
-export DJANGO_SETTINGS_MODULE="drams.local-settings"
+echo Using Django Settings Module: ${SETTINGS}
+export DJANGO_SETTINGS_MODULE="${SETTINGS}"
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 FAIR_HOME="$(dirname "${DIR}")"
 cd $FAIR_HOME

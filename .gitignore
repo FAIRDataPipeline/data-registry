@@ -15,5 +15,6 @@ output.log
 token
 *.dot
 session_port.log
+session_address.log
 coverage.xml
 .coverage
