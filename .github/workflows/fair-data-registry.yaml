@@ -1,5 +1,5 @@
 name: FAIR Data Registry
-on: [push]
+on: [push, workflow_dispatch]
 jobs:
   test:
     name: Test ${{ matrix.os }} with Python ${{ matrix.python }}
