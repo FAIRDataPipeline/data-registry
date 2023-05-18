@@ -122,4 +122,5 @@ if [ ! -z $(echo ${USE_SUPERUSER} | xargs) ]; then
     export FAIR_USE_SUPERUSER="True"
 fi
 cd "$FAIR_HOME"/scripts || exit
+chmod +x rebuild.sh
 ./rebuild.sh
