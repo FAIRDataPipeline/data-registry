@@ -121,18 +121,6 @@ if [ ! -z $(echo ${USE_SUPERUSER} | xargs) ]; then
     export DJANGO_SUPERUSER_PASSWORD=$SUPERUSER_PASSWORD
     export FAIR_USE_SUPERUSER="True"
 fi
-python3 manage.py makemigrations custom_user
-python3 manage.py makemigrations data_management
-python3 manage.py migrate
-python3 manage.py graph_models data_management --arrow-shape crow -X "BaseModel,DataObject,DataObjectVersion" -E -o schema.dot
-
-if [ ! -z $(echo ${FAIR_USE_SUPERUSER} | xargs) ]; then
-    python3 manage.py createsuperuser --noinput
-fi
-python3 manage.py set_site_info
-
-if command -v dot &> /dev/null
-then
-    dot schema.dot -Tsvg -o static/images/schema.svg
-    dot schema.dot -Tpng -o static/images/schema.png
-fi
+cd "$FAIR_HOME"/scripts || exit
+chmod +x rebuild.sh
+./rebuild.sh
