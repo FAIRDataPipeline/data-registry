@@ -81,4 +81,5 @@ export DJANGO_SETTINGS_MODULE="drams.local-settings"
 export DJANGO_SUPERUSER_USERNAME=admin
 export DJANGO_SUPERUSER_PASSWORD=admin
 cd "$FAIR_HOME"/scripts || exit
+chmod +x rebuild-local.sh
 ./rebuild-local.sh
