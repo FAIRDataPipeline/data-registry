@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-INSTALL_DIR=$HOME/.fair
+INSTALL_DIR=$HOME/.fair/registry
 while [ -n "$1" ]; do
     case $1 in
         -d|--directory)
@@ -91,7 +91,7 @@ if [ -z $(echo ${DRAMS} | xargs) ]; then
     exit 1
 fi
 
-export FAIR_HOME="$([[ $INSTALL_DIR = /* ]] && echo $INSTALL_DIR || echo $PWD/${INSTALL_DIR#./})/registry"
+export FAIR_HOME="$([[ $INSTALL_DIR = /* ]] && echo $INSTALL_DIR || echo $PWD/${INSTALL_DIR#./})"
 echo "Installing to '$FAIR_HOME'"
 
 mkdir -p "$FAIR_HOME"
