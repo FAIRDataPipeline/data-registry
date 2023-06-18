@@ -7,6 +7,7 @@ from django.views import generic
 from django.utils.text import camel_case_to_spaces
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from django.contrib.sites.models import Site
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 
@@ -195,7 +196,7 @@ def get_data(request, name):
     """
     check = True
     try:
-        storage_root = models.StorageRoot.objects.get(Q(name=settings.CONFIG.get('storage', 'storage_root')))
+        storage_root = models.StorageRoot.objects.get(Q(root__contains=Site.objects.get_current().domain))
         location = models.StorageLocation.objects.get(Q(storage_root=storage_root) & Q(path=name))
         object = models.Object.objects.get(storage_location=location)
     except:

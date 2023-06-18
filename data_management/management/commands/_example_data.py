@@ -786,28 +786,27 @@ def init_db():
     object_component_26.outputs_of.add(code_run_5)
 
     namespace_1 = Namespace.objects.get_or_create(
-        name="user_1",
-        full_name="Example user 1",
-        updated_by=user,
+        name="PSU",
+        full_name = "Pennsylvania State University",
+        defaults={'website': 'https://ror.org/04p491231', 'updated_by' : user},
     )[0]
 
     namespace_2 = Namespace.objects.get_or_create(
-        name="PSU",
-        full_name="Pennsylvania State University",
-        website="https://ror.org/04p491231",
-        updated_by=user,
+        name="user_1",
+        full_name = 'Example user 1', 
+        defaults={'updated_by' : user},
     )[0]
 
     namespace_3 = Namespace.objects.get_or_create(
         name="user_3",
-        full_name="Example user 3",
-        updated_by=user,
+        full_name = "Example user 3",
+        defaults={'updated_by' : user},
     )[0]
 
     namespace_4 = Namespace.objects.get_or_create(
         name="user_4",
-        full_name="Example user 4",
-        updated_by=user,
+        full_name = "Example user 4",
+        defaults={'updated_by' : user},
     )[0]
 
     data_product_1 = DataProduct.objects.get_or_create(
@@ -815,7 +814,7 @@ def init_db():
         version="1.0.0",
         updated_by=user,
         object=object_1,
-        namespace=namespace_2,
+        namespace=namespace_1,
     )[0]
 
     DataProduct.objects.get_or_create(
@@ -823,7 +822,7 @@ def init_db():
         version="0.0.1",
         updated_by=user,
         object=object_5,
-        namespace=namespace_1,
+        namespace=namespace_2,
     )
 
     DataProduct.objects.get_or_create(
@@ -831,7 +830,7 @@ def init_db():
         version="0.0.1",
         updated_by=user,
         object=object_6,
-        namespace=namespace_1,
+        namespace=namespace_2,
     )
 
     DataProduct.objects.get_or_create(
@@ -847,7 +846,7 @@ def init_db():
         version="0.0.1",
         updated_by=user,
         object=object_14,
-        namespace=namespace_1,
+        namespace=namespace_2,
     )
 
     DataProduct.objects.get_or_create(
@@ -855,7 +854,7 @@ def init_db():
         version="0.0.1",
         updated_by=user,
         object=object_15,
-        namespace=namespace_1,
+        namespace=namespace_2,
     )
 
     DataProduct.objects.get_or_create(
@@ -879,7 +878,7 @@ def init_db():
         version="0.0.1",
         updated_by=user,
         object=object_24,
-        namespace=namespace_1,
+        namespace=namespace_2,
     )
 
     DataProduct.objects.get_or_create(
@@ -887,14 +886,15 @@ def init_db():
         version="0.0.1",
         updated_by=user,
         object=object_25,
-        namespace=namespace_1,
+        namespace=namespace_2,
     )
 
     ExternalObject.objects.get_or_create(
+        identifier="https://doi.org/10.1038/s41592-020-0856-2",
         alternate_identifier="SEIRS model parameters - Static parameters of the model",
         alternate_identifier_type="SEIRS_model_params",
         primary_not_supplement=True,
-        release_date="2020-06-01T12:00:00Z",
+        release_date="2021-09-20T12:00",
         title="Static parameters of the model",
         version="1.0.0",
         updated_by=user,

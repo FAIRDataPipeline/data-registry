@@ -25,3 +25,6 @@ CACHES = {
         }
     }
 }
+
+CONFIG_LOCATION = os.path.join(os.path.expanduser('~'), 'config.ini')
+CACHE_DURATION = 300

@@ -6,7 +6,7 @@ from . import settings
 
 def create_url(path, method, filename=None):
     expiry_time = int(time.time() + int(settings.CONFIG.get('storage', 'duration')))
-    path = '/v1/' + settings.CONFIG.get('storage', 'bucket') + '/' + path
+    path = settings.CONFIG.get('storage', 'bucket') + '/' + path
     if method == 'GET':
         hmac_body = '%s\n%s\n%s' % ('GET', expiry_time, path)
     elif method == 'PUT':

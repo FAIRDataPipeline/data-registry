@@ -14,6 +14,7 @@ from django_filters.rest_framework import DjangoFilterBackend, filterset
 from django_filters import constants, filters
 from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 
@@ -21,6 +22,7 @@ from data_management import models, object_storage, settings
 from data_management import object_storage
 from data_management.rest import serializers
 from data_management.prov import generate_prov_document, serialize_prov_document
+from data_management.rocrate import generate_ro_crate_from_dp, generate_ro_crate_from_cr, serialize_ro_crate
 
 
 class BadQuery(APIException):
@@ -106,6 +108,19 @@ class TextRenderer(renderers.BaseRenderer):
         return data['text']
 
 
+class ZipRenderer(renderers.BaseRenderer):
+    """
+    Custom renderer for returning zip data.
+    """
+    media_type = 'application/zip'
+    format = 'zip'
+    charset = None
+    render_style = 'binary'
+
+    def render(self, data, media_type=None, renderer_context=None):
+        return data
+
+
 class ProvReportView(views.APIView):
     """
     ***The provenance report for a `DataProduct`.***
@@ -176,6 +191,165 @@ class ProvReportView(views.APIView):
             show_attributes=bool(show_attributes)
         )
         return Response(value)
+
+
+class CodeRunROCrateView(views.APIView):
+    """
+***The RO Crate for a `CodeRun`.***
+
+An RO Crate is research object (RO) that has been packaged up, in this case as a zip
+file. This research object is centred around a `CodeRun`. All output `DataProduct` files
+are packaged up along with any other local files that were used to produce them.
+Also included in the RO Crate is the metadata file `ro-crate-metadata.json`. The
+`ro-crate-metadata.json` file is made available under the
+[CC0 Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/).
+Please note individual files may have their own licenses.
+All of the packaged files are represented as `File` data entities in the metadata file.
+
+External files may point directly to data, in which case they will be used directly as
+inputs to a `CodeRun`. External files will have a link to them in the metadata file, but
+will not be packaged in the zip file. However, it maybe that data has had to be
+extracted from an external file before it can be used by a `CodeRun`, i.e. from a
+journal article, In which case there will be an associated `DataProduct` that would have
+been made to contain the data so that it can be used in a `CodeRun`. If this is the case
+the relationship between the external file and `DataProduct` is modelled as a RO Crate
+`ContextEntity` of type `CreateAction`.
+
+The `CodeRun` has been modelled as a RO Crate `ContextEntity` of type `CreateAction`,
+see
+[software-used-to-create-files](https://www.researchobject.org/ro-crate/1.1/provenance.html#software-used-to-create-files).
+
+A `CreateAction` has `instrument` property, which represents the software used to
+generate the product. For our purposes `instrument` is the link to the repo.
+
+`CreateAction` (`CodeRun`) properties:
+
+* `instrument`: the software used to generate the output
+* `object`: the input files
+* `result`: the output file
+* `agent`: the `Author`
+
+The RO Crate is available as a `zip` file.
+
+The contents of the ro-crate-metadata file can be viewed as `JSON` or `JSON-LD`.
+
+### Query parameters:
+
+`depth` (optional): An integer used to determine how many code runs to include,
+the default is 1.
+
+    """
+    renderer_classes = [renderers.BrowsableAPIRenderer, renderers.JSONRenderer,
+                        JSONLDRenderer, ZipRenderer]
+
+    def get(self, request, pk):
+        code_run = get_object_or_404(models.CodeRun, pk=pk)
+
+        default_depth = 1
+        depth = request.query_params.get('depth', default_depth)
+        try:
+            depth = int(depth)
+        except ValueError:
+            depth = default_depth
+        if depth < 1:
+            depth = 1
+
+        crate = generate_ro_crate_from_cr(code_run, depth, request)
+
+        return Response(serialize_ro_crate(crate, request.accepted_renderer.format))
+
+
+class DataProductROCrateView(views.APIView):
+    """
+***The RO Crate for a `DataProduct`.***
+
+An RO Crate is research object (RO) that has been packaged up, in this case as a zip
+file. This research object is centred around the creation of a `DataProduct`. The
+`DataProduct` file is packaged up along with any other local files that were used to
+produce it. Also included in the RO Crate is the metadata file `ro-crate-metadata.json`.
+The `ro-crate-metadata.json` file is made available under the
+[CC0 Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/).
+Please note individual files may have their own licenses.
+All of the packaged files are represented as `File` data entities in the metadata file.
+
+External files may point directly to data, in which case they will be used directly as
+inputs to a `CodeRun`. External files will have a link to them in the metadata file, but
+will not be packaged in the zip file. However, it maybe that data has had to be
+extracted from an external file before it can be used by a `CodeRun`, i.e. from a
+journal article, In which case there will be an associated `DataProduct` that would have
+been made to contain the data so that it can be used in a `CodeRun`. If this is the case
+the relationship between the external file and `DataProduct` is modelled as a RO Crate
+`ContextEntity` of type `CreateAction`.
+
+The `CodeRun` has been modelled as a RO Crate `ContextEntity` of type `CreateAction`,
+see
+[software-used-to-create-files](https://www.researchobject.org/ro-crate/1.1/provenance.html#software-used-to-create-files).
+
+A `CreateAction` has `instrument` property, which represents the software used to
+generate the product. For our purposes `instrument` is the link to the repo.
+
+`CreateAction` (`CodeRun`) properties:
+
+* `instrument`: the software used to generate the output
+* `object`: the input files
+* `result`: the output file
+* `agent`: the `Author`
+
+The RO Crate is available as a `zip` file.
+
+The contents of the ro-crate-metadata file can be viewed as `JSON` or `JSON-LD`.
+
+### Query parameters:
+
+`depth` (optional): An integer used to determine how many code runs to include,
+the default is 1.
+
+    """
+
+    renderer_classes = [renderers.BrowsableAPIRenderer, renderers.JSONRenderer,
+                        JSONLDRenderer, ZipRenderer]
+
+    def get(self, request, pk):
+        data_product = get_object_or_404(models.DataProduct, pk=pk)
+
+        default_depth = 1
+        depth = request.query_params.get('depth', default_depth)
+        try:
+            depth = int(depth)
+        except ValueError:
+            depth = default_depth
+        if depth < 1:
+            depth = 1
+
+        crate = generate_ro_crate_from_dp(data_product, depth, request)
+
+        return Response(serialize_ro_crate(crate, request.accepted_renderer.format))
+
+
+class DataExtractionView(views.APIView):
+
+    def get(self, request, pk):
+        data_product = get_object_or_404(models.DataProduct, pk=pk)
+
+        # check for external object linked to the data product
+        try:
+            external_object = data_product.external_object
+        except (models.DataProduct.external_object.RelatedObjectDoesNotExist,):
+            # no external object
+            raise Http404("DataProduct was not derived from an external object")
+
+        if external_object.primary_not_supplement is True:
+            # the data_product was NOT derived from the external object
+            raise Http404("DataProduct was not derived from an external object")
+
+        context = {"id": f"{request.build_absolute_uri('/')}api/data_extraction/{data_product.id}",
+                   "name": f"data extraction {pk}",
+                   "startTime": data_product.last_updated.isoformat(),
+                   "description": "import/extract data from an external source",
+                   "data_product": f"{request.build_absolute_uri('/')}api/data_product/{data_product.id}",
+                   "external_product": f"{request.build_absolute_uri('/')}api/external_object/{external_object.id}",
+                   }
+        return Response(context)
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
@@ -364,6 +538,8 @@ class DataProductViewSet(BaseViewSet, mixins.UpdateModelMixin):
     def create(self, request, *args, **kwargs):
         if 'prov_report' not in request.data:
             request.data['prov_report'] = []
+        if 'ro_crate' not in request.data:
+            request.data['ro_crate'] = ""
         return super().create(request, *args, **kwargs)
 
 

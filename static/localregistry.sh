@@ -11,6 +11,7 @@ while [ -n "$1" ]; do
         INSTALL_DIR=$2
         ;;
         -h|--help)
+            echo "Script to install a local registry with options to specify the DRAMS settings file, directory and git branch or tag"
             echo "/bin/bash -c localregistry.sh [-d <install-directory>]"
             echo "                               [-t <git-tag> | -b <git-branch> | -p | -m ]"
             echo ""
@@ -80,4 +81,5 @@ export DJANGO_SETTINGS_MODULE="drams.local-settings"
 export DJANGO_SUPERUSER_USERNAME=admin
 export DJANGO_SUPERUSER_PASSWORD=admin
 cd "$FAIR_HOME"/scripts || exit
+chmod +x rebuild-local.sh
 ./rebuild-local.sh

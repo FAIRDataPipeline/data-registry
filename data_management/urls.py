@@ -6,6 +6,7 @@ from rest_framework import routers
 from . import views, models, tables
 from .rest import views as api_views
 from . import settings
+from django.conf import settings as conf_settings
 
 router = routers.DefaultRouter()
 router.register(r'users', api_views.UserViewSet)
@@ -15,10 +16,7 @@ for name in models.all_models:
     url_name = camel_case_to_spaces(name).replace(' ', '_')
     router.register(url_name, getattr(api_views, name + 'ViewSet'), basename=name.lower())
 
-if settings.REMOTE_REGISTRY:
-    cache_duration = 300
-else:
-    cache_duration = 0
+cache_duration = conf_settings.CACHE_DURATION
 
 urlpatterns = [
     path('', views.index, name='index'),
@@ -26,6 +24,9 @@ urlpatterns = [
     path('issue/<int:pk>', views.IssueDetailView.as_view(), name='issue'),
     path('api/', include(router.urls)),
     path('api/prov-report/<int:pk>/', cache_page(cache_duration)(api_views.ProvReportView.as_view()), name='prov_report'),
+    path('api/ro-crate/data-product/<int:pk>/', cache_page(cache_duration)(api_views.DataProductROCrateView.as_view()), name='data_product_ro_crate'),
+    path('api/ro-crate/code-run/<int:pk>/', cache_page(cache_duration)(api_views.CodeRunROCrateView.as_view()), name='code_run_ro_crate'),
+    path('api/data_extraction/<int:pk>/', cache_page(cache_duration)(api_views.DataExtractionView.as_view()), name='data_extraction'),
     path('get-token', views.get_token, name='get_token'),
     path('revoke-token', views.revoke_token, name='revoke_token'),
     path('docs/', cache_page(cache_duration)(views.doc_index), name='docs_index'),
