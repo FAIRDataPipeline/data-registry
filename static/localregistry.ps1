@@ -93,7 +93,9 @@ if ($GIT_BRANCH -ne $null) {
 	git clone https://github.com/FAIRDataPipeline/data-registry.git -b ${GIT_BRANCH} ${FAIR_HOME} *> $null
 } else {
 	git clone https://github.com/FAIRDataPipeline/data-registry.git ${FAIR_HOME} *> $null
-	$GIT_TAG = git -C ${FAIR_HOME} for-each-ref refs/tags --sort=-taggerdate --format='%(refname:short)' --count=1
+	foreach ($CURRENT_TAG in $(git -C $FAIR_HOME describe --abbrev=0 --tags)){
+		$GIT_TAG = $CURRENT_TAG
+	}
 	Write-Host "GIT_TAG set to $GIT_TAG"
 }
 if ($GIT_TAG -ne $null) {
