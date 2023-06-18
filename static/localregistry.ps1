@@ -46,30 +46,58 @@ else
 $FAIR_HOME = "$Env:homedrive$Env:homepath\.fair\registry"
 
 # Check Parameters
-if ($d -ne "") {
-	if ($directory -ne "") {
-		$FAIR_HOME = "$directory\registry"
-	} else {
-		$FAIR_HOME = "$d\registry"
+if ($directory -eq "") {
+	if ($d -ne "") {
+		$FAIR_HOME = "$d"
 	}
+} else {
+	$FAIR_HOME = "$directory"
 } 
-if ($b -ne "") {
-	if ($branch -ne "") {
-		$GIT_BRANCH = $branch
-	} else {
+
+if ($branch -eq "") {
+	if ($b -ne "") {
 		$GIT_BRANCH = $b
 	}
+} else {
+	$GIT_BRANCH = $branch
 }
-if ($t -ne "") {
-	if ($tag -ne "") {
-		$GIT_TAG = $tag
-	} else {
+
+if ($tag -eq "") {
+	if ($t -ne "") {
 		$GIT_TAG = $t
 	}
+} else {
+	$GIT_TAG = $tag
 }
+
+if ($settings -eq "") {
+	if ($s -ne "") {
+		$DRAMS = $s
+	}
+} else {
+	$DRAMS = $settings
+}
+
+if ($password -eq "") {
+	if ($p -ne "") {
+		$SUPERUSER_PASSWORD = $p
+	}
+} else {
+	$SUPERUSER_PASSWORD = $password
+}
+
+if ($username -eq "") {
+	if ($u -ne "") {
+		$SUPERUSER_USERNAME = $u
+	}
+} else {
+	$SUPERUSER_USERNAME = $username
+}
+
 if ($m -Or $main) {
 	$GIT_BRANCH = "main"
 }
+
 if ($h) {
 	Write-Host "Windows powershell script to install the local registry with options to specify the directory and git branch or tag"
 	Write-Host "Usage localregistry.ps1"

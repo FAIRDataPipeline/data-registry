@@ -52,51 +52,58 @@ else
 $FAIR_HOME = "$Env:homedrive$Env:homepath\.fair\registry-rem"
 
 # Check Parameters
-if ($d -ne "") {
-	if ($directory -ne "") {
-		$FAIR_HOME = "$directory"
-	} else {
+if ($directory -eq "") {
+	if ($d -ne "") {
 		$FAIR_HOME = "$d"
 	}
+} else {
+	$FAIR_HOME = "$directory"
 } 
-if ($b -ne "") {
-	if ($branch -ne "") {
-		$GIT_BRANCH = $branch
-	} else {
+
+if ($branch -eq "") {
+	if ($b -ne "") {
 		$GIT_BRANCH = $b
 	}
+} else {
+	$GIT_BRANCH = $branch
 }
-if ($t -ne "") {
-	if ($tag -ne "") {
-		$GIT_TAG = $tag
-	} else {
+
+if ($tag -eq "") {
+	if ($t -ne "") {
 		$GIT_TAG = $t
 	}
+} else {
+	$GIT_TAG = $tag
 }
-if ($s -ne "") {
-	if ($settings -ne "") {
-		$DRAMS = $settings
-	} else {
+
+if ($settings -eq "") {
+	if ($s -ne "") {
 		$DRAMS = $s
 	}
+} else {
+	$DRAMS = $settings
 }
-if ($p -ne "") {
-	if ($password -ne "") {
-		$SUPERUSER_PASSWORD = $password
-	} else {
+
+if ($password -eq "") {
+	if ($p -ne "") {
 		$SUPERUSER_PASSWORD = $p
 	}
+} else {
+	$SUPERUSER_PASSWORD = $password
 }
-if ($u -ne "") {
-	if ($username -ne "") {
-		$SUPERUSER_USERNAME = $username
-	} else {
+
+if ($username -eq "") {
+	if ($u -ne "") {
 		$SUPERUSER_USERNAME = $u
 	}
+} else {
+	$SUPERUSER_USERNAME = $username
 }
+
 if ($m -Or $main) {
 	$GIT_BRANCH = "main"
 }
+
 if ($h) {
 	Write-Host "Windows powershell script to install a remote registry with options to specify the Directory, DRAMS settings file and superuser username and password"
 	Write-Host "Usage remoteregistry.ps1"
