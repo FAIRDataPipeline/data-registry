@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-INSTALL_DIR=$HOME/.fair/registry
+INSTALL_DIR=$HOME/.fair/registry-rem
 while [ -n "$1" ]; do
     case $1 in
         -d|--directory)

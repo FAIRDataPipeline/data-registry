@@ -49,7 +49,7 @@ else
     $g
 }
 
-$FAIR_HOME = "$Env:homedrive$Env:homepath\.fair\registry"
+$FAIR_HOME = "$Env:homedrive$Env:homepath\.fair\registry-rem"
 
 # Check Parameters
 if ($d -ne "") {

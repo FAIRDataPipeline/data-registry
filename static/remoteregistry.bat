@@ -35,7 +35,7 @@ for /f "delims=" %%V in ('git --version') do @set ver=%%V
 echo Git, %ver% is installed, continuing...
 
 ::	Set Default Directory
-set FAIR_HOME="%homedrive%%homepath%\.fair\registry"
+set FAIR_HOME="%homedrive%%homepath%\.fair\registry-rem"
 :: Unset any previous variables
 set "GIT_TAG="
 set "GIT_BRANCH="
