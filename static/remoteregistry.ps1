@@ -54,9 +54,9 @@ $FAIR_HOME = "$Env:homedrive$Env:homepath\.fair\registry"
 # Check Parameters
 if ($d -ne "") {
 	if ($directory -ne "") {
-		$FAIR_HOME = "$directory\registry"
+		$FAIR_HOME = "$directory"
 	} else {
-		$FAIR_HOME = "$d\registry"
+		$FAIR_HOME = "$d"
 	}
 } 
 if ($b -ne "") {

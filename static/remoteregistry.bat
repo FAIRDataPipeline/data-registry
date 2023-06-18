@@ -53,7 +53,7 @@ if not "%1" == "" (
 			echo No Directory Provided.
 			exit /b 1
 		)
-		set FAIR_HOME=%2\registry
+		set FAIR_HOME=%2
 		shift
 	)
 	

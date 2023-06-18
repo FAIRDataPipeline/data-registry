@@ -4,8 +4,8 @@ param (
 	[int]$port,
 	[string]$a,
 	[string]$address,
-	[string]$s
-	[string]$settings
+	[string]$s,
+	[string]$settings,
 	[switch]$b,
 	[switch]$background,
 	[switch]$h)
