@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows-tests:
+    runs-on: windows-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    - name: Set up python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+        architecture: 'x64'
+    - name: Create venv
+      run: |
+        # Create venv
+        python3 -m venv .venv
+    - name: Branch name
+      id: branch_name
+      run: |
+        echo "SOURCE_BRANCH=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+        echo "SOURCE_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      shell: bash
+    - name: Deploy registry
+      if: startsWith(github.ref, 'refs/tags/') != true
+      shell: cmd
+      run: |
+        # Activate venv
+        .venv\Scripts\activate
+        pip3 install fair-cli
+        mkdir ${{ github.workspace }}\rem-registry
+        cd ${{ github.workspace }}\rem-registry
+        curl -o remoteregistry.ps1 https://raw.githubusercontent.com/FAIRDataPipeline/data-registry/%SOURCE_BRANCH%/static/remoteregistry.ps1
+        ./remoteregistry.ps1 -d ${{ github.workspace }}\rem-registry\registry -s drams.test-remote-settings -u admin -p admin
+        ${{ github.workspace }}\rem-registry\registry -p 8001 -s drams.test-remote-settings -b
+        dir ${{ github.workspace }}\rem-registry\registry        
+      env:
+        SOURCE_BRANCH: ${{ steps.branch_name.outputs.SOURCE_BRANCH }}
