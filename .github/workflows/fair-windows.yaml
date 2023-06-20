@@ -39,7 +39,8 @@ jobs:
         dir ${{ github.workspace }}\rem-registry\registry    
         ${{ github.workspace }}\rem-registry\registry\scripts\start_fair_registry_windows.ps1 -p 8001 -s drams.test-remote-settings -b
         dir ${{ github.workspace }}\rem-registry\registry        
-        curl -o regresp.html http://127.0.0.1:8001/api
-        cat regresp.html
+        $Response = Invoke-WebRequest -URI "http://${FULL_ADDRESS}/api"
+        Write-Host "Response Code: $Response.StatusCode"
+        Write-Host "$Response"
       env:
         SOURCE_BRANCH: ${{ steps.branch_name.outputs.SOURCE_BRANCH }}
