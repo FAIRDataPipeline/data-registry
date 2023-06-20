@@ -36,7 +36,7 @@ jobs:
         cd ${{ github.workspace }}\rem-registry
         curl -o remoteregistry.ps1 https://raw.githubusercontent.com/FAIRDataPipeline/data-registry/$env:SOURCE_BRANCH/static/remoteregistry.ps1
         ./remoteregistry.ps1 -d ${{ github.workspace }}\rem-registry\registry -s drams.test-remote-settings -u admin -p admin
-        ${{ github.workspace }}\rem-registry\registry -p 8001 -s drams.test-remote-settings -b
+        ./${{ github.workspace }}\rem-registry\registry -p 8001 -s drams.test-remote-settings -b
         dir ${{ github.workspace }}\rem-registry\registry        
       env:
         SOURCE_BRANCH: ${{ steps.branch_name.outputs.SOURCE_BRANCH }}
