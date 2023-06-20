@@ -44,18 +44,11 @@ jobs:
         Write-Host "$Response"
       env:
         SOURCE_BRANCH: ${{ steps.branch_name.outputs.SOURCE_BRANCH }}
-    - name: Test Registry new block
-      if: startsWith(github.ref, 'refs/tags/') != true
-      run: |
-        .venv\Scripts\activate
-        $Response = Invoke-WebRequest -URI "http://127.0.0.1:8001/api"
-        Write-Host "Response Code: $Response.StatusCode"
-        Write-Host "$Response"
     - name: Test Registry Restart
       if: startsWith(github.ref, 'refs/tags/') != true
       run: |
         .venv\Scripts\activate
-        ${{ github.workspace }}\rem-registry\registry\scripts\start_fair_registry_windows.ps1 -p 8002 -s drams.test-remote-settings -b
-        $Response = Invoke-WebRequest -URI "http://127.0.0.1:8002/api"
+        ${{ github.workspace }}\rem-registry\registry\scripts\start_fair_registry_windows.ps1 -p 8001 -s drams.test-remote-settings -b
+        $Response = Invoke-WebRequest -URI "http://127.0.0.1:8001/api"
         Write-Host "Response Code: $Response.StatusCode"
         Write-Host "$Response"
