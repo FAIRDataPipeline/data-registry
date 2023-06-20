@@ -48,7 +48,7 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/') != true
       run: |
         .venv\Scripts\activate
-        ${{ github.workspace }}\rem-registry\registry\scripts\start_fair_registry_windows.ps1 -p 8001 -s drams.test-remote-settings -b
+        #${{ github.workspace }}\rem-registry\registry\scripts\start_fair_registry_windows.ps1 -p 8001 -s drams.test-remote-settings -b
         $Response = Invoke-WebRequest -URI "http://127.0.0.1:8001/api"
         Write-Host "Response Code: $Response.StatusCode"
         Write-Host "$Response"

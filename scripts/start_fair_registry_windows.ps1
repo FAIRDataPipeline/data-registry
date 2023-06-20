@@ -63,7 +63,7 @@ Push-Location $FAIR_HOME
 Write-Host "Spawning Server at ${FULL_ADDRESS}"
 
 if ($REG_BACKGROUND) {
-	Start-Process "${FAIR_HOME}\venv\Scripts\python" -NoNewWindow -Args "${FAIR_HOME}\manage.py runserver ${FULL_ADDRESS}" -RedirectStandardError "${FAIR_HOME}\output_error.log" -RedirectStandardOutput "${FAIR_HOME}\output.log"
+	Start-Process "${FAIR_HOME}\venv\Scripts\pythonw" -NoNewWindow -Args "${FAIR_HOME}\manage.py runserver ${FULL_ADDRESS}" -RedirectStandardError "${FAIR_HOME}\output_error.log" -RedirectStandardOutput "${FAIR_HOME}\output.log"
 } else {
 	Start-Process "${FAIR_HOME}\venv\Scripts\python" -Args "${FAIR_HOME}\manage.py runserver ${FULL_ADDRESS}" -RedirectStandardError "${FAIR_HOME}\output_error.log" -RedirectStandardOutput "${FAIR_HOME}\output.log"
 }
