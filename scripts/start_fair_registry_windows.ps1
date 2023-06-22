@@ -101,7 +101,7 @@ if ($Response.StatusCode -ne 200) {
 }
 
 Write-Host "Server Started Successfully"
-Start-Process "${FAIR_HOME}\venv\Scripts\python" -NoNewWindow -Args "${FAIR_HOME}\manage.py get_token" -RedirectStandardOutput "${FAIR_HOME}\token"
+Start-Process "${FAIR_HOME}\venv\Scripts\python" -Wait -Args "${FAIR_HOME}\manage.py get_token" -RedirectStandardOutput "${FAIR_HOME}\token" -RedirectStandardError "${FAIR_HOME}\token-error"
 Write-Host "Token Available at ${FAIR_HOME}\token"
 
 if ($REG_BACKGROUND) {
