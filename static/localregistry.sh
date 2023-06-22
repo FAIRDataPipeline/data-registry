@@ -66,9 +66,12 @@ elif [ ! -z $(echo ${GIT_PRE_RELEASE} | xargs) ]; then
     cd "$FAIR_HOME"
     git checkout tags/$TAG > /dev/null 2>&1
 else
-    TAG=`curl --silent "https://api.github.com/repos/FAIRDataPipeline/data-registry/releases/latest" | sed -n 's/^.*"tag_name": "\(v.*\)",.*$/\1/p'`
-    echo "Cloning tag $TAG"
     git clone https://github.com/FAIRDataPipeline/data-registry.git "$FAIR_HOME" > /dev/null 2>&1
+    for OUTPUT in $(git -C $FAIR_HOME describe --abbrev=0 --tags)
+    do
+        TAG=$OUTPUT
+    done
+    echo "Cloning tag $TAG"
     cd "$FAIR_HOME"
     git checkout tags/$TAG > /dev/null 2>&1
 fi
