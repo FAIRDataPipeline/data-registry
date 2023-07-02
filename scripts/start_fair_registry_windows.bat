@@ -114,9 +114,9 @@ set DJANGO_SETTINGS_MODULE=%DRAMS%
 @echo Spawning Server at %FULL_ADDRESS%
 
 if %BACKGROUND%==0 (
-	start "" "%FAIR_HOME%\venv\Scripts\python" "%FAIR_HOME%manage.py" runserver %FULL_ADDRESS% 1> "%FAIR_HOME%\output.log" 2>&1
+	start "Fair Registry" "%FAIR_HOME%\venv\Scripts\python" "%FAIR_HOME%manage.py" runserver %FULL_ADDRESS% 1> "%FAIR_HOME%\output.log" 2>&1
 ) else (
-	start /b "" "%FAIR_HOME%\venv\Scripts\python" "%FAIR_HOME%manage.py" runserver %FULL_ADDRESS% 1> "%FAIR_HOME%\output.log" 2>&1
+	start /b "Fair Registry" "%FAIR_HOME%\venv\Scripts\python" "%FAIR_HOME%manage.py" runserver %FULL_ADDRESS% 1> "%FAIR_HOME%\output.log" 2>&1
 )
 
 echo Writing Session and Port Info
