@@ -24,7 +24,7 @@ pushd %FAIR_HOME%
 	set FAIR_HOME=%CD%\
 popd
 
-if not exist %FAIR_HOME: =" "%venv\Scripts\ (
+if not exist "%FAIR_HOME%venv\Scripts\" (
 	echo VENV Direcory does not exist, did you install using local_registry.bat?
 	exit /b 1
 )
