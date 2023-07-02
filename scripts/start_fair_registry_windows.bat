@@ -104,7 +104,7 @@ if not "%1" == "" (
 
 set FULL_ADDRESS=%ADDRESS%:%PORT%
 
-cd /d %FAIR_HOME%
+cd /d "%FAIR_HOME%"
 
 :: Set Environment Variables needed for Django
 set DJANGO_SETTINGS_MODULE=%DRAMS%
