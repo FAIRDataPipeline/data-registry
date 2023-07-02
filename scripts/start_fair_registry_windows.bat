@@ -21,10 +21,10 @@ set FAIR_HOME="%~dp0\..\"
 
 :: Resolve Absolute Filepath
 pushd %FAIR_HOME%
-	set FAIR_HOME=%CD%\
+	set FAIR_HOME=%CD: =" "%\
 popd
 
-if not exist %FAIR_HOME:"=%venv\Scripts\ (
+if not exist %FAIR_HOME%venv\Scripts\ (
 	echo VENV Direcory does not exist, did you install using local_registry.bat?
 	exit /b 1
 )
@@ -114,14 +114,14 @@ set DJANGO_SETTINGS_MODULE=%DRAMS%
 @echo Spawning Server at %FULL_ADDRESS%
 
 if %BACKGROUND%==0 (
-	start %FAIR_HOME:"=%\venv\Scripts\python %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
+	start %FAIR_HOME%\venv\Scripts\python %FAIR_HOME%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME%\output.log 2>&1
 ) else (
-	start /b %FAIR_HOME:"=%\venv\Scripts\python %FAIR_HOME:"=%manage.py runserver %FULL_ADDRESS% 1> %FAIR_HOME:"=%\output.log 2>&1
+	start /b %FAIR_HOME%\venv\Scripts\python %FAIR_HOME%manage.py" runserver %FULL_ADDRESS% 1> %FAIR_HOME%\output.log 2>&1
 )
 
 echo Writing Session and Port Info
-echo %PORT% > %FAIR_HOME:"=%session_port.log
-echo %ADDRESS% > %FAIR_HOME:"=%session_address.log
+echo %PORT% > %FAIR_HOME%session_port.log
+echo %ADDRESS% > %FAIR_HOME%session_address.log
 
 if %ADDRESS%==0.0.0.0 (
 	echo Bound to All Addresses ^(0.0.0.0^) setting to loopback address 127.0.0.1
@@ -142,8 +142,8 @@ set /A count=0
 
 echo Server Started Successfully
 
-call %FAIR_HOME:"=%\venv\Scripts\python %FAIR_HOME:"=%manage.py get_token > %FAIR_HOME:"=%\token 2>&1
-echo Token available at %FAIR_HOME:"=%\token
+call %FAIR_HOME%\venv\Scripts\python %FAIR_HOME%manage.py get_token > %FAIR_HOME%\token 2>&1
+echo Token available at %FAIR_HOME%\token
 
 cd /d %prevwd%
 
