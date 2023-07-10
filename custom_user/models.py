@@ -20,7 +20,7 @@ def _get_user(username):
     for _user in _get_users():
         if "username" in _user:
             if username == _user["username"]:
-                return _get_users()["username"][username]
+                return _user
     return None
 
 def _is_valid_user(username):
