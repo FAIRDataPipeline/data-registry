@@ -1,6 +1,5 @@
 from django.contrib.auth.models import AbstractUser, AbstractBaseUser
 from django.conf import settings
-import mysql.connector as mariadb
 import yaml
 
 from .managers import CustomUserManager
