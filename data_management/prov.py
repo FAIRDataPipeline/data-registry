@@ -741,7 +741,7 @@ def highlight_issues(dot):
                 for cell in row:
                     if (
                         "href" in cell.attrib
-                        and cell.attrib["href"] == "https://data.scrc.uk/vocab/#issue"
+                        and cell.attrib["href"] == "https://data.fairdatapipeline.org/vocab/#issue"
                     ):
                         cell.attrib["bgcolor"] = "red"
             new_label = xml.etree.ElementTree.tostring(table, encoding="unicode")

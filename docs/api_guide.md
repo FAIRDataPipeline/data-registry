@@ -58,7 +58,7 @@ requests.
 
 ```python
 import requests
-r = requests.get('https://data.scrc.uk/api/object/')
+r = requests.get('https://data.fairdatapipeline.org/api/object/')
 
 # 200 is successful request
 assert(r.status_code == 200)
@@ -85,7 +85,7 @@ print(objects[0]["description"])
 
 ```python
 import requests
-r = requests.get('https://data.scrc.uk/api/object/31946/')
+r = requests.get('https://data.fairdatapipeline.org/api/object/31946/')
 
 # 200 is successful request
 assert(r.status_code == 200)
@@ -109,7 +109,7 @@ import requests
 headers = {
     'Authorization': 'token <TOKEN>'
 }
-r = requests.options('https://data.scrc.uk/api/object/31946/', headers=headers)
+r = requests.options('https://data.fairdatapipeline.org/api/object/31946/', headers=headers)
 
 # 200 is successful request
 assert(r.status_code == 200)
@@ -145,9 +145,9 @@ headers = {
 data = {
     "path": "path/to/file",
     "hash": "dae8dd8b2837e2f33979da109109244f0f9e273f",
-    "storage_root": "https://data.scrc.uk/api/storage_root/1/"
+    "storage_root": "https://data.fairdatapipeline.org/api/storage_root/1/"
 }
-r = requests.put('https://data.scrc.uk/api/object/31946/', data, headers=headers)
+r = requests.put('https://data.fairdatapipeline.org/api/object/31946/', data, headers=headers)
 
 # 201 is successful create
 assert(r.status_code == 201)

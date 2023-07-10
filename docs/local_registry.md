@@ -3,7 +3,7 @@
 ## Installation
 To initialise a local registry, run the following command from your terminal:
 ```
-/bin/bash -c "$(curl -fsSL https://data.scrc.uk/static/localregistry.sh)"
+/bin/bash -c "$(curl -fsSL https://data.fairdatapipeline.org/static/localregistry.sh)"
 ```
 This will install the registry and all the related files will be stored in `~/.scrc`.
 

@@ -3,7 +3,7 @@ from .base_settings import *
 with open('/home/ubuntu/secret_key.txt') as f:
     SECRET_KEY = f.read().strip()
 
-ALLOWED_HOSTS = ['data.scrc.uk', '127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['data.fairdatapipeline.org', '127.0.0.1', 'localhost']
 
 DATABASES = {
     'default': {
