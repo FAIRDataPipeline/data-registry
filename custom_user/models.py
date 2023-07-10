@@ -83,5 +83,5 @@ class User(AbstractUser):
     def save(self, *args, **kwargs):
         # This overriding of the save method is necessary because Django by default does not call the
         # full_clean() method and there is where the clean() method is called
-        self.full_clean()
+        self.clean()
         return super().save(*args, **kwargs)
