@@ -73,8 +73,15 @@ class User(AbstractUser):
 
     def clean(self):
         # Skip the AbstractUser.clean as this tries to set self.email
-        if _get_users():
-            if not _is_valid_user(self.username):
-                raise ValidationError(
-                {'username': "Username is not in allowed users"})
+        if not self.is_superuser:
+            if _get_users():
+                if not _is_valid_user(self.username):
+                    raise ValidationError(
+                    {'username': "Username is not in allowed users"})
         AbstractBaseUser.clean(self)
+    
+    def save(self, *args, **kwargs):
+        # This overriding of the save method is necessary because Django by default does not call the
+        # full_clean() method and there is where the clean() method is called
+        self.full_clean()
+        return super().save(*args, **kwargs)
