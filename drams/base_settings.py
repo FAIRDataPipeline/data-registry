@@ -12,8 +12,8 @@ DEBUG = False
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 # The URL of the central public registry
-CENTRAL_REGISTRY_URL = 'https://data.scrc.uk/'
-DOMAIN_URL = "https://data.scrc.uk/"
+CENTRAL_REGISTRY_URL = 'https://data.fairdatapipeline.org/'
+DOMAIN_URL = "https://data.fairdatapipeline.org/"
 
 
 # Application definition
@@ -164,3 +164,5 @@ SOCIALACCOUNT_PROVIDERS = {
 
 CONFIG_LOCATION = ""
 CACHE_DURATION = 0
+
+AUTHORISED_USERS_FILE = ""
