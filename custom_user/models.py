@@ -17,8 +17,10 @@ def _get_users():
     return []
 
 def _get_user(username):
-    if username in _get_users():
-        return _get_users()[username]
+    for _user in _get_users():
+        if "username" in _user:
+            if username == _user["username"]:
+                return _get_users()["username"][username]
     return None
 
 def _is_valid_user(username):
