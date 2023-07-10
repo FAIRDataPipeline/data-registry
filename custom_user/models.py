@@ -50,7 +50,7 @@ def _get_email(username):
 
 def _get_orgs(username):
     if _get("orgs", username):
-        return _get("fullname", username)
+        return _get("orgs", username)
     return []
 
 
