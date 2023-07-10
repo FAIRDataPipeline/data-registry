@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AbstractUser, AbstractBaseUser
+from django.core.exceptions import ValidationError
 from django.conf import settings
 import yaml
 
@@ -20,6 +21,11 @@ def _get_user(username):
         return _get_users()[username]
     return None
 
+def _is_valid_user(username):
+    if _get_user(username):
+        return True
+    return False
+
 def _get(key, username):
     _user = _get_user(username)
     if _user:
@@ -37,7 +43,7 @@ def _get_email(username):
     if _user:
         if "email" in _user:
             return _user["email"]
-    return 'User Not Found'
+    return f'{username}@users.noreply.github.com'
 
 def _get_orgs(username):
     if _get("orgs", username):
@@ -64,4 +70,8 @@ class User(AbstractUser):
 
     def clean(self):
         # Skip the AbstractUser.clean as this tries to set self.email
+        if _get_users():
+            if not _is_valid_user(self.username):
+                raise ValidationError(
+                {'username': "Username is not in allowed users"})
         AbstractBaseUser.clean(self)
