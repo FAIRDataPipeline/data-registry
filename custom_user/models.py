@@ -17,7 +17,8 @@ def _get_users():
     return []
 
 def _get_user(username):
-    for _user in _get_users():
+    _users = _get_users()
+    for _user in _users:
         if "username" in _user:
             if username == _user["username"]:
                 return _user
