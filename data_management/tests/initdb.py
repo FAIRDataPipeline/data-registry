@@ -40,7 +40,7 @@ def init_db(test=True):
 
     sr_textfiles = StorageRoot.objects.create(
         updated_by=user,
-        root='https://data.scrc.uk/api/text_file/',
+        root='https://data.fairdatapipeline.org/api/text_file/',
     )
 
     sr_scot = StorageRoot.objects.create(

@@ -6,7 +6,7 @@ import requests
 import html
 import hashlib
 
-API_ROOT = 'https://data.scrc.uk/api/'
+API_ROOT = 'https://data.fairdatapipeline.org/api/'
 DATA_PRODUCT_ENDPOINT = 'data_product/'
 NAMESPACE_ENDPOINT = 'namespace/'
 STORAGE_LOCATION_ENDPOINT = 'storage_location/'

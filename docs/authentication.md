@@ -5,16 +5,16 @@
 * On the LHS menu, select **OAuth Apps** in **Developer settings**.
 * Click **New OAuth App**. Add the following information:
   * **Application name**: this can be anything
-  * **Homepage URL**: set this to `https://data.scrc.uk/`, for example
-  * **Authorization callback URL**: set this to `https://data.scrc.uk/accounts/github/login/callback/`, for example
+  * **Homepage URL**: set this to `https://data.fairdatapipeline.org/`, for example
+  * **Authorization callback URL**: set this to `https://data.fairdatapipeline.org/accounts/github/login/callback/`, for example
 * Click **Register Application**
 * The provided **Client ID** and **Client Secret** will be required later
 
 
 
 ## Django setup
-* Login to the admin page, e.g. https://data.scrc.uk/admin, as superuser
-* Select **Sites** and edit the **Display name** and **Domain name** so they are set correctly to the external URL (e.g. data.scrc.uk). Save the changes
+* Login to the admin page, e.g. https://data.fairdatapipeline.org/admin, as superuser
+* Select **Sites** and edit the **Display name** and **Domain name** so they are set correctly to the external URL (e.g. data.fairdatapipeline.org). Save the changes
 * Select **Social applications**.
 * Select **Add social application**. Add the following information:
   * **Provider** should be set to `GitHub`
@@ -44,5 +44,5 @@ Authorization: token <token>
 ```
 Example request:
 ```
-curl -i -X POST -H "Content-Type: application/json" -H "Authorization: token <token>" https://data.scrc.uk/api/model/
+curl -i -X POST -H "Content-Type: application/json" -H "Authorization: token <token>" https://data.fairdatapipeline.org/api/model/
 ```
