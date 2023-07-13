@@ -457,7 +457,7 @@ def _get_code_run(crate_data_product, crate, code_run, registry_url):
     user_authors = models.UserAuthor.objects.filter(user=code_run.updated_by)
 
     if len(user_authors) == 0:
-        agent_id = f"{registry_url}api/user/{code_run.updated_by.id}"
+        agent_id = f"{registry_url}api/users/{code_run.updated_by.id}"
         crate.add(
             Person(
                 crate, agent_id, properties={"name": code_run.updated_by.full_name()}
