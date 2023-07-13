@@ -852,7 +852,7 @@ class ProvAPITests(TestCase):
     LREG_CODE_RUN = "lreg:api/code_run/"
     LREG_DATA_PRODUCT = "lreg:api/data_product/"
     LREG_OBJECT = "lreg:api/object/"
-    LREG_USER = "lreg:api/user/"
+    LREG_USER = "lreg:api/users/"
     FAIR_INPUT_DATA = "fair:input_data"
     FAIR_NAMESPACE = "fair:namespace"
     PROV_AGENT = "prov:agent"
