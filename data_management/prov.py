@@ -235,7 +235,7 @@ def _add_code_run(dp_entity, doc, code_run, reg_uri_prefix, vocab_namespaces):
     user_authors = models.UserAuthor.objects.filter(user=code_run.updated_by)
     if len(user_authors) == 0:
         run_agent = doc.agent(
-            f'{reg_uri_prefix}:api/user/{code_run.updated_by.id}',
+            f'{reg_uri_prefix}:api/users/{code_run.updated_by.id}',
             {
                 QualifiedName(
                     vocab_namespaces[RDF_VOCAB_PREFIX], 'type'
