@@ -971,7 +971,7 @@ class ProvAPITests(TestCase):
         )
 
         expected_result = {
-            self.PROV_AT_LOCATION: "https://github.comScottishCovidResponse/SCRCdata repository",
+            self.PROV_AT_LOCATION: "https://github.com/ScottishCovidResponse/SCRCdata repository",
             self.DCTERMS_TITLE: "ScottishCovidResponse/SCRCdata",
             self.DCAT_HAS_VERSION: "0.1.0",
             "fair:website": "https://github.com/ScottishCovidResponse/SCRCdata",
