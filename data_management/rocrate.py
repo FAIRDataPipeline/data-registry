@@ -54,6 +54,8 @@ from rocrate.rocrate import ROCrate
 
 from data_management.views import external_object
 
+import requests
+
 from . import models
 from . import settings
 
@@ -630,7 +632,6 @@ def _get_local_data_product(crate, data_product, registry_url, output):
     @return an RO Crate file entity representing the data product
 
     """
-    _fetch_remote = False
     if (
         data_product.object.storage_location.public is True
         and len(str(data_product.object.storage_location).split(FILE)) > 1
@@ -647,13 +648,18 @@ def _get_local_data_product(crate, data_product, registry_url, output):
         and settings.REMOTE_REGISTRY
     ):
         file_name = str(data_product.object.storage_location).split('/')[-1]
-        source_loc = data_product.object.storage_location.full_uri()
+
+        _url = data_product.object.storage_location.full_uri()
+        tmp = tempfile.NamedTemporaryFile()
+        response = requests.get(_url, allow_redirects = True, verify = False)
+        open(tmp.name, mode= 'wb').write(response.content)
+
+        source_loc = tmp.name
 
         if output:
             dest_path = f"outputs/{file_name}"
         else:
             dest_path = f"inputs/data/{file_name}"
-        _fetch_remote = True
 
     else:
         source_loc = f"{registry_url}api/storage_location/{data_product.object.storage_location.id}"
@@ -677,7 +683,6 @@ def _get_local_data_product(crate, data_product, registry_url, output):
         source_loc,
         dest_path=dest_path,
         properties=properties,
-        fetch_remote = _fetch_remote
     )
 
     return crate_data_product
