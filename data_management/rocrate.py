@@ -638,25 +638,24 @@ def _get_local_data_product(crate, data_product, registry_url, output):
         and len(str(data_product.object.storage_location).split(FILE)) > 1
     ):
         source_loc = str(data_product.object.storage_location).split(FILE)[1]
-        _ext = data_product.object.file_type.extension
 
         if output:
-            dest_path = f"outputs/{source_loc.split('/')[-1]}.{_ext}"
+            dest_path = f"outputs/{source_loc.split('/')[-1]}"
         else:
-            dest_path = f"inputs/data/{source_loc.split('/')[-1]}.{_ext}"
+            dest_path = f"inputs/data/{source_loc.split('/')[-1]}"
 
     elif (
         data_product.object.storage_location.public is True
         and settings.REMOTE_REGISTRY
     ):
         file_name = str(data_product.object.storage_location).split('/')[-1]
-
+        _ext = data_product.object.file_type.extension
         source_loc = data_product.object.storage_location.full_uri()
 
         if output:
-            dest_path = f"outputs/{file_name}"
+            dest_path = f"outputs/{file_name}.{_ext}"
         else:
-            dest_path = f"inputs/data/{file_name}"
+            dest_path = f"inputs/data/{file_name}.{_ext}"
         _fetch_remote = True
 
     else:
