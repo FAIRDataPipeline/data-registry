@@ -639,6 +639,18 @@ def _get_local_data_product(crate, data_product, registry_url, output):
         else:
             dest_path = f"inputs/data/{source_loc.split('/')[-1]}"
 
+    elif (
+        data_product.object.storage_location.public is True
+        and registry_url in str(data_product.object.storage_location)
+    ):
+        file_name = str(data_product.object.storage_location).split('/')[-1]
+        source_loc = data_product.object.storage_location
+
+        if output:
+            dest_path = f"outputs/{file_name}"
+        else:
+            dest_path = f"inputs/data/{file_name}"
+
     else:
         source_loc = f"{registry_url}api/storage_location/{data_product.object.storage_location.id}"
         dest_path = None
@@ -701,6 +713,15 @@ def _get_software(crate, software_object, registry_url, software_type):
     ):
         source_loc = str(software_object.storage_location).split(FILE)[1]
         dest_path = f"inputs/{software_type}/{source_loc.split('/')[-1]}"
+
+    elif (
+        software_object.storage_location.public is True
+        and registry_url in str(software_object.storage_location)
+    ):
+        file_name = str(software_object.storage_location).split('/')[-1]
+        source_loc = software_object.storage_location
+
+        dest_path = f"inputs/{software_type}/{file_name}"
 
     else:
         source_loc = (
