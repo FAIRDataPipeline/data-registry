@@ -730,7 +730,7 @@ def _get_software(crate, software_object, registry_url, software_type):
         and settings.REMOTE_REGISTRY
     ):
         file_name = str(software_object.storage_location).split('/')[-1]
-        source_loc = software_object.object.storage_location.full_uri()
+        source_loc = software_object.storage_location.full_uri()
 
         dest_path = f"inputs/{software_type}/{file_name}"
         _fetch_remote = True
