@@ -632,16 +632,18 @@ def _get_local_data_product(crate, data_product, registry_url, output):
     @return an RO Crate file entity representing the data product
 
     """
+    _fetch_remote = False
     if (
         data_product.object.storage_location.public is True
         and len(str(data_product.object.storage_location).split(FILE)) > 1
     ):
         source_loc = str(data_product.object.storage_location).split(FILE)[1]
+        _ext = data_product.object.file_type.extension
 
         if output:
-            dest_path = f"outputs/{source_loc.split('/')[-1]}"
+            dest_path = f"outputs/{source_loc.split('/')[-1]}.{_ext}"
         else:
-            dest_path = f"inputs/data/{source_loc.split('/')[-1]}"
+            dest_path = f"inputs/data/{source_loc.split('/')[-1]}.{_ext}"
 
     elif (
         data_product.object.storage_location.public is True
@@ -649,17 +651,13 @@ def _get_local_data_product(crate, data_product, registry_url, output):
     ):
         file_name = str(data_product.object.storage_location).split('/')[-1]
 
-        _url = data_product.object.storage_location.full_uri()
-        tmp = tempfile.NamedTemporaryFile(delete=False)
-        response = requests.get(_url, allow_redirects = True, verify = False)
-        open(tmp.name, mode= 'wb').write(response.content)
-
-        source_loc = tmp.name
+        source_loc = data_product.object.storage_location.full_uri()
 
         if output:
             dest_path = f"outputs/{file_name}"
         else:
             dest_path = f"inputs/data/{file_name}"
+        _fetch_remote = True
 
     else:
         source_loc = f"{registry_url}api/storage_location/{data_product.object.storage_location.id}"
@@ -683,6 +681,7 @@ def _get_local_data_product(crate, data_product, registry_url, output):
         source_loc,
         dest_path=dest_path,
         properties=properties,
+        fetch_remote = _fetch_remote
     )
 
     return crate_data_product
@@ -730,9 +729,10 @@ def _get_software(crate, software_object, registry_url, software_type):
         and settings.REMOTE_REGISTRY
     ):
         file_name = str(software_object.storage_location).split('/')[-1]
+        _ext =  software_object.file_type.extension
         source_loc = software_object.storage_location.full_uri()
 
-        dest_path = f"inputs/{software_type}/{file_name}"
+        dest_path = f"inputs/{software_type}/{file_name}.{_ext}"
         _fetch_remote = True
 
     else:
