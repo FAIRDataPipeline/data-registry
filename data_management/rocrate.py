@@ -650,7 +650,7 @@ def _get_local_data_product(crate, data_product, registry_url, output):
         file_name = str(data_product.object.storage_location).split('/')[-1]
 
         _url = data_product.object.storage_location.full_uri()
-        tmp = tempfile.NamedTemporaryFile()
+        tmp = tempfile.NamedTemporaryFile(delete=False)
         response = requests.get(_url, allow_redirects = True, verify = False)
         open(tmp.name, mode= 'wb').write(response.content)
 
