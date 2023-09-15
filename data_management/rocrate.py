@@ -647,7 +647,7 @@ def _get_local_data_product(crate, data_product, registry_url, output):
         and settings.REMOTE_REGISTRY
     ):
         file_name = str(data_product.object.storage_location).split('/')[-1]
-        source_loc = data_product.object.storage_location
+        source_loc = data_product.object.storage_location.full_uri()
 
         if output:
             dest_path = f"outputs/{file_name}"
@@ -725,7 +725,7 @@ def _get_software(crate, software_object, registry_url, software_type):
         and settings.REMOTE_REGISTRY
     ):
         file_name = str(software_object.storage_location).split('/')[-1]
-        source_loc = software_object.storage_location
+        source_loc = software_object.object.storage_location.full_uri()
 
         dest_path = f"inputs/{software_type}/{file_name}"
         _fetch_remote = True
