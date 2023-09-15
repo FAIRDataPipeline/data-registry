@@ -61,6 +61,7 @@ RO_TYPE = "@type"
 FILE = "file:"
 SHA1 = {"sha1": "https://w3id.org/ro/terms/workflow-run#sha1"}
 CLI_URL = "https://github.com/FAIRDataPipeline/FAIR-CLI"
+REMOTE_STORAGE_ROOT = "https://data.fairdatapipeline.org/data/"
 
 
 def _add_authors(authors, crate, entity, registry_url):
@@ -641,7 +642,7 @@ def _get_local_data_product(crate, data_product, registry_url, output):
 
     elif (
         data_product.object.storage_location.public is True
-        and registry_url in str(data_product.object.storage_location)
+        and REMOTE_STORAGE_ROOT in str(data_product.object.storage_location)
     ):
         file_name = str(data_product.object.storage_location).split('/')[-1]
         source_loc = data_product.object.storage_location
@@ -716,7 +717,7 @@ def _get_software(crate, software_object, registry_url, software_type):
 
     elif (
         software_object.storage_location.public is True
-        and registry_url in str(software_object.storage_location)
+        and REMOTE_STORAGE_ROOT in str(software_object.storage_location)
     ):
         file_name = str(software_object.storage_location).split('/')[-1]
         source_loc = software_object.storage_location
