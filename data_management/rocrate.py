@@ -54,13 +54,17 @@ from rocrate.rocrate import ROCrate
 
 from data_management.views import external_object
 
+import requests
+
 from . import models
+from . import settings
 
 
 RO_TYPE = "@type"
 FILE = "file:"
 SHA1 = {"sha1": "https://w3id.org/ro/terms/workflow-run#sha1"}
 CLI_URL = "https://github.com/FAIRDataPipeline/FAIR-CLI"
+REMOTE_STORAGE_ROOT = "https://data.fairdatapipeline.org/data/"
 
 
 def _add_authors(authors, crate, entity, registry_url):
@@ -628,6 +632,7 @@ def _get_local_data_product(crate, data_product, registry_url, output):
     @return an RO Crate file entity representing the data product
 
     """
+    _fetch_remote = False
     if (
         data_product.object.storage_location.public is True
         and len(str(data_product.object.storage_location).split(FILE)) > 1
@@ -638,6 +643,20 @@ def _get_local_data_product(crate, data_product, registry_url, output):
             dest_path = f"outputs/{source_loc.split('/')[-1]}"
         else:
             dest_path = f"inputs/data/{source_loc.split('/')[-1]}"
+
+    elif (
+        data_product.object.storage_location.public is True
+        and settings.REMOTE_REGISTRY
+    ):
+        file_name = str(data_product.object.storage_location).split('/')[-1]
+        _ext = data_product.object.file_type.extension
+        source_loc = data_product.object.storage_location.full_uri()
+
+        if output:
+            dest_path = f"outputs/{file_name}.{_ext}"
+        else:
+            dest_path = f"inputs/data/{file_name}.{_ext}"
+        _fetch_remote = True
 
     else:
         source_loc = f"{registry_url}api/storage_location/{data_product.object.storage_location.id}"
@@ -661,6 +680,7 @@ def _get_local_data_product(crate, data_product, registry_url, output):
         source_loc,
         dest_path=dest_path,
         properties=properties,
+        fetch_remote = _fetch_remote
     )
 
     return crate_data_product
@@ -695,12 +715,24 @@ def _get_software(crate, software_object, registry_url, software_type):
     @return an RO Crate file entity representing the model configuration
 
     """
+    _fetch_remote = False
     if (
         software_object.storage_location.public is True
         and len(str(software_object.storage_location).split(FILE)) > 1
     ):
         source_loc = str(software_object.storage_location).split(FILE)[1]
         dest_path = f"inputs/{software_type}/{source_loc.split('/')[-1]}"
+
+    elif (
+        software_object.storage_location.public is True
+        and settings.REMOTE_REGISTRY
+    ):
+        file_name = str(software_object.storage_location).split('/')[-1]
+        _ext =  software_object.file_type.extension
+        source_loc = software_object.storage_location.full_uri()
+
+        dest_path = f"inputs/{software_type}/{file_name}.{_ext}"
+        _fetch_remote = True
 
     else:
         source_loc = (
@@ -715,6 +747,7 @@ def _get_software(crate, software_object, registry_url, software_type):
             RO_TYPE: ["File", "SoftwareSourceCode"],
             "name": str(software_object.storage_location).split("/")[-1],
         },
+        fetch_remote = _fetch_remote
     )
 
     if software_object.description is not None:
