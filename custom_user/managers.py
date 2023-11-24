@@ -26,3 +26,19 @@ class CustomUserManager(BaseUserManager):
             raise ValueError('Superuser must have is_superuser=True.')
 
         return self._create_user(username, password, **extra_fields)
+
+    def create_user(self, password=None, **kwargs):
+        """Create and return a `User` with an username"""
+
+        username = kwargs.get('username')
+
+        if username is None:
+            raise TypeError("Users must have a username.")
+
+        user = self.model(
+            username = self.model.normalize_username(username)
+        )
+        user.set_password(password)
+        user.save()
+
+        return user

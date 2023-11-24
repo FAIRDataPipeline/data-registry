@@ -38,7 +38,8 @@ urlpatterns = [
     path('external_object/<path:alternate_identifier>:<path:title>@<str:version>', views.external_object, name='get_external_object'),
     path('data/<str:name>', views.get_data),
     path('api/data/<str:checksum>', api_views.ObjectStorageView.as_view()),
-    path('api/data', api_views.ObjectStorageView.as_view())
+    path('api/data', api_views.ObjectStorageView.as_view()),
+    path('logout', views.logout),
 ]
 
 

@@ -6,6 +6,7 @@ from django.shortcuts import render, HttpResponse, redirect
 from django.views import generic
 from django.utils.text import camel_case_to_spaces
 from django.contrib.auth import get_user_model
+from django.contrib.auth import logout as auth_logout
 from django.db.models import Q
 from django.contrib.sites.models import Site
 from rest_framework import status
@@ -293,3 +294,8 @@ def external_object(request, alternate_identifier, title, version):
 
     # External object exists but there is no StorageLocation or original_store
     return HttpResponse(status=204)
+
+def logout(request):
+    """Logs out user"""
+    auth_logout(request)
+    return redirect("/")
