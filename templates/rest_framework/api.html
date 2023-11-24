@@ -1,6 +1,5 @@
 {% extends "rest_framework/base.html" %}
 
-{% load socialaccount %}
 {% load static %}
 
 {% block style %}
@@ -25,7 +24,8 @@ FAIR data registration and management system REST API
     Logged in as: {{ user.username }}
     <a href="/logout">logout</a>
     {% else %}
-    <a href="{% provider_login_url 'github' %}">Log in or sign up using GitHub</a>
+    <a href="{% url 'social:begin' 'github' %}">Login / Signup with GitHub </a>
+    <a href="{% url 'social:begin' 'gitlab' %}">Login / Signup with GitLab </a>
     {% endif %}
   </span>
 {% endif %}

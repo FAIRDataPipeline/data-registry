@@ -1,5 +1,12 @@
 import os
 
+# Bootstrap Breadcrumbs fix
+import django
+from django.utils.encoding import smart_str
+django.utils.encoding.smart_text = smart_str
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -32,11 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.sites',
     'django_extensions',
     'crispy_forms',
-    'dynamic_validator',
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount',
-    'allauth.socialaccount.providers.github',
+    'crispy_bootstrap3',
+    'social_django',
     'custom_user.apps.CustomUserConfig',
     'data_management.apps.DataManagementConfig',
 ]
@@ -64,6 +68,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'social_django.context_processors.backends',
+                'social_django.context_processors.login_redirect',
             ],
         },
     },
@@ -141,8 +147,11 @@ STATICFILES_DIRS = [
 
 AUTHENTICATION_BACKENDS = (
     "django.contrib.auth.backends.ModelBackend",
-    "allauth.account.auth_backends.AuthenticationBackend",
+    'social_core.backends.github.GithubOAuth2',
+    'social_core.backends.gitlab.GitLabOAuth2'
 )
+
+SOCIAL_AUTH_URL_NAMESPACE = 'social'
 
 SITE_ID = 1
 
@@ -152,17 +161,10 @@ ACCOUNT_EMAIL_VERIFICATION = 'none'
 # Redirect authenticated users to this URL
 LOGIN_REDIRECT_URL = 'index'
 
-# Specify required scopes
-SOCIALACCOUNT_PROVIDERS = {
-    'github': {
-        'SCOPE': [
-            'read:user',
-            'user:email',
-        ],
-    }
-}
+CRISPY_TEMPLATE_PACK = 'bootstrap3'
 
 CONFIG_LOCATION = ""
 CACHE_DURATION = 0
 
 AUTHORISED_USER_FILE = ""
+AUTH_METHOD = ""
