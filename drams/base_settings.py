@@ -157,6 +157,7 @@ SITE_ID = 1
 
 # We don't need email verification upon signup as we're using GitHub
 ACCOUNT_EMAIL_VERIFICATION = 'none'
+ACCOUNT_UNIQUE_EMAIL = False
 
 # Redirect authenticated users to this URL
 LOGIN_REDIRECT_URL = 'index'
