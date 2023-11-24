@@ -506,6 +506,21 @@ files = [
 toml = ["tomli"]
 
 [[package]]
+name = "crispy-bootstrap3"
+version = "2022.1"
+description = "Bootstrap3 template pack for django-crispy-forms"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "crispy-bootstrap3-2022.1.tar.gz", hash = "sha256:f62729ed06976caf7fd5fd4fe009c0a702b0705db7765c2b486ba96c64341146"},
+    {file = "crispy_bootstrap3-2022.1-py3-none-any.whl", hash = "sha256:be4908ca997e6ee86cda128c631b3adb33f1db483fd97fa72ae45ca3ad49ad02"},
+]
+
+[package.dependencies]
+django = ">=3.2"
+django-crispy-forms = ">=1.14.0"
+
+[[package]]
 name = "cryptography"
 version = "41.0.5"
 description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
@@ -610,13 +625,13 @@ six = "*"
 
 [[package]]
 name = "django-crispy-forms"
-version = "1.9.2"
+version = "1.14.0"
 description = "Best way to have Django DRY forms"
 optional = false
-python-versions = ">=3.5"
+python-versions = ">=3.7"
 files = [
-    {file = "django-crispy-forms-1.9.2.tar.gz", hash = "sha256:f2f1e0fbb458851636447cfb6be1a611b40c8ac9e41a74ba923011378670b43b"},
-    {file = "django_crispy_forms-1.9.2-py3-none-any.whl", hash = "sha256:888bb316db89b60050a42ec35080facb361d823eec38010ccb0702f45642d3b8"},
+    {file = "django-crispy-forms-1.14.0.tar.gz", hash = "sha256:35887b8851a931374dd697207a8f56c57a9c5cb9dbf0b9fa54314da5666cea5b"},
+    {file = "django_crispy_forms-1.14.0-py3-none-any.whl", hash = "sha256:bc4d2037f6de602d39c0bc452ac3029d1f5d65e88458872cc4dbc01c3a400604"},
 ]
 
 [[package]]
@@ -1992,4 +2007,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8, <4.0"
-content-hash = "18d235322eb322f7bb675480d421e76cbb5308b33cd4225e1c815fb1b4cb6215"
+content-hash = "643dc01bebf7d736bfeda3e27fc774aae20f13968a616deb49803cb531d7ffa2"

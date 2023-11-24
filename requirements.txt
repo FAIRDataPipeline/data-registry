@@ -32,7 +32,7 @@ six==1.14.0
 sqlparse==0.3.1
 urllib3>=1.26.5
 semver>=2.10.2
-django-crispy-forms==1.9.2
+django-crispy-forms==1.14.0
 crispy-bootstrap3==2022.1
 Markdown>=3.2.2
 setuptools>54.2
