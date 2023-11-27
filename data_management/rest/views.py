@@ -567,6 +567,6 @@ for name, cls in models.all_models.items():
 def auth_provider(request):
     """Returns Auth Provider in Json Format"""
     _data = {
-        "Auth_Provider":conf_settings.AUTH_METHOD
+        "auth_provider":conf_settings.AUTH_METHOD
     }
     return JsonResponse(_data)
