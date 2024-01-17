@@ -4,7 +4,6 @@ from uuid import uuid4, UUID
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
-from dynamic_validator import ModelFieldRequiredMixin
 from django.contrib.auth import get_user_model
 
 from . import validators
@@ -15,7 +14,7 @@ CHAR_FIELD_LENGTH = 1024
 TEXT_FIELD_LENGTH = 1024**2
 
 
-class BaseModel(ModelFieldRequiredMixin, models.Model):
+class BaseModel(models.Model):
     """
     Base model for all objects in the database. Used to defined common fields and functionality.
     """

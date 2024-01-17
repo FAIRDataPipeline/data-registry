@@ -14,9 +14,10 @@ from django_filters.rest_framework import DjangoFilterBackend, filterset
 from django_filters import constants, filters
 from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
+from django.conf import settings as conf_settings
 
 from data_management import models, object_storage, settings
 from data_management import object_storage
@@ -563,3 +564,9 @@ for name, cls in models.all_models.items():
         data['renderer_classes'] = BaseViewSet.renderer_classes + [TextRenderer]
     globals()[name + "ViewSet"] = type(name + "ViewSet", (BaseViewSet,), data)
 
+def auth_provider(request):
+    """Returns Auth Provider in Json Format"""
+    _data = {
+        "auth_provider":conf_settings.AUTH_METHOD
+    }
+    return JsonResponse(_data)

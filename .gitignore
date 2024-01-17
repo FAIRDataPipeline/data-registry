@@ -18,3 +18,4 @@ session_port.log
 session_address.log
 coverage.xml
 .coverage
+.DS_Store
