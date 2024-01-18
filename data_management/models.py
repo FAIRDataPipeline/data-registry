@@ -1,3 +1,4 @@
+import os
 import hashlib
 from uuid import uuid4, UUID
 
@@ -493,9 +494,9 @@ class StorageLocation(BaseModel):
         ]
 
     def full_uri(self):
-        if (self.storage_root.root.startswith('/') or self.storage_root.root.startswith('file://')) and not self.storage_root.root.endswith('/'):
-            return self.storage_root.root + '/' + self.path
-        return self.storage_root.root + self.path
+        # ensure we use a relative path before we do the join
+        relative_path = self.path.lstrip("/").lstrip("\\")
+        return os.path.join(self.storage_root.root, relative_path)
 
     def __str__(self):
         return self.full_uri()
