@@ -15,7 +15,7 @@ def create_url(name, method, filename = None):
         response = s3_client.generate_presigned_url('get_object',
                                                         Params={'Bucket': bucket['bucket_name'],
                                                                 'Key': name,
-                                                                'ResponseContentDisposition': f'attachment; filename = {filename}]',},
+                                                                'ResponseContentDisposition': f'attachment; filename = {filename}',},
                                                         ExpiresIn=bucket['duration'])
     else:
         response = s3_client.generate_presigned_url('put_object',
