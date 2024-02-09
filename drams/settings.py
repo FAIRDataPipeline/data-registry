@@ -31,7 +31,7 @@ CACHES = {
 BUCKETS = {
     'default': {
        'url' : '#',
-       'bucket_name:': '#',
+       'bucket_name': '#',
        'access_key': '#',
        'secret_key': '#',
        'duration': '600'

@@ -11,7 +11,7 @@ ALLOWED_HOSTS.extend(
 BUCKETS = {
     'default': {
        'url' : 'http://127.0.0.1:4566/',
-       'bucket_name:': 'fair',
+       'bucket_name': 'fair',
        'access_key': 'AccessKey',
        'secret_key': 'SecretKey',
        'duration': '60'
