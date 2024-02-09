@@ -38,3 +38,4 @@ setuptools>54.2
 whitenoise==5.2.0
 coverage
 rocrate==0.7.0
+boto3>=1.24

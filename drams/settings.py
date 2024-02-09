@@ -5,6 +5,8 @@ with open('/home/ubuntu/secret_key.txt') as f:
 
 ALLOWED_HOSTS = ['data.fairdatapipeline.org', '127.0.0.1', 'localhost']
 
+REMOTE = True
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
@@ -26,5 +28,13 @@ CACHES = {
     }
 }
 
-CONFIG_LOCATION = os.path.join(os.path.expanduser('~'), 'config.ini')
+BUCKETS = {
+    'default': {
+       'url' : '#',
+       'bucket_name': '#',
+       'access_key': '#',
+       'secret_key': '#',
+       'duration': '600'
+    }
+}
 CACHE_DURATION = 300

@@ -1,18 +1,26 @@
-from hashlib import sha1
-import hmac
-import time
+import boto3
 
-from . import settings
+from django.conf import settings
 
-def create_url(path, method, filename=None):
-    expiry_time = int(time.time() + int(settings.CONFIG.get('storage', 'duration')))
-    path = settings.CONFIG.get('storage', 'bucket') + '/' + path
-    if method == 'GET':
-        hmac_body = '%s\n%s\n%s' % ('GET', expiry_time, path)
-    elif method == 'PUT':
-        hmac_body = '%s\n%s\n%s' % ('PUT', expiry_time, path)
-    sig = hmac.new(settings.CONFIG.get('storage', 'key').encode('utf-8'), hmac_body.encode('utf-8'), sha1).hexdigest()
-    url = '%s%s?temp_url_sig=%s&temp_url_expires=%d' % (settings.CONFIG.get('storage', 'url'), path, sig, expiry_time)
-    if filename:
-        url = '%s&filename=%s' % (url, filename)
-    return url
+def create_url(name, method, filename = None):
+    bucket = settings.BUCKETS['default']
+    session = boto3.session.Session()
+    s3_client = session.client(
+        service_name= 's3',
+        aws_access_key_id= bucket['access_key'],
+        aws_secret_access_key= bucket['secret_key'],
+        endpoint_url= bucket['url'],
+    )
+    if method == "GET":
+        response = s3_client.generate_presigned_url('get_object',
+                                                        Params={'Bucket': bucket['bucket_name'],
+                                                                'Key': name,
+                                                                'ResponseContentDisposition': f'attachment; filename = {filename}',},
+                                                        ExpiresIn=bucket['duration'])
+    else:
+        response = s3_client.generate_presigned_url('put_object',
+                                                        Params={'Bucket': bucket['bucket_name'],
+                                                                'Key': name},
+                                                        ExpiresIn=bucket['duration'])
+    
+    return response
