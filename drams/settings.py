@@ -12,9 +12,9 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'scrc',
         'USER': 'scrc',
+        'PASSWORD': 'password',
         'HOST': 'localhost',
         'PORT': '5432',
-        'PASSWORD': 'password'
     }
 }
 
