@@ -9,11 +9,12 @@ REMOTE = True
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'scrc',
         'USER': 'scrc',
         'HOST': 'localhost',
         'PORT': '5432',
+        'PASSWORD': 'password'
     }
 }
 
