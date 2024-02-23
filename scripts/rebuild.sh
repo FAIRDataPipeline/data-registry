@@ -8,6 +8,7 @@ python3 manage.py makemigrations custom_user
 python3 manage.py makemigrations data_management
 python3 manage.py migrate
 python3 manage.py graph_models data_management --arrow-shape crow -X "BaseModel,DataObject,DataObjectVersion" -E -o schema.dot
+python3 manage.py collectstatic --noinput > /dev/null 2>&1
 
 if [ ! -z $(echo ${FAIR_USE_SUPERUSER} | xargs) ]; then
     python3 manage.py createsuperuser --noinput
