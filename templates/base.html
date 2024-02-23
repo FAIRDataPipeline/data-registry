@@ -54,7 +54,7 @@
             {% if is_github %}
             <a href="{% url 'social:begin' 'github' %}">Login / Signup with GitHub </a>
             {% endif %}
-            {% is_auth_method "GitLub" as is_gitlab %}
+            {% is_auth_method "GitLab" as is_gitlab %}
             {% if is_gitlab %}
             <a href="{% url 'social:begin' 'gitlab' %}">Login / Signup with GitLab </a>
             {% endif %}
