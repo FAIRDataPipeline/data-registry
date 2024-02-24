@@ -1,6 +1,6 @@
 from rest_framework import renderers, serializers
 from rest_framework.utils.field_mapping import ClassLookupDict
-
+from data_management import settings
 
 class HTMLFormRenderer(renderers.HTMLFormRenderer):
     """
@@ -89,3 +89,7 @@ class BrowsableAPIRenderer(renderers.BrowsableAPIRenderer):
     Subclassing the BrowsableAPIRenderer to use our custom HTMLFormRenderer.
     """
     form_renderer_class = HTMLFormRenderer
+    def get_context(self, *args, **kwargs):
+        context = super(BrowsableAPIRenderer, self).get_context(*args, **kwargs)
+        context["remote_registry"] = settings.REMOTE_REGISTRY
+        return(context)
