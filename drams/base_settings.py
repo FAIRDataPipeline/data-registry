@@ -162,7 +162,7 @@ ACCOUNT_EMAIL_VERIFICATION = 'none'
 ACCOUNT_UNIQUE_EMAIL = False
 
 # Redirect authenticated users to this URL
-LOGIN_REDIRECT_URL = 'index'
+#LOGIN_REDIRECT_URL = 'index'
 
 CRISPY_TEMPLATE_PACK = 'bootstrap3'
 

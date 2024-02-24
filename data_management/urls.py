@@ -40,6 +40,7 @@ urlpatterns = [
     path('api/data/<str:checksum>', api_views.ObjectStorageView.as_view()),
     path('api/data', api_views.ObjectStorageView.as_view()),
     path('api/auth-provider', api_views.auth_provider),
+    path('api/logout', views.logout),
     path('logout', views.logout),
 ]
 

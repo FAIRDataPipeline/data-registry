@@ -52,11 +52,11 @@
             {% else %}
             {% is_auth_method "GitHub" as is_github %}
             {% if is_github %}
-            <a href="{% url 'social:begin' 'github' %}">Login / Signup with GitHub </a>
+            <a href="{% url 'social:begin' 'github' %}?next={{ request.get_full_path|urlencode }}">Login / Signup with GitHub </a>
             {% endif %}
             {% is_auth_method "GitLab" as is_gitlab %}
             {% if is_gitlab %}
-            <a href="{% url 'social:begin' 'gitlab' %}">Login / Signup with GitLab </a>
+            <a href="{% url 'social:begin' 'gitlab' %}?next={{ request.get_full_path|urlencode }}">Login / Signup with GitLab </a>
             {% endif %}
             {% endif %}
       </span>
