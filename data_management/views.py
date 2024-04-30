@@ -298,4 +298,4 @@ def external_object(request, alternate_identifier, title, version):
 def logout(request):
     """Logs out user"""
     auth_logout(request)
-    return redirect("/")
+    return redirect(request.META.get('HTTP_REFERER', '/'))

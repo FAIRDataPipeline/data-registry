@@ -570,3 +570,18 @@ def auth_provider(request):
         "auth_provider":conf_settings.AUTH_METHOD
     }
     return JsonResponse(_data)
+
+def auth_url(request):
+    """Returns Auth Provider URL in Json Format"""
+    auth_url = None
+    if hasattr(conf_settings, 'SOCIAL_AUTH_GITLAB_API_URL'):
+        if conf_settings.SOCIAL_AUTH_GITLAB_API_URL:
+            auth_url = conf_settings.SOCIAL_AUTH_GITLAB_API_URL
+    if conf_settings.AUTH_METHOD == 'GitLab' and not auth_url:
+        auth_url = "https://gitlab.com"
+    if conf_settings.AUTH_METHOD == 'GitHub' and not auth_url:
+        auth_url = "https://github.com"
+    _data = {
+        "auth_url":auth_url
+    }
+    return JsonResponse(_data)

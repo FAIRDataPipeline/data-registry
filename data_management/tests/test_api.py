@@ -827,8 +827,7 @@ class KeyvalueAPITests(TestCase):
         self.assertEqual(response['Content-Type'], 'application/json')
         results = response.json()['results']
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['key'], 'TestKey2')
-
+        self.assertEqual(results[0]['key'], 'TestKey2')  
 
 class ProvAPITests(TestCase):
 

@@ -1,4 +1,5 @@
 {% extends "rest_framework/base.html" %}
+{% load auth_tags %}
 
 {% load static %}
 
@@ -19,15 +20,21 @@ FAIR data registration and management system REST API
 
 {% block userlinks %}
 {% if remote_registry %}
-  <span class="navbar-text">
-    {% if user.is_authenticated %}
-    Logged in as: {{ user.username }}
-    <a href="/logout">logout</a>
-    {% else %}
-    <a href="{% url 'social:begin' 'github' %}">Login / Signup with GitHub </a>
-    <a href="{% url 'social:begin' 'gitlab' %}">Login / Signup with GitLab </a>
-    {% endif %}
-  </span>
+<span class="navbar-text">
+  {% if user.is_authenticated %}
+  Logged in as: {{ user.username }}
+  <a href="logout">logout</a>
+  {% else %}
+  {% is_auth_method "GitHub" as is_github %}
+  {% if is_github %}
+  <a href="{% url 'social:begin' 'github' %}?next={{ request.get_full_path|urlencode }}">Login / Signup with GitHub </a>
+  {% endif %}
+  {% is_auth_method "GitLab" as is_gitlab %}
+  {% if is_gitlab %}
+  <a href="{% url 'social:begin' 'gitlab' %}?next={{ request.get_full_path|urlencode }}">Login / Signup with GitLab </a>
+  {% endif %}
+  {% endif %}
+</span>
 {% endif %}
 {% endblock %}
 

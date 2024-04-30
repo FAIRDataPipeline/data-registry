@@ -5,6 +5,8 @@ with open('/home/ubuntu/secret_key.txt') as f:
 
 ALLOWED_HOSTS = ['data.fairdatapipeline.org', '127.0.0.1', 'localhost']
 
+DOMAIN_URL = 'https://data.fairdatapipeline.org/'
+
 REMOTE = True
 
 DATABASES = {
