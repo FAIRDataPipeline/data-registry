@@ -35,7 +35,7 @@ source "$FAIR_HOME"/venv/bin/activate
 # see https://www.virtualbox.org/ticket/8761 
 # a work around for this is to use the --ignore-installed option for pip
 python -m pip install --upgrade pip wheel --ignore-installed
-python -m pip install -r "$FAIR_HOME"/local-requirements.txt  --ignore-installed
+python -m pip install -r "$FAIR_HOME"/requirements.txt  --ignore-installed
 
 export DJANGO_SETTINGS_MODULE="drams.vagrant-settings"
 export DJANGO_SUPERUSER_USERNAME=admin

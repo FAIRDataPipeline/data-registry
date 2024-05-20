@@ -79,7 +79,7 @@ fi
 python3 -m venv "$FAIR_HOME"/venv
 source "$FAIR_HOME"/venv/bin/activate
 python -m pip install --upgrade pip wheel
-python -m pip install -r "$FAIR_HOME"/local-requirements.txt
+python -m pip install -r "$FAIR_HOME"/requirements.txt
 export DJANGO_SETTINGS_MODULE="drams.local-settings"
 export DJANGO_SUPERUSER_USERNAME=admin
 export DJANGO_SUPERUSER_PASSWORD=admin
