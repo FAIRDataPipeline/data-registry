@@ -224,7 +224,7 @@ call %FAIR_HOME:"=%\venv\Scripts\activate.bat
 
 :: Install Python Dependencies
 python -m pip install --upgrade pip wheel
-python -m pip install -r "%FAIR_HOME:"=%\local-requirements.txt"
+python -m pip install -r "%FAIR_HOME:"=%\requirements.txt"
 
 :: Change into FAIR HOME directory
 cd /d %FAIR_HOME%
