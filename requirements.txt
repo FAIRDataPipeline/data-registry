@@ -1,4 +1,4 @@
-certifi~=2024.6.2
+certifi
 chardet==3.0.4
 decorator==4.4.2
 defusedxml==0.6.0
