@@ -3,6 +3,7 @@ import hashlib
 from uuid import uuid4, UUID
 
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 from django.db import models
 from django.urls import reverse
 from django.contrib.auth import get_user_model
@@ -57,6 +58,8 @@ class URIField(models.CharField):
     """
     def __init__(self, *args, **kwargs):
         kwargs['max_length'] = 1024
+        kwargs['validators'] = (RegexValidator(regex=r'^[a-zA-Z0-9]+:\/\/.*$',
+                                               message='URIFields must begin with a protocol'),)
         super().__init__(*args, **kwargs)
 
 
