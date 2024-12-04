@@ -28,7 +28,7 @@ jobs:
               fi
       - name: Run Tests
         run: |
-          python -m pip install -r local-requirements.txt
+          python -m pip install -r requirements.txt
           DJANGO_SETTINGS_MODULE=drams.test-settings coverage run --omit=drams,scripts,tools manage.py test 
       - name: Generate XML
         run: coverage xml

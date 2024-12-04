@@ -138,7 +138,7 @@ Write-Host "calling ${FAIR_HOME}\venv\scripts\activate.ps1 to activate virtual e
 
 # Install Python Dependencies
 python -m pip install --upgrade pip wheel
-python -m pip install -r "${FAIR_HOME}\local-requirements.txt"
+python -m pip install -r "${FAIR_HOME}\requirements.txt"
 
 $Env:DJANGO_SETTINGS_MODULE= "drams.local-settings"
 $Env:DJANGO_SUPERUSER_USERNAME= "admin"
