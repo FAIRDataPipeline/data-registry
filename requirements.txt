@@ -14,7 +14,7 @@ gunicorn==22.0.0
 idna==3.7
 isodate==0.6.0
 lxml~=5.0
-mysql-connector-python==8.0.20
+mysql-connector-python==9.1.0
 networkx==3.0
 oauthlib==3.1.0
 protobuf==3.12.2
