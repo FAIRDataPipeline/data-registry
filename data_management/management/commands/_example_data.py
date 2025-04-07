@@ -787,26 +787,26 @@ def init_db():
 
     namespace_1 = Namespace.objects.get_or_create(
         name="PSU",
-        full_name = "Pennsylvania State University",
-        defaults={'website': 'https://ror.org/04p491231', 'updated_by' : user},
+        full_name="Pennsylvania State University",
+        defaults={"website": "https://ror.org/04p491231", "updated_by": user},
     )[0]
 
     namespace_2 = Namespace.objects.get_or_create(
         name="user_1",
-        full_name = 'Example user 1', 
-        defaults={'updated_by' : user},
+        full_name="Example user 1",
+        defaults={"updated_by": user},
     )[0]
 
     namespace_3 = Namespace.objects.get_or_create(
         name="user_3",
-        full_name = "Example user 3",
-        defaults={'updated_by' : user},
+        full_name="Example user 3",
+        defaults={"updated_by": user},
     )[0]
 
     namespace_4 = Namespace.objects.get_or_create(
         name="user_4",
-        full_name = "Example user 4",
-        defaults={'updated_by' : user},
+        full_name="Example user 4",
+        defaults={"updated_by": user},
     )[0]
 
     data_product_1 = DataProduct.objects.get_or_create(

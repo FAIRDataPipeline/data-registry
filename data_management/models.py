@@ -19,19 +19,20 @@ class BaseModel(models.Model):
     """
     Base model for all objects in the database. Used to defined common fields and functionality.
     """
+
     _field_names = None
     updated_by = models.ForeignKey(
-            get_user_model(),
-            on_delete=models.PROTECT,
-            related_name='%(app_label)s_%(class)s_updated',
-            editable=False,
-            verbose_name='last updated by',
-            )
+        get_user_model(),
+        on_delete=models.PROTECT,
+        related_name="%(app_label)s_%(class)s_updated",
+        editable=False,
+        verbose_name="last updated by",
+    )
     last_updated = models.DateTimeField(auto_now=True)
 
     EXTRA_DISPLAY_FIELDS = ()
     REQUIRED_FIELDS = ()
-    FILTERSET_FIELDS = '__all__'
+    FILTERSET_FIELDS = "__all__"
     ADMIN_LIST_FIELDS = ()
 
     def reverse_name(self):
@@ -40,23 +41,27 @@ class BaseModel(models.Model):
     @classmethod
     def field_names(cls):
         if cls._field_names is None:
-            cls._field_names = tuple(field.name for field in cls._meta.get_fields() if field.name != 'id')
+            cls._field_names = tuple(
+                field.name for field in cls._meta.get_fields() if field.name != "id"
+            )
         return cls._field_names
 
     class Meta:
         abstract = True
-        ordering = ['-last_updated']
+        ordering = ["-last_updated"]
 
 
 ###############################################################################
 # Custom Fields
 
+
 class URIField(models.CharField):
     """
     A field type used to specify that a field holds a URI.
     """
+
     def __init__(self, *args, **kwargs):
-        kwargs['max_length'] = 1024
+        kwargs["max_length"] = 1024
         super().__init__(*args, **kwargs)
 
 
@@ -65,9 +70,10 @@ class NameField(models.CharField):
     A field type used to specify that a field holds a simple name, one that we can apply a glob filter to
     when filtering the query.
     """
+
     def __init__(self, *args, **kwargs):
-        kwargs['max_length'] = 1024
-        kwargs['validators'] = (validators.NameValidator(),)
+        kwargs["max_length"] = 1024
+        kwargs["validators"] = (validators.NameValidator(),)
         super().__init__(*args, **kwargs)
 
 
@@ -75,14 +81,16 @@ class VersionField(models.CharField):
     """
     A field type used to specify that a field holds a semantic version.
     """
+
     def __init__(self, *args, **kwargs):
-        kwargs['max_length'] = 1024
-        kwargs['validators'] = (validators.VersionValidator(),)
+        kwargs["max_length"] = 1024
+        kwargs["validators"] = (validators.VersionValidator(),)
         super().__init__(*args, **kwargs)
 
 
 ###############################################################################
 # Traceablity objects
+
 
 class FileType(BaseModel):
     """
@@ -111,14 +119,15 @@ class FileType(BaseModel):
     `updated_by`: Reference to the user that updated this record
 
     """
+
     name = models.TextField(max_length=CHAR_FIELD_LENGTH, null=False, blank=False)
     extension = models.TextField(max_length=CHAR_FIELD_LENGTH, null=False, blank=False)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=('name', 'extension'),
-                name='unique_file_type_name_extension'),
+                fields=("name", "extension"), name="unique_file_type_name_extension"
+            ),
         ]
 
 
@@ -143,23 +152,25 @@ class Issue(BaseModel):
     `updated_by`: Reference to the user that updated this record
     """
 
-    EXTRA_DISPLAY_FIELDS = ('component_issues',)
+    EXTRA_DISPLAY_FIELDS = ("component_issues",)
     SHORT_DESC_LENGTH = 40
 
     severity = models.PositiveSmallIntegerField(default=1)
-    description = models.TextField(max_length=TEXT_FIELD_LENGTH, null=False, blank=False)
+    description = models.TextField(
+        max_length=TEXT_FIELD_LENGTH, null=False, blank=False
+    )
     uuid = models.UUIDField(default=uuid4, editable=True, unique=True)
 
     def short_desc(self):
         if self.description is None:
-            return ''
+            return ""
         elif len(self.description) <= self.SHORT_DESC_LENGTH:
             return self.description
         else:
-            return self.description[:self.SHORT_DESC_LENGTH - 3] + '...'
+            return self.description[: self.SHORT_DESC_LENGTH - 3] + "..."
 
     def __str__(self):
-        return '%s [Severity %s]' % (self.short_desc(), self.severity)
+        return "%s [Severity %s]" % (self.short_desc(), self.severity)
 
 
 class Author(BaseModel):
@@ -181,10 +192,13 @@ class Author(BaseModel):
 
     `updated_by`: Reference to the user that updated this record
     """
-    ADMIN_LIST_FIELDS = ('name', 'identifier')
+
+    ADMIN_LIST_FIELDS = ("name", "identifier")
 
     name = NameField(null=True, blank=False)
-    identifier = models.URLField(max_length=TEXT_FIELD_LENGTH, null=True, blank=False, unique=True)
+    identifier = models.URLField(
+        max_length=TEXT_FIELD_LENGTH, null=True, blank=False, unique=True
+    )
     uuid = models.UUIDField(default=uuid4, editable=True, unique=True)
 
     class Meta:
@@ -201,7 +215,9 @@ class Author(BaseModel):
 
     def save(self, *args, **kwargs):
         if self.identifier:
-            self.uuid = UUID(hashlib.sha256(self.identifier.encode('utf-8')).hexdigest()[::2])
+            self.uuid = UUID(
+                hashlib.sha256(self.identifier.encode("utf-8")).hexdigest()[::2]
+            )
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -224,7 +240,7 @@ class Object(BaseModel):
     `authors` (*optional*): List of `Author` URLs associated with this `Object`
 
     `uuid` (*optional*): UUID of the `Object`. If not specified a UUID is generated automatically.
-    
+
     `file_type` (*optional*): `FileType` of this `Object`
 
     ### Read-only Fields:
@@ -246,20 +262,28 @@ class Object(BaseModel):
 
     `keywords`: List of `Keyword` API URLs associated with this `Object`
     """
-    EXTRA_DISPLAY_FIELDS = (
-        'components',
-        'data_products',
-        'code_repo_release',
-        'quality_control',
-        'licences',
-        'keywords',
-    )
-    ADMIN_LIST_FIELDS = ('name', 'is_orphan')
 
-    storage_location = models.ForeignKey('StorageLocation', on_delete=models.PROTECT, null=True, blank=True,
-                                         related_name='location_for_object')
+    EXTRA_DISPLAY_FIELDS = (
+        "components",
+        "data_products",
+        "code_repo_release",
+        "quality_control",
+        "licences",
+        "keywords",
+    )
+    ADMIN_LIST_FIELDS = ("name", "is_orphan")
+
+    storage_location = models.ForeignKey(
+        "StorageLocation",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="location_for_object",
+    )
     description = models.TextField(max_length=TEXT_FIELD_LENGTH, null=True, blank=True)
-    file_type = models.ForeignKey(FileType, on_delete=models.PROTECT, null=True, blank=True)
+    file_type = models.ForeignKey(
+        FileType, on_delete=models.PROTECT, null=True, blank=True
+    )
     authors = models.ManyToManyField(Author, blank=True)
     uuid = models.UUIDField(default=uuid4, editable=True, unique=True)
 
@@ -268,7 +292,12 @@ class Object(BaseModel):
 
         # Create ObjectComponent representing the whole object
         myself = Object.objects.get(id=self.id)
-        ObjectComponent.objects.create(name='whole_object', object=myself, whole_object=True, updated_by=myself.updated_by)
+        ObjectComponent.objects.create(
+            name="whole_object",
+            object=myself,
+            whole_object=True,
+            updated_by=myself.updated_by,
+        )
 
     def name(self):
         if self.storage_location:
@@ -314,8 +343,17 @@ class UserAuthor(BaseModel):
 
     `updated_by`: Reference to the user that updated this record
     """
-    user = models.OneToOneField(get_user_model(), on_delete=models.PROTECT, related_name='users', null=False, unique=True)
-    author = models.ForeignKey(Author, on_delete=models.PROTECT, null=False, blank=False)
+
+    user = models.OneToOneField(
+        get_user_model(),
+        on_delete=models.PROTECT,
+        related_name="users",
+        null=False,
+        unique=True,
+    )
+    author = models.ForeignKey(
+        Author, on_delete=models.PROTECT, null=False, blank=False
+    )
 
 
 class ObjectComponent(BaseModel):
@@ -345,20 +383,23 @@ class ObjectComponent(BaseModel):
 
     `output_of`: List of `CodeRun` that the `ObjectComponent` was created as an output of
     """
-    ADMIN_LIST_FIELDS = ('object', 'name')
-    EXTRA_DISPLAY_FIELDS = ('inputs_of', 'outputs_of')
 
-    object = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='components', null=False)
+    ADMIN_LIST_FIELDS = ("object", "name")
+    EXTRA_DISPLAY_FIELDS = ("inputs_of", "outputs_of")
+
+    object = models.ForeignKey(
+        Object, on_delete=models.PROTECT, related_name="components", null=False
+    )
     name = NameField(null=False, blank=False)
-    issues = models.ManyToManyField(Issue, related_name='component_issues', blank=True)
+    issues = models.ManyToManyField(Issue, related_name="component_issues", blank=True)
     description = models.TextField(max_length=TEXT_FIELD_LENGTH, null=True, blank=True)
     whole_object = models.BooleanField(default=False)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=('object', 'name'),
-                name='unique_object_component'),
+                fields=("object", "name"), name="unique_object_component"
+            ),
         ]
 
     def __str__(self):
@@ -395,32 +436,56 @@ class CodeRun(BaseModel):
 
     `ro_crate`: The RO Crate containing this `CodeRun` plus any available input and output files
     """
-    ADMIN_LIST_FIELDS = ('description',)
 
-    EXTRA_DISPLAY_FIELDS = (
-        'ro_crate',
+    ADMIN_LIST_FIELDS = ("description",)
+
+    EXTRA_DISPLAY_FIELDS = ("ro_crate",)
+    code_repo = models.ForeignKey(
+        Object,
+        on_delete=models.PROTECT,
+        related_name="code_repo_of",
+        null=True,
+        blank=True,
     )
-    code_repo = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='code_repo_of', null=True, blank=True)
-    model_config = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='config_of', null=True, blank=True)
-    submission_script = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='submission_script_of', null=False, blank=False)
+    model_config = models.ForeignKey(
+        Object,
+        on_delete=models.PROTECT,
+        related_name="config_of",
+        null=True,
+        blank=True,
+    )
+    submission_script = models.ForeignKey(
+        Object,
+        on_delete=models.PROTECT,
+        related_name="submission_script_of",
+        null=False,
+        blank=False,
+    )
     run_date = models.DateTimeField(null=False, blank=False)
-    description = models.CharField(max_length=CHAR_FIELD_LENGTH, null=False, blank=False)
-    inputs = models.ManyToManyField(ObjectComponent, related_name='inputs_of', blank=True)
-    outputs = models.ManyToManyField(ObjectComponent, related_name='outputs_of', blank=True)
+    description = models.CharField(
+        max_length=CHAR_FIELD_LENGTH, null=False, blank=False
+    )
+    inputs = models.ManyToManyField(
+        ObjectComponent, related_name="inputs_of", blank=True
+    )
+    outputs = models.ManyToManyField(
+        ObjectComponent, related_name="outputs_of", blank=True
+    )
     uuid = models.UUIDField(default=uuid4, editable=True, unique=True)
-
 
     def __str__(self):
         if self.code_repo:
-            return '%s run %s' % (self.code_repo, self.description)
+            return "%s run %s" % (self.code_repo, self.description)
         return str(self.uuid)
 
     def ro_crate(self):
-        url = reverse('code_run_ro_crate', kwargs={'pk': self.id})
+        url = reverse("code_run_ro_crate", kwargs={"pk": self.id})
         return url
+
 
 ###############################################################################
 # Metadata objects
+
 
 class StorageRoot(BaseModel):
     """
@@ -446,7 +511,8 @@ class StorageRoot(BaseModel):
 
     `updated_by`: Reference to the user that updated this record
     """
-    EXTRA_DISPLAY_FIELDS = ('locations',)
+
+    EXTRA_DISPLAY_FIELDS = ("locations",)
 
     root = URIField(null=False, blank=False, unique=True)
     local = models.BooleanField(default=False)
@@ -479,18 +545,22 @@ class StorageLocation(BaseModel):
 
     `updated_by`: Reference to the user that updated this record
     """
-    ADMIN_LIST_FIELDS = ('storage_root', 'path')
+
+    ADMIN_LIST_FIELDS = ("storage_root", "path")
 
     path = models.CharField(max_length=PATH_FIELD_LENGTH, null=False, blank=False)
     hash = models.CharField(max_length=CHAR_FIELD_LENGTH, null=False, blank=False)
     public = models.BooleanField(default=True)
-    storage_root = models.ForeignKey(StorageRoot, on_delete=models.PROTECT, related_name='locations')
+    storage_root = models.ForeignKey(
+        StorageRoot, on_delete=models.PROTECT, related_name="locations"
+    )
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=('storage_root', 'hash', 'public'),
-                name='unique_storage_location'),
+                fields=("storage_root", "hash", "public"),
+                name="unique_storage_location",
+            ),
         ]
 
     def full_uri(self):
@@ -520,7 +590,8 @@ class Namespace(BaseModel):
 
     `updated_by`: Reference to the user that updated this record
     """
-    ADMIN_LIST_FIELDS = ('name', 'full_name', 'website')
+
+    ADMIN_LIST_FIELDS = ("name", "full_name", "website")
 
     name = NameField(null=False, blank=False)
     full_name = models.CharField(max_length=CHAR_FIELD_LENGTH, null=True, blank=True)
@@ -528,12 +599,8 @@ class Namespace(BaseModel):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(
-                fields=('name',),
-                name='unique_name'),
-            models.UniqueConstraint(
-                fields=('full_name',),
-                name='unique_full_name'),
+            models.UniqueConstraint(fields=("name",), name="unique_name"),
+            models.UniqueConstraint(fields=("full_name",), name="unique_full_name"),
         ]
 
     def __str__(self):
@@ -567,36 +634,41 @@ class DataProduct(BaseModel):
     `ro_crate`: The RO Crate containing this `DataProduct` plus any available input files
 
     """
-    ADMIN_LIST_FIELDS = ('namespace', 'name', 'version')
+
+    ADMIN_LIST_FIELDS = ("namespace", "name", "version")
 
     EXTRA_DISPLAY_FIELDS = (
-        'external_object',
-        'prov_report',
-        'ro_crate',
+        "external_object",
+        "prov_report",
+        "ro_crate",
     )
 
-    object = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='data_products')
-    namespace = models.ForeignKey(Namespace, on_delete=models.PROTECT, related_name='data_products')
+    object = models.ForeignKey(
+        Object, on_delete=models.PROTECT, related_name="data_products"
+    )
+    namespace = models.ForeignKey(
+        Namespace, on_delete=models.PROTECT, related_name="data_products"
+    )
     name = NameField(null=False, blank=False)
     version = VersionField()
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=('namespace', 'name', 'version'),
-                name='unique_data_product'),
+                fields=("namespace", "name", "version"), name="unique_data_product"
+            ),
         ]
 
     def prov_report(self):
-        url = reverse('prov_report', kwargs={'pk': self.id})
+        url = reverse("prov_report", kwargs={"pk": self.id})
         return url
 
     def ro_crate(self):
-        url = reverse('data_product_ro_crate', kwargs={'pk': self.id})
+        url = reverse("data_product_ro_crate", kwargs={"pk": self.id})
         return url
 
     def __str__(self):
-        return '%s:%s version %s' % (self.namespace, self.name, self.version)
+        return "%s:%s version %s" % (self.namespace, self.name, self.version)
 
 
 class ExternalObject(BaseModel):
@@ -634,50 +706,84 @@ class ExternalObject(BaseModel):
 
     `version`: Version identifier of the `DataProduct` associated with this `ExternalObject`
     """
-    ADMIN_LIST_FIELDS = ('identifier', 'alternate_identifier', 'alternate_identifier_type', 'title', 'version')
 
-    data_product = models.OneToOneField(DataProduct, on_delete=models.PROTECT, related_name='external_object')
+    ADMIN_LIST_FIELDS = (
+        "identifier",
+        "alternate_identifier",
+        "alternate_identifier_type",
+        "title",
+        "version",
+    )
+
+    data_product = models.OneToOneField(
+        DataProduct, on_delete=models.PROTECT, related_name="external_object"
+    )
     identifier = models.URLField(max_length=TEXT_FIELD_LENGTH, null=True, blank=True)
-    alternate_identifier = models.CharField(max_length=CHAR_FIELD_LENGTH, null=True, blank=True)
-    alternate_identifier_type = models.CharField(max_length=CHAR_FIELD_LENGTH, null=True, blank=True)
+    alternate_identifier = models.CharField(
+        max_length=CHAR_FIELD_LENGTH, null=True, blank=True
+    )
+    alternate_identifier_type = models.CharField(
+        max_length=CHAR_FIELD_LENGTH, null=True, blank=True
+    )
     primary_not_supplement = models.BooleanField(default=True)
     release_date = models.DateTimeField()
     title = models.CharField(max_length=CHAR_FIELD_LENGTH)
     description = models.TextField(max_length=TEXT_FIELD_LENGTH, null=True, blank=True)
     version = VersionField(editable=False)
-    original_store = models.ForeignKey(StorageLocation, on_delete=models.PROTECT, related_name='original_store_of', null=True, blank=True)
+    original_store = models.ForeignKey(
+        StorageLocation,
+        on_delete=models.PROTECT,
+        related_name="original_store_of",
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=('identifier', 'alternate_identifier', 'alternate_identifier_type', 'title', 'version'),
-                name='unique_external_object'),
+                fields=(
+                    "identifier",
+                    "alternate_identifier",
+                    "alternate_identifier_type",
+                    "title",
+                    "version",
+                ),
+                name="unique_external_object",
+            ),
             models.CheckConstraint(
                 name="%(app_label)s_%(class)s_identifier_or_alternate_identifier",
                 check=(
-                    (models.Q(identifier__isnull=True) &
-                     models.Q(alternate_identifier__isnull=False) &
-                     models.Q(alternate_identifier_type__isnull=False)) | 
-                    (models.Q(identifier__isnull=False) &
-                     (models.Q(alternate_identifier__isnull=True) &
-                      models.Q(alternate_identifier_type__isnull=True)) |
-                     (models.Q(alternate_identifier__isnull=False) &
-                      models.Q(alternate_identifier_type__isnull=False)))
+                    (
+                        models.Q(identifier__isnull=True)
+                        & models.Q(alternate_identifier__isnull=False)
+                        & models.Q(alternate_identifier_type__isnull=False)
+                    )
+                    | (
+                        models.Q(identifier__isnull=False)
+                        & (
+                            models.Q(alternate_identifier__isnull=True)
+                            & models.Q(alternate_identifier_type__isnull=True)
+                        )
+                        | (
+                            models.Q(alternate_identifier__isnull=False)
+                            & models.Q(alternate_identifier_type__isnull=False)
+                        )
+                    )
                 ),
-            )
+            ),
         ]
 
     def save(self, *args, **kwargs):
         # If version is not defined or is empty, use the version from the associated data product
-        if not self.version or self.version == '':
+        if not self.version or self.version == "":
             self.version = self.data_product.version
         super().save(*args, **kwargs)
 
     def __str__(self):
         if self.alternate_identifier:
-            return '%s %s %s' % (self.alternate_identifier, self.title, self.version)
+            return "%s %s %s" % (self.alternate_identifier, self.title, self.version)
         else:
-            return '%s %s %s' % (self.identifier, self.title, self.version)
+            return "%s %s %s" % (self.identifier, self.title, self.version)
 
 
 class QualityControlled(BaseModel):
@@ -696,10 +802,15 @@ class QualityControlled(BaseModel):
 
     `updated_by`: Reference to the user that updated this record
     """
-    ADMIN_LIST_FIELDS = ('object', 'document')
 
-    object = models.OneToOneField(Object, on_delete=models.PROTECT, related_name='quality_control')
-    document = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='quality_control_document')
+    ADMIN_LIST_FIELDS = ("object", "document")
+
+    object = models.OneToOneField(
+        Object, on_delete=models.PROTECT, related_name="quality_control"
+    )
+    document = models.ForeignKey(
+        Object, on_delete=models.PROTECT, related_name="quality_control_document"
+    )
 
 
 class Keyword(BaseModel):
@@ -721,17 +832,22 @@ class Keyword(BaseModel):
 
     `updated_by`: Reference to the user that updated this record
     """
-    ADMIN_LIST_FIELDS = ('object', 'keyphrase')
 
-    object = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='keywords')
+    ADMIN_LIST_FIELDS = ("object", "keyphrase")
+
+    object = models.ForeignKey(
+        Object, on_delete=models.PROTECT, related_name="keywords"
+    )
     keyphrase = NameField(null=False, blank=False)
-    identifier = models.URLField(max_length=TEXT_FIELD_LENGTH, null=True, blank=False, unique=True)
+    identifier = models.URLField(
+        max_length=TEXT_FIELD_LENGTH, null=True, blank=False, unique=True
+    )
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=('object', 'keyphrase'),
-                name='unique_keyword'),
+                fields=("object", "keyphrase"), name="unique_keyword"
+            ),
         ]
 
     def __str__(self):
@@ -757,11 +873,16 @@ class Licence(BaseModel):
 
     `updated_by`: Reference to the user that updated this record
     """
-    ADMIN_LIST_FIELDS = ('object',)
 
-    object = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='licences')
+    ADMIN_LIST_FIELDS = ("object",)
+
+    object = models.ForeignKey(
+        Object, on_delete=models.PROTECT, related_name="licences"
+    )
     licence_info = models.TextField()
-    identifier = models.URLField(max_length=TEXT_FIELD_LENGTH, null=True, blank=False, unique=True)
+    identifier = models.URLField(
+        max_length=TEXT_FIELD_LENGTH, null=True, blank=False, unique=True
+    )
 
 
 class CodeRepoRelease(BaseModel):
@@ -785,9 +906,12 @@ class CodeRepoRelease(BaseModel):
 
     `updated_by`: Reference to the user that updated this record
     """
-    ADMIN_LIST_FIELDS = ('name', 'version')
 
-    object = models.OneToOneField(Object, on_delete=models.PROTECT, related_name='code_repo_release')
+    ADMIN_LIST_FIELDS = ("name", "version")
+
+    object = models.OneToOneField(
+        Object, on_delete=models.PROTECT, related_name="code_repo_release"
+    )
     name = NameField(null=False, blank=False)
     version = VersionField()
     website = models.URLField(null=True, blank=True)
@@ -795,12 +919,12 @@ class CodeRepoRelease(BaseModel):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=('name', 'version'),
-                name='unique_code_repo_release'),
+                fields=("name", "version"), name="unique_code_repo_release"
+            ),
         ]
 
     def __str__(self):
-        return '%s version %s' % (self.name, self.version)
+        return "%s version %s" % (self.name, self.version)
 
 
 class KeyValue(BaseModel):
@@ -821,17 +945,18 @@ class KeyValue(BaseModel):
 
     `updated_by`: Reference to the user that updated this record
     """
-    ADMIN_LIST_FIELDS = ('object', 'key')
 
-    object = models.ForeignKey(Object, on_delete=models.PROTECT, related_name='metadata')
+    ADMIN_LIST_FIELDS = ("object", "key")
+
+    object = models.ForeignKey(
+        Object, on_delete=models.PROTECT, related_name="metadata"
+    )
     key = models.CharField(max_length=CHAR_FIELD_LENGTH, null=False, blank=False)
     value = models.CharField(max_length=CHAR_FIELD_LENGTH, null=False, blank=False)
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(
-                fields=('object', 'key'),
-                name='unique_key_value'),
+            models.UniqueConstraint(fields=("object", "key"), name="unique_key_value"),
         ]
 
     def __str__(self):
@@ -843,12 +968,14 @@ def _is_base_model_subclass(name, cls):
     Test if given class is a non-abstract subclasses of BaseModel
     """
     return (
-            isinstance(cls, type)
-            and issubclass(cls, BaseModel)
-            and name not in ('BaseModel',)
+        isinstance(cls, type)
+        and issubclass(cls, BaseModel)
+        and name not in ("BaseModel",)
     )
 
 
 all_models = dict(
-    (name, cls) for (name, cls) in globals().items() if _is_base_model_subclass(name, cls)
+    (name, cls)
+    for (name, cls) in globals().items()
+    if _is_base_model_subclass(name, cls)
 )

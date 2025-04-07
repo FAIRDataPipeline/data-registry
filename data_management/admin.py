@@ -2,15 +2,16 @@ from django.contrib import admin
 
 from . import models
 
-admin.site.site_header = 'FAIR Data Management'
+admin.site.site_header = "FAIR Data Management"
 
 
 class BaseAdmin(admin.ModelAdmin):
     """
     Base model for admin views.
     """
-    readonly_fields = ('updated_by', 'last_updated')
-    list_display = ('last_updated',)
+
+    readonly_fields = ("updated_by", "last_updated")
+    list_display = ("last_updated",)
 
     def save_model(self, request, obj, form, change):
         """
@@ -24,8 +25,9 @@ class IssueAdmin(BaseAdmin):
     """
     Admin view for the Issue model.
     """
-    readonly_fields = ('updated_by', 'last_updated', 'linked_objects')
-    list_display = ('short_desc', 'severity', 'last_updated')
+
+    readonly_fields = ("updated_by", "last_updated", "linked_objects")
+    list_display = ("short_desc", "severity", "last_updated")
 
     @classmethod
     def linked_objects(cls, issue):
@@ -39,6 +41,6 @@ for name, cls in models.all_models.items():
     if issubclass(cls, models.Issue):
         admin.site.register(cls, IssueAdmin)
     else:
-        data = {'list_display': cls.ADMIN_LIST_FIELDS + ('updated_by', 'last_updated')}
-        admin_cls = type(name + 'Admin', (BaseAdmin,), data)
+        data = {"list_display": cls.ADMIN_LIST_FIELDS + ("updated_by", "last_updated")}
+        admin_cls = type(name + "Admin", (BaseAdmin,), data)
         admin.site.register(cls, admin_cls)
