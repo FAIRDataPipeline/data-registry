@@ -8,8 +8,9 @@ class VersionValidator:
     """
     Custom validator to apply semantic versioning validation to a field.
     """
-    message = 'Version %(value)s is not a valid semantic version.'
-    code = 'invalid_version'
+
+    message = "Version %(value)s is not a valid semantic version."
+    code = "invalid_version"
 
     def __call__(self, value):
         try:
@@ -19,15 +20,15 @@ class VersionValidator:
                 self.message,
                 code=self.code,
                 params={
-                    'value': value,
-                }
+                    "value": value,
+                },
             )
 
     def __eq__(self, other):
         return (
-            isinstance(other, self.__class__) and
-            self.message == other.message and
-            self.code == other.code
+            isinstance(other, self.__class__)
+            and self.message == other.message
+            and self.code == other.code
         )
 
 
@@ -36,9 +37,10 @@ class NameValidator:
     """
     Custom validator to ensure field does not contain characters that might break glob filtering.
     """
-    INVALID_CHARS = '[]?*'
-    message = 'Name %(value)s contains invalid characters (' + INVALID_CHARS + ').'
-    code = 'invalid_name'
+
+    INVALID_CHARS = "[]?*"
+    message = "Name %(value)s contains invalid characters (" + INVALID_CHARS + ")."
+    code = "invalid_name"
 
     def __call__(self, value):
         for char in self.INVALID_CHARS:
@@ -47,13 +49,13 @@ class NameValidator:
                     self.message,
                     code=self.code,
                     params={
-                        'value': value,
-                    }
+                        "value": value,
+                    },
                 )
 
     def __eq__(self, other):
         return (
-                isinstance(other, self.__class__) and
-                self.message == other.message and
-                self.code == other.code
+            isinstance(other, self.__class__)
+            and self.message == other.message
+            and self.code == other.code
         )

@@ -10,11 +10,11 @@ from .init_prov_db import init_db as init_prov_db
 class UsersAPITests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create(username='Test User')
+        self.user = get_user_model().objects.create(username="Test User")
         init_db()
 
     def test_full_name(self):
-        self.assertEqual(self.user.full_name(), 'User Not Found')
+        self.assertEqual(self.user.full_name(), "User Not Found")
 
     def test_user_orgs(self):
         self.assertEqual(self.user.orgs(), [])
@@ -30,174 +30,235 @@ class UsersAPITests(TestCase):
 
     def test_get_list_without_authentication(self):
         client = APIClient()
-        url = reverse('user-list')
-        response = client.get(url, format='json')
+        url = reverse("user-list")
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json(), {'detail': 'Authentication credentials were not provided.'})
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(
+            response.json(), {"detail": "Authentication credentials were not provided."}
+        )
 
     def test_get_list(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('user-list')
-        response = client.get(url, format='json')
+        url = reverse("user-list")
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 4)
 
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('user-detail', kwargs={'pk': 1})
-        response = client.get(url, format='json')
+        url = reverse("user-detail", kwargs={"pk": 1})
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['username'], 'Test User')
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response.json()["username"], "Test User")
 
     def test_filter_by_username(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('user-list')
-        response = client.get(url, data={'username': 'testuserb'}, format='json')
+        url = reverse("user-list")
+        response = client.get(url, data={"username": "testuserb"}, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['username'], 'testuserb')
+        self.assertEqual(results[0]["username"], "testuserb")
+
+    def test_get_username_without_authentication(self):
+        client = APIClient()
+        url = reverse("username")
+        response = client.get(url, format="json")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(
+            response.json(), {"detail": "Authentication credentials were not provided."}
+        )
+
+    def test_get_username(self):
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse("username")
+        response = client.get(url, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response.json(), {"username": self.user.username})
 
 
 class GroupsAPITests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create(username='Test User')
+        self.user = get_user_model().objects.create(username="Test User")
         init_db()
 
     def test_get_list(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('group-list')
-        response = client.get(url, format='json')
+        url = reverse("group-list")
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 0)
 
 
 class StorageRootAPITests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create(username='Test User')
+        self.user = get_user_model().objects.create(username="Test User")
         init_db()
 
     def test_get_list(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('storageroot-list')
-        response = client.get(url, format='json')
+        url = reverse("storageroot-list")
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 9)
 
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('storageroot-detail', kwargs={'pk': 1})
-        response = client.get(url, format='json')
+        url = reverse("storageroot-detail", kwargs={"pk": 1})
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['root'], 'https://jptcp.com/')
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response.json()["root"], "https://jptcp.com/")
 
     def test_filter_by_root(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('storageroot-list')
-        response = client.get(url, data={'root': 'https://github.com'}, format='json')
+        url = reverse("storageroot-list")
+        response = client.get(url, data={"root": "https://github.com"}, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['root'], 'https://github.com')
+        self.assertEqual(results[0]["root"], "https://github.com")
+
 
 class StorageLocationAPITests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create(username='Test User')
+        self.user = get_user_model().objects.create(username="Test User")
         init_db()
 
     def test_get_list(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('storagelocation-list')
-        response = client.get(url, format='json')
+        url = reverse("storagelocation-list")
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 20)
 
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('storagelocation-detail', kwargs={'pk': 1})
-        response = client.get(url, format='json')
+        url = reverse("storagelocation-detail", kwargs={"pk": 1})
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['path'], 'master/SCRC/human/infection/SARS-CoV-2/symptom-probability/0.1.0.toml')
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(
+            response.json()["path"],
+            "master/SCRC/human/infection/SARS-CoV-2/symptom-probability/0.1.0.toml",
+        )
 
     def test_filter_by_path(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('storagelocation-list')
-        response = client.get(url, data={'path': 'master/SCRC/human/infection/SARS-CoV-2/latent-period/0.1.0.toml'}, format='json')
+        url = reverse("storagelocation-list")
+        response = client.get(
+            url,
+            data={
+                "path": "master/SCRC/human/infection/SARS-CoV-2/latent-period/0.1.0.toml"
+            },
+            format="json",
+        )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['path'], 'master/SCRC/human/infection/SARS-CoV-2/latent-period/0.1.0.toml')
+        self.assertEqual(
+            results[0]["path"],
+            "master/SCRC/human/infection/SARS-CoV-2/latent-period/0.1.0.toml",
+        )
 
     def test_filter_by_hash(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('storagelocation-list')
-        response = client.get(url, data={'hash': '43faf6d048b92ed1820db2e662ba403eb0e371fb'}, format='json')
+        url = reverse("storagelocation-list")
+        response = client.get(
+            url,
+            data={"hash": "43faf6d048b92ed1820db2e662ba403eb0e371fb"},
+            format="json",
+        )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['path'], 'human/infection/SARS-CoV-2/scotland/cases_and_management/v0.1.0.h5')
+        self.assertEqual(
+            results[0]["path"],
+            "human/infection/SARS-CoV-2/scotland/cases_and_management/v0.1.0.h5",
+        )
+
 
 class StorageAPITests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create(username='Test User')
+        self.user = get_user_model().objects.create(username="Test User")
         init_db()
 
     def test_get_data(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("get_data_product", kwargs={"data_product_name": "human/infection/SARS-CoV-2/symptom-probability", "namespace": "FAIR", "version": "0.1.0"})
+        url = reverse(
+            "get_data_product",
+            kwargs={
+                "data_product_name": "human/infection/SARS-CoV-2/symptom-probability",
+                "namespace": "FAIR",
+                "version": "0.1.0",
+            },
+        )
         response = client.get(url)
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, 'https://raw.githubusercontent.com/ScottishCovidResponse/DataRepository/master/SCRC/human/infection/SARS-CoV-2/symptom-probability/0.1.0.toml')
+        self.assertEqual(
+            response.url,
+            "https://raw.githubusercontent.com/ScottishCovidResponse/DataRepository/master/SCRC/human/infection/SARS-CoV-2/symptom-probability/0.1.0.toml",
+        )
 
     def test_get_external_object(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("get_external_object", kwargs={"alternate_identifier": "scottish deaths-involving-coronavirus-covid-19", "title": "scottish deaths-involving-coronavirus-covid-19", "version": "0.1.0"})
+        url = reverse(
+            "get_external_object",
+            kwargs={
+                "alternate_identifier": "scottish deaths-involving-coronavirus-covid-19",
+                "title": "scottish deaths-involving-coronavirus-covid-19",
+                "version": "0.1.0",
+            },
+        )
         response = client.get(url)
 
         self.assertEqual(response.status_code, 302)
@@ -205,629 +266,700 @@ class StorageAPITests(TestCase):
     def test_get_data_product(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("get_data_product", kwargs={"data_product_name": "test/txt", "namespace": "FAIR", "version": "0.0.1"})
+        url = reverse(
+            "get_data_product",
+            kwargs={
+                "data_product_name": "test/txt",
+                "namespace": "FAIR",
+                "version": "0.0.1",
+            },
+        )
         response = client.get(url)
 
-        self.assertEqual(b''.join(response.streaming_content), bytes("This is a text file.", "utf-8"))
+        self.assertEqual(
+            b"".join(response.streaming_content), bytes("This is a text file.", "utf-8")
+        )
 
 
 class ObjectAPITests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create(username='Test User')
+        self.user = get_user_model().objects.create(username="Test User")
         init_db()
 
     def test_get_list(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('object-list')
-        response = client.get(url, format='json')
+        url = reverse("object-list")
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 20)
 
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('object-detail', kwargs={'pk': 3})
-        response = client.get(url, format='json', HTTP_HOST='localhost')
+        url = reverse("object-detail", kwargs={"pk": 3})
+        response = client.get(url, format="json", HTTP_HOST="localhost")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['storage_location'], 'http://localhost/api/storage_location/2/')
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(
+            response.json()["storage_location"],
+            "http://localhost/api/storage_location/2/",
+        )
 
     def test_filter_by_storage_location(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('object-list')
-        response = client.get(url, data={'storage_location': '3'}, format='json', HTTP_HOST='localhost')
+        url = reverse("object-list")
+        response = client.get(
+            url, data={"storage_location": "3"}, format="json", HTTP_HOST="localhost"
+        )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['storage_location'], 'http://localhost/api/storage_location/3/')
+        self.assertEqual(
+            results[0]["storage_location"], "http://localhost/api/storage_location/3/"
+        )
 
 
 class ObjectComponentAPITests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create(username='Test User')
+        self.user = get_user_model().objects.create(username="Test User")
         init_db()
 
     def test_get_list(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('objectcomponent-list')
-        response = client.get(url, format='json')
+        url = reverse("objectcomponent-list")
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 52)
 
     def test_get_detail_whole_object(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('objectcomponent-detail', kwargs={'pk': 1})
-        response = client.get(url, format='json')
+        url = reverse("objectcomponent-detail", kwargs={"pk": 1})
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['name'], 'whole_object')
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response.json()["name"], "whole_object")
 
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('objectcomponent-detail', kwargs={'pk': 18})
-        response = client.get(url, format='json')
+        url = reverse("objectcomponent-detail", kwargs={"pk": 18})
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['name'], 'symptom-probability')
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response.json()["name"], "symptom-probability")
 
     def test_filter_by_name(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('objectcomponent-list')
-        response = client.get(url, data={'name': 'nhs_health_board/per_location/all_deaths'}, format='json')
+        url = reverse("objectcomponent-list")
+        response = client.get(
+            url,
+            data={"name": "nhs_health_board/per_location/all_deaths"},
+            format="json",
+        )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['name'], 'nhs_health_board/per_location/all_deaths')
+        self.assertEqual(results[0]["name"], "nhs_health_board/per_location/all_deaths")
 
 
 class IssueAPITests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create(username='Test User')
+        self.user = get_user_model().objects.create(username="Test User")
         init_db()
 
     def test_get_list(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('issue-list')
-        response = client.get(url, format='json')
+        url = reverse("issue-list")
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 3)
 
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('issue-detail', kwargs={'pk': 1})
-        response = client.get(url, format='json')
+        url = reverse("issue-detail", kwargs={"pk": 1})
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['description'], 'Test Issue 1')
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response.json()["description"], "Test Issue 1")
 
     def test_filter_by_severity(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('issue-list')
-        response = client.get(url, data={'severity': '6'}, format='json')
+        url = reverse("issue-list")
+        response = client.get(url, data={"severity": "6"}, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['description'], 'Test Issue 2')
+        self.assertEqual(results[0]["description"], "Test Issue 2")
 
 
 class CodeRunAPITests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create(username='Test User')
+        self.user = get_user_model().objects.create(username="Test User")
         init_db()
 
     def test_get_list(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('coderun-list')
-        response = client.get(url, format='json')
+        url = reverse("coderun-list")
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
 
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('coderun-detail', kwargs={'pk': 1})
-        response = client.get(url, format='json')
+        url = reverse("coderun-detail", kwargs={"pk": 1})
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['description'], 'Script run to upload and process scottish coronavirus-covid-19-management-information')
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(
+            response.json()["description"],
+            "Script run to upload and process scottish coronavirus-covid-19-management-information",
+        )
 
     def test_filter_by_run_date(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('coderun-list')
-        response = client.get(url, data={'run_date': '2020-07-17T18:21:11Z'}, format='json')
+        url = reverse("coderun-list")
+        response = client.get(
+            url, data={"run_date": "2020-07-17T18:21:11Z"}, format="json"
+        )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['description'], 'Script run to upload and process scottish coronavirus-covid-19-management-information')
+        self.assertEqual(
+            results[0]["description"],
+            "Script run to upload and process scottish coronavirus-covid-19-management-information",
+        )
 
     def test_filter_by_description(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('coderun-list')
-        response = client.get(url, data={'description': 'Script run to upload and process scottish coronavirus-covid-19-management-information'}, format='json')
+        url = reverse("coderun-list")
+        response = client.get(
+            url,
+            data={
+                "description": "Script run to upload and process scottish coronavirus-covid-19-management-information"
+            },
+            format="json",
+        )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['description'], 'Script run to upload and process scottish coronavirus-covid-19-management-information')
+        self.assertEqual(
+            results[0]["description"],
+            "Script run to upload and process scottish coronavirus-covid-19-management-information",
+        )
+
 
 class ExternalObjectAPITests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create(username='Test User')
+        self.user = get_user_model().objects.create(username="Test User")
         init_db()
 
     def test_get_list(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('externalobject-list')
-        response = client.get(url, format='json')
+        url = reverse("externalobject-list")
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 2)
 
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('externalobject-detail', kwargs={'pk': 1})
-        response = client.get(url, format='json')
+        url = reverse("externalobject-detail", kwargs={"pk": 1})
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['alternate_identifier'], 'scottish deaths-involving-coronavirus-covid-19')
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(
+            response.json()["alternate_identifier"],
+            "scottish deaths-involving-coronavirus-covid-19",
+        )
 
     def test_filter_by_name(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('externalobject-list')
-        response = client.get(url, data={'alternate_identifier': 'scottish coronavirus-covid-19-management-information'}, format='json')
+        url = reverse("externalobject-list")
+        response = client.get(
+            url,
+            data={
+                "alternate_identifier": "scottish coronavirus-covid-19-management-information"
+            },
+            format="json",
+        )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['alternate_identifier'], 'scottish coronavirus-covid-19-management-information')
+        self.assertEqual(
+            results[0]["alternate_identifier"],
+            "scottish coronavirus-covid-19-management-information",
+        )
 
     def test_filter_by_title(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('externalobject-list')
-        response = client.get(url, data={'title': 'scottish deaths-involving-coronavirus-covid-19'}, format='json')
+        url = reverse("externalobject-list")
+        response = client.get(
+            url,
+            data={"title": "scottish deaths-involving-coronavirus-covid-19"},
+            format="json",
+        )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['alternate_identifier'], 'scottish deaths-involving-coronavirus-covid-19')
+        self.assertEqual(
+            results[0]["alternate_identifier"],
+            "scottish deaths-involving-coronavirus-covid-19",
+        )
+
 
 class QualityControlledAPITests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create(username='Test User')
+        self.user = get_user_model().objects.create(username="Test User")
         init_db()
 
     def test_get_list(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('qualitycontrolled-list')
-        response = client.get(url, format='json')
+        url = reverse("qualitycontrolled-list")
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 3)
 
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('qualitycontrolled-detail', kwargs={'pk': 1})
-        response = client.get(url, format='json', HTTP_HOST='localhost')
+        url = reverse("qualitycontrolled-detail", kwargs={"pk": 1})
+        response = client.get(url, format="json", HTTP_HOST="localhost")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['object'], 'http://localhost/api/object/16/')
-        self.assertEqual(response.json()['document'], 'http://localhost/api/object/18/')
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response.json()["object"], "http://localhost/api/object/16/")
+        self.assertEqual(response.json()["document"], "http://localhost/api/object/18/")
 
 
 class KeywordAPITests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create(username='Test User')
+        self.user = get_user_model().objects.create(username="Test User")
         init_db()
 
     def test_get_list(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('keyword-list')
-        response = client.get(url, format='json')
+        url = reverse("keyword-list")
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 5)
 
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('keyword-detail', kwargs={'pk': 1})
-        response = client.get(url, format='json')
+        url = reverse("keyword-detail", kwargs={"pk": 1})
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['keyphrase'], 'treatment')
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response.json()["keyphrase"], "treatment")
 
     def test_filter_by_keyphrase(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('keyword-list')
-        response = client.get(url, data={'keyphrase': 'monoclonal antibodies'}, format='json')
+        url = reverse("keyword-list")
+        response = client.get(
+            url, data={"keyphrase": "monoclonal antibodies"}, format="json"
+        )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['keyphrase'], 'monoclonal antibodies')
+        self.assertEqual(results[0]["keyphrase"], "monoclonal antibodies")
 
     def test_filter_by_keyphrase_glob(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('keyword-list')
-        response = client.get(url, data={'keyphrase': 'co*'}, format='json')
+        url = reverse("keyword-list")
+        response = client.get(url, data={"keyphrase": "co*"}, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 2)
 
 
 class AuthorAPITests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create(username='Test User')
+        self.user = get_user_model().objects.create(username="Test User")
         init_db()
 
     def test_get_list(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('author-list')
-        response = client.get(url, format='json')
+        url = reverse("author-list")
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 3)
 
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('author-detail', kwargs={'pk': 1})
-        response = client.get(url, format='json')
+        url = reverse("author-detail", kwargs={"pk": 1})
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['name'], 'Ivana Valenti')
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response.json()["name"], "Ivana Valenti")
 
     def test_filter_by_family_name(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('author-list')
-        response = client.get(url, data={'name': '*ti'}, format='json')
+        url = reverse("author-list")
+        response = client.get(url, data={"name": "*ti"}, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 2)
 
     def test_filter_by_family_name_glob(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('author-list')
-        response = client.get(url, data={'name': '*Cipriani'}, format='json')
+        url = reverse("author-list")
+        response = client.get(url, data={"name": "*Cipriani"}, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['name'], 'Maria Cipriani')
+        self.assertEqual(results[0]["name"], "Maria Cipriani")
 
     def test_filter_by_given_name(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('author-list')
-        response = client.get(url, data={'name': 'Rosanna*'}, format='json')
+        url = reverse("author-list")
+        response = client.get(url, data={"name": "Rosanna*"}, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['name'], 'Rosanna Massabeti')
+        self.assertEqual(results[0]["name"], "Rosanna Massabeti")
 
 
 class LicenceAPITests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create(username='Test User')
+        self.user = get_user_model().objects.create(username="Test User")
         init_db()
 
     def test_get_list(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('licence-list')
-        response = client.get(url, format='json')
+        url = reverse("licence-list")
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
 
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('licence-detail', kwargs={'pk': 1})
-        response = client.get(url, format='json')
+        url = reverse("licence-detail", kwargs={"pk": 1})
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertIn('Copyright 2020 SCRC', response.json()['licence_info'])
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertIn("Copyright 2020 SCRC", response.json()["licence_info"])
 
 
 class NamespaceAPITests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create(username='Test User')
+        self.user = get_user_model().objects.create(username="Test User")
         init_db()
 
     def test_get_list(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('namespace-list')
-        response = client.get(url, format='json')
+        url = reverse("namespace-list")
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 2)
 
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('namespace-detail', kwargs={'pk': 1})
-        response = client.get(url, format='json')
+        url = reverse("namespace-detail", kwargs={"pk": 1})
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['name'], 'FAIR')
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response.json()["name"], "FAIR")
 
     def test_filter_by_name(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('namespace-list')
-        response = client.get(url, data={'name': 'simple_network_sim'}, format='json')
+        url = reverse("namespace-list")
+        response = client.get(url, data={"name": "simple_network_sim"}, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['name'], 'simple_network_sim')
+        self.assertEqual(results[0]["name"], "simple_network_sim")
 
     def test_filter_by_name_glob(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('namespace-list')
-        response = client.get(url, data={'name': '[fF]*'}, format='json')
+        url = reverse("namespace-list")
+        response = client.get(url, data={"name": "[fF]*"}, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
 
 
 class DataProductAPITests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create(username='Test User')
+        self.user = get_user_model().objects.create(username="Test User")
         init_db()
 
     def test_get_list(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('dataproduct-list')
-        response = client.get(url, format='json')
+        url = reverse("dataproduct-list")
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 14)
 
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('dataproduct-detail', kwargs={'pk': 3})
-        response = client.get(url, format='json')
+        url = reverse("dataproduct-detail", kwargs={"pk": 3})
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['name'], 'human/infection/SARS-CoV-2/symptom-probability')
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(
+            response.json()["name"], "human/infection/SARS-CoV-2/symptom-probability"
+        )
 
     def test_filter_by_namespace(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('dataproduct-list')
-        response = client.get(url, data={'namespace': '1'}, format='json')
+        url = reverse("dataproduct-list")
+        response = client.get(url, data={"namespace": "1"}, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 10)
 
     def test_filter_by_name(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('dataproduct-list')
-        response = client.get(url, data={'name': 'human/infection/SARS-CoV-2/latent-period'}, format='json')
+        url = reverse("dataproduct-list")
+        response = client.get(
+            url,
+            data={"name": "human/infection/SARS-CoV-2/latent-period"},
+            format="json",
+        )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['name'], 'human/infection/SARS-CoV-2/latent-period')
+        self.assertEqual(results[0]["name"], "human/infection/SARS-CoV-2/latent-period")
 
     def test_filter_by_name_glob(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('dataproduct-list')
-        response = client.get(url, data={'name': 'human/infection/SARS-CoV-2/*'}, format='json')
+        url = reverse("dataproduct-list")
+        response = client.get(
+            url, data={"name": "human/infection/SARS-CoV-2/*"}, format="json"
+        )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 7)
 
     def test_filter_by_version(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('dataproduct-list')
-        response = client.get(url, data={'version': '0.1.0'}, format='json')
+        url = reverse("dataproduct-list")
+        response = client.get(url, data={"version": "0.1.0"}, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 13)
 
 
 class CodeRepoReleaseAPITests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create(username='Test User')
+        self.user = get_user_model().objects.create(username="Test User")
         init_db()
 
     def test_get_list(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('codereporelease-list')
-        response = client.get(url, format='json')
+        url = reverse("codereporelease-list")
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
 
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('codereporelease-detail', kwargs={'pk': 1})
-        response = client.get(url, format='json')
+        url = reverse("codereporelease-detail", kwargs={"pk": 1})
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['name'], 'ScottishCovidResponse/SCRCdata')
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response.json()["name"], "ScottishCovidResponse/SCRCdata")
 
     def test_filter_by_name(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('codereporelease-list')
-        response = client.get(url, data={'name': 'ScottishCovidResponse/SCRCdata'}, format='json')
+        url = reverse("codereporelease-list")
+        response = client.get(
+            url, data={"name": "ScottishCovidResponse/SCRCdata"}, format="json"
+        )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['name'], 'ScottishCovidResponse/SCRCdata')
+        self.assertEqual(results[0]["name"], "ScottishCovidResponse/SCRCdata")
 
     def test_filter_by_version(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('codereporelease-list')
-        response = client.get(url, data={'version': '0.1.0'}, format='json')
+        url = reverse("codereporelease-list")
+        response = client.get(url, data={"version": "0.1.0"}, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['name'], 'ScottishCovidResponse/SCRCdata')
+        self.assertEqual(results[0]["name"], "ScottishCovidResponse/SCRCdata")
 
 
 class KeyvalueAPITests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create(username='Test User')
+        self.user = get_user_model().objects.create(username="Test User")
         init_db()
 
     def test_get_list(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('keyvalue-list')
-        response = client.get(url, format='json')
+        url = reverse("keyvalue-list")
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 4)
 
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('keyvalue-detail', kwargs={'pk': 1})
-        response = client.get(url, format='json')
+        url = reverse("keyvalue-detail", kwargs={"pk": 1})
+        response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(response.json()['key'], 'TestKey1')
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response.json()["key"], "TestKey1")
 
     def test_filter_by_key(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse('keyvalue-list')
-        response = client.get(url, data={'key': 'TestKey2'}, format='json')
+        url = reverse("keyvalue-list")
+        response = client.get(url, data={"key": "TestKey2"}, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['Content-Type'], 'application/json')
-        results = response.json()['results']
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['key'], 'TestKey2')  
+        self.assertEqual(results[0]["key"], "TestKey2")
+
 
 class ProvAPITests(TestCase):
 
@@ -1373,22 +1505,24 @@ class RoCrateAPITest(TestCase):
         client.force_authenticate(user=self.user)
         url = reverse("code_run_ro_crate", kwargs={"pk": 1})
         response = client.get(
-            url, format="json-ld", HTTP_ACCEPT=self.APPLICATION_JSON_LD)
+            url, format="json-ld", HTTP_ACCEPT=self.APPLICATION_JSON_LD
+        )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            response["Content-Type"],
-            f"{self.APPLICATION_JSON_LD}; {self.CHARSET_UTF8}")
+            response["Content-Type"], f"{self.APPLICATION_JSON_LD}; {self.CHARSET_UTF8}"
+        )
 
     def test_get_json_ld_cr2(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
         url = reverse("code_run_ro_crate", kwargs={"pk": 6})
         response = client.get(
-            url, format="json-ld", HTTP_ACCEPT=self.APPLICATION_JSON_LD)
+            url, format="json-ld", HTTP_ACCEPT=self.APPLICATION_JSON_LD
+        )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            response["Content-Type"],
-            f"{self.APPLICATION_JSON_LD}; {self.CHARSET_UTF8}")
+            response["Content-Type"], f"{self.APPLICATION_JSON_LD}; {self.CHARSET_UTF8}"
+        )
 
     def test_get_json_ld_cr_with_depth(self):
         client = APIClient()
@@ -1409,22 +1543,21 @@ class RoCrateAPITest(TestCase):
         client = APIClient()
         client.force_authenticate(user=self.user)
         url = reverse("code_run_ro_crate", kwargs={"pk": 1})
-        response = client.get(
-            url, format="zip", HTTP_ACCEPT="application/zip")
+        response = client.get(url, format="zip", HTTP_ACCEPT="application/zip")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response["Content-Type"], "application/zip")
+        self.assertEqual(response["Content-Type"], "application/zip")
 
     def test_get_json_ld_dp(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
         url = reverse("data_product_ro_crate", kwargs={"pk": 2})
         response = client.get(
-            url, format="json-ld", HTTP_ACCEPT=self.APPLICATION_JSON_LD)
+            url, format="json-ld", HTTP_ACCEPT=self.APPLICATION_JSON_LD
+        )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            response["Content-Type"],
-            f"{self.APPLICATION_JSON_LD}; {self.CHARSET_UTF8}")
+            response["Content-Type"], f"{self.APPLICATION_JSON_LD}; {self.CHARSET_UTF8}"
+        )
 
     def test_get_json_ld_dp_with_depth(self):
         client = APIClient()

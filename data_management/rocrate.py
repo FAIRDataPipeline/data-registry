@@ -43,6 +43,7 @@ The RO Crate is available as a `zip` file.
 The contents of the ro-crate-metadata file can be viewed as `JSON` or `JSON-LD`.
 
 """
+
 from datetime import datetime
 import json
 import mimetypes
@@ -645,10 +646,9 @@ def _get_local_data_product(crate, data_product, registry_url, output):
             dest_path = f"inputs/data/{source_loc.split('/')[-1]}"
 
     elif (
-        data_product.object.storage_location.public is True
-        and settings.REMOTE_REGISTRY
+        data_product.object.storage_location.public is True and settings.REMOTE_REGISTRY
     ):
-        file_name = str(data_product.object.storage_location).split('/')[-1]
+        file_name = str(data_product.object.storage_location).split("/")[-1]
         _ext = data_product.object.file_type.extension
         source_loc = data_product.object.storage_location.full_uri()
 
@@ -680,7 +680,7 @@ def _get_local_data_product(crate, data_product, registry_url, output):
         source_loc,
         dest_path=dest_path,
         properties=properties,
-        fetch_remote = _fetch_remote
+        fetch_remote=_fetch_remote,
     )
 
     return crate_data_product
@@ -723,12 +723,9 @@ def _get_software(crate, software_object, registry_url, software_type):
         source_loc = str(software_object.storage_location).split(FILE)[1]
         dest_path = f"inputs/{software_type}/{source_loc.split('/')[-1]}"
 
-    elif (
-        software_object.storage_location.public is True
-        and settings.REMOTE_REGISTRY
-    ):
-        file_name = str(software_object.storage_location).split('/')[-1]
-        _ext =  software_object.file_type.extension
+    elif software_object.storage_location.public is True and settings.REMOTE_REGISTRY:
+        file_name = str(software_object.storage_location).split("/")[-1]
+        _ext = software_object.file_type.extension
         source_loc = software_object.storage_location.full_uri()
 
         dest_path = f"inputs/{software_type}/{file_name}.{_ext}"
@@ -747,7 +744,7 @@ def _get_software(crate, software_object, registry_url, software_type):
             RO_TYPE: ["File", "SoftwareSourceCode"],
             "name": str(software_object.storage_location).split("/")[-1],
         },
-        fetch_remote = _fetch_remote
+        fetch_remote=_fetch_remote,
     )
 
     if software_object.description is not None:
