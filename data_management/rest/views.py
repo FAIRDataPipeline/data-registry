@@ -660,26 +660,6 @@ for name, cls in models.all_models.items():
     globals()[name + "ViewSet"] = type(name + "ViewSet", (BaseViewSet,), data)
 
 
-def auth_provider(request):
-    """Returns Auth Provider in Json Format"""
-    _data = {"auth_provider": conf_settings.AUTH_METHOD}
-    return JsonResponse(_data)
-
-
-def auth_url(request):
-    """Returns Auth Provider URL in Json Format"""
-    auth_url = None
-    if hasattr(conf_settings, "SOCIAL_AUTH_GITLAB_API_URL"):
-        if conf_settings.SOCIAL_AUTH_GITLAB_API_URL:
-            auth_url = conf_settings.SOCIAL_AUTH_GITLAB_API_URL
-    if conf_settings.AUTH_METHOD == "GitLab" and not auth_url:
-        auth_url = "https://gitlab.com"
-    if conf_settings.AUTH_METHOD == "GitHub" and not auth_url:
-        auth_url = "https://github.com"
-    _data = {"auth_url": auth_url}
-    return JsonResponse(_data)
-
-
 class UserView(views.APIView):
     """
     API view allowing users to upload data to object storage
