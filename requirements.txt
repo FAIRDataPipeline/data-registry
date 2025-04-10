@@ -10,7 +10,7 @@ django-filter==2.3.0
 django-grappelli==3.0.8
 djangorestframework==3.16
 future~=0.17.1
-gunicorn==22.0.0
+gunicorn==23.0.0
 idna==3.7
 isodate==0.6.0
 lxml~=5.0
