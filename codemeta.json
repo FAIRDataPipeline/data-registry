@@ -83,7 +83,7 @@
     "dateModified": "2024-02-23",
     "datePublished": "2021-06-22",
     "description": "The FAIR data registry is a component of the FAIR data pipeline that maintains a metadata catalogue for different data types utilised and generated within a typical epidemiological modelling workflow.",
-    "downloadUrl": "https://github.com/FAIRDataPipeline/data-registry/archive/refs/tags/v1.2.0.tar.gz",
+    "downloadUrl": "https://github.com/FAIRDataPipeline/data-registry/archive/refs/tags/v1.2.1.tar.gz",
     "identifier": "10.5281/zenodo.5562749",
     "isPartOf": "https://www.fairdatapipeline.org",
     "keywords": [
@@ -100,9 +100,9 @@
         "MacOS"
     ],
     "programmingLanguage": "Python 3",
-    "releaseNotes": "Full Changelog: https://github.com/FAIRDataPipeline/data-registry/compare/v1.1.0...v1.2.0",
+    "releaseNotes": "Full Changelog: https://github.com/FAIRDataPipeline/data-registry/compare/v1.1.0...v1.2.1",
     "softwareRequirements": "Django",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "codemeta:contIntegration": {
         "id": "https://github.com/FAIRDataPipeline/data-registry/actions"
     },
