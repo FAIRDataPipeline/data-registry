@@ -205,7 +205,7 @@ class Author(BaseModel):
         constraints = [
             models.CheckConstraint(
                 name="%(app_label)s_%(class)s_identifier_and_or_name",
-                check=(
+                condition=(
                     models.Q(identifier__isnull=True, name__isnull=False)
                     | models.Q(identifier__isnull=False, name__isnull=True)
                     | models.Q(identifier__isnull=False, name__isnull=False)
@@ -752,7 +752,7 @@ class ExternalObject(BaseModel):
             ),
             models.CheckConstraint(
                 name="%(app_label)s_%(class)s_identifier_or_alternate_identifier",
-                check=(
+                condition=(
                     (
                         models.Q(identifier__isnull=True)
                         & models.Q(alternate_identifier__isnull=False)

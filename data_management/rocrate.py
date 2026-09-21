@@ -47,11 +47,13 @@ The contents of the ro-crate-metadata file can be viewed as `JSON` or `JSON-LD`.
 from datetime import datetime
 import json
 import mimetypes
+import os
 import tempfile
 
 from rocrate.model.person import Person
 from rocrate.rocrate import ContextEntity
 from rocrate.rocrate import ROCrate
+from rocrate.utils import is_url
 
 from data_management.views import external_object
 
@@ -169,7 +171,12 @@ def _add_external_object(crate, external_object):
     if external_object.description:
         properties["description"] = external_object.description
 
-    crate_external_object = crate.add_file(source_loc, properties=properties)
+    if is_url(source_loc):
+        crate_external_object = crate.add_file(source_loc, properties=properties)
+    else:
+        crate_external_object = crate.add_file(
+            dest_path=source_loc, properties=properties
+        )
 
     return crate_external_object
 
@@ -645,6 +652,9 @@ def _get_local_data_product(crate, data_product, registry_url, output):
         else:
             dest_path = f"inputs/data/{source_loc.split('/')[-1]}"
 
+        if not os.path.isfile(source_loc):
+            source_loc = None
+
     elif (
         data_product.object.storage_location.public is True and settings.REMOTE_REGISTRY
     ):
@@ -722,6 +732,9 @@ def _get_software(crate, software_object, registry_url, software_type):
     ):
         source_loc = str(software_object.storage_location).split(FILE)[1]
         dest_path = f"inputs/{software_type}/{source_loc.split('/')[-1]}"
+
+        if not os.path.isfile(source_loc):
+            source_loc = None
 
     elif software_object.storage_location.public is True and settings.REMOTE_REGISTRY:
         file_name = str(software_object.storage_location).split("/")[-1]
@@ -846,7 +859,6 @@ def generate_ro_crate_from_dp(data_product, depth, request):
     crate.publisher = "FAIR Data Pipeline"
     crate.datePublished = datetime.now().isoformat()
     crate.name = f"RO Crate for {data_product.name}"
-    crate.version = data_product.version
 
     _add_licenses(crate, crate, data_product.object, registry_url)
     if crate.license is None:

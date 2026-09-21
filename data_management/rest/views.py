@@ -499,7 +499,7 @@ class CustomDjangoFilterBackend(DjangoFilterBackend):
     Custom filtering backend which we use to add the CustomFilterSet filtering.
     """
 
-    default_filter_set = CustomFilterSet
+    filterset_base = CustomFilterSet
 
 
 class BaseViewSet(

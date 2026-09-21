@@ -218,7 +218,7 @@ def _add_code_run(dp_entity, doc, code_run, reg_uri_prefix, vocab_namespaces):
     """
     cr_activity = doc.activity(
         f"{reg_uri_prefix}:api/code_run/{code_run.id}",
-        str(code_run.run_date),
+        code_run.run_date,
         None,
         {
             QualifiedName(vocab_namespaces[RDF_VOCAB_PREFIX], "type"): QualifiedName(
@@ -274,7 +274,7 @@ def _add_code_run(dp_entity, doc, code_run, reg_uri_prefix, vocab_namespaces):
         cr_activity,
         run_agent,
         None,
-        str(code_run.run_date),
+        code_run.run_date,
         None,
         {PROV_ROLE: QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], "code_runner")},
     )
