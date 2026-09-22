@@ -1,4 +1,35 @@
 #!/bin/bash
+# Stop the registry servers started from this install by start_fair_registry.
+# With no options every one of them is stopped; -p <port> (and -a <address>)
+# stops only the server listening there.
+
+PORT=""
+ADDRESS=""
+
+while getopts ":a:p:h" opt; do
+  case ${opt} in
+    a) ADDRESS="${OPTARG}"
+    ;;
+    p) PORT="${OPTARG}"
+    ;;
+    h)
+        echo "stop_fair_registry [-p <port>][-a <address>]"
+        exit 0
+    ;;
+    \?) echo "Invalid option -${OPTARG} see -h" >&2
+    ;;
+  esac
+done
+
+if [ -n "$PORT" ] && ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
+    echo "Invalid port '$PORT' specified"
+    exit 1
+fi
+
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 FAIR_HOME="$(dirname "${DIR}")"
-pgrep -f "$FAIR_HOME/manage.py runserver" | xargs kill &> /dev/null 2>&1
+
+# The server's command line ends "runserver <address>:<port>"; an unset
+# address or port matches any
+PATTERN="$FAIR_HOME/manage.py runserver ${ADDRESS:-[^: ]*}:${PORT:-[0-9]+}\$"
+pgrep -f "$PATTERN" | xargs kill &> /dev/null 2>&1

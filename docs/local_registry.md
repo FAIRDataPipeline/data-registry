@@ -12,7 +12,7 @@ To run the server, run the `~/.fair/registry/scripts/start_fair_registry script.
 Local registry now accepting connections on http://localhost:8000
 ```
 
-To stop the server, run the `~/.fair/registry/scripts/stop_fair_registry` script.
+To stop the server, run the `~/.fair/registry/scripts/stop_fair_registry` script. With no options it stops every registry started from this install; `-p <port>` (and `-a <address>`) stops only that one.
 
 ## Logging in
 Go to http://localhost:8000/admin in your browser. Login with username `admin` and password `admin`. You can now click on **View site** to return to http://localhost:8000/.
