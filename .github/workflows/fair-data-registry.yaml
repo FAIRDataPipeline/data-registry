@@ -1,6 +1,8 @@
 name: FAIR Data Registry
 on: 
   push:
+  pull_request:
+    branches: [main]
   workflow_dispatch:
   schedule:
     - cron: "0 9 * * 1" # Run Every Monday at 9AM
@@ -13,10 +15,10 @@ jobs:
         os: [ubuntu-latest, macos-latest]
         python: ['3.10', '3.11', '3.12', '3.x']
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: git fetch --prune --unshallow
       - name: setup-python ${{ matrix.python }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
       - name: Install graphviz on ubuntu
@@ -51,7 +53,7 @@ jobs:
       INSTALL_DIR: fair
     steps:
       - name: setup-python ${{ matrix.python }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
       - name: Deploy registry
