@@ -1,10 +1,11 @@
-@ECHO OFF            
-
+@ECHO OFF
 echo Getting Process ID
-                                                                  
-FOR /F %%T IN ('wmic process where "commandline like '%%manage.py%%runserver%%'" get processid^|more +1') DO (
-SET /A ProcessId=%%T) &GOTO SkipLine                                                   
-:SkipLine                                                                              
-echo Stopping ProcessId = %ProcessId%   
 
-taskkill /F /PID %ProcessId% /t 2> nul
+for /f "usebackq delims=" %%T in (`powershell -NoProfile -ExecutionPolicy Bypass -Command "(Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*manage.py*runserver*' } | Select-Object -First 1 -ExpandProperty ProcessId)"`) do set "ProcessId=%%T"
+if not defined ProcessId (
+    echo No matching process found.
+    goto :eof
+)
+
+echo Stopping ProcessId = %ProcessId%
+taskkill /F /PID %ProcessId% /T 2> nul
