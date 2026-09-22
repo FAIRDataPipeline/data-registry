@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python: ['3.9','3.10', '3.11', '3.x']
+        python: ['3.10', '3.11', '3.12', '3.x']
     steps:
       - uses: actions/checkout@v3
       - run: git fetch --prune --unshallow
@@ -45,7 +45,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python: ['3.9','3.10', '3.11', '3.x']
+        python: ['3.10', '3.11', '3.12', '3.x']
     env:
       REGISTRY_PORT: 8001
       INSTALL_DIR: fair
@@ -74,7 +74,7 @@ jobs:
     steps:
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.12'
       - name: Install CURL
         run: | 
           choco install curl

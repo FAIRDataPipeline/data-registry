@@ -996,7 +996,7 @@ class ProvAPITests(TestCase):
     PROV_SPECIFIC_ENTITY = "prov:specificEntity"
     PROV_ROLE = "prov:role"
     PROV_USED_ENTITY = "prov:usedEntity"
-    PROV_QUALIFIED_NAME = "prov:QUALIFIED_NAME"
+    XSD_QNAME = "xsd:QName"
     RDF_TYPE = "rdf:type"
     TEXT_FILE = "text file"
     XSD_DATE_TIME = "xsd:dateTime"
@@ -1017,7 +1017,7 @@ class ProvAPITests(TestCase):
         results = response.json()
 
         expected_result = {
-            self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
+            self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.XSD_QNAME},
             self.PROV_AT_LOCATION: "https://data.fairdatapipeline.org/api/text_file/input/1",
             self.DCTERMS_DESCRIPTION: "input 1 object",
             self.FAIR_NAMESPACE: "prov",
@@ -1029,7 +1029,7 @@ class ProvAPITests(TestCase):
         self.assertEqual(prov_out, expected_result)
 
         expected_result = {
-            self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
+            self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.XSD_QNAME},
             self.PROV_AT_LOCATION: "https://data.fairdatapipeline.org/api/text_file/output/1",
             self.DCTERMS_DESCRIPTION: "output 1 object",
             self.FAIR_NAMESPACE: "prov",
@@ -1041,7 +1041,7 @@ class ProvAPITests(TestCase):
         self.assertEqual(prov_out, expected_result)
 
         expected_result = {
-            self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
+            self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.XSD_QNAME},
             self.PROV_AT_LOCATION: "https://data.fairdatapipeline.org/api/text_file/input/2",
             self.DCTERMS_DESCRIPTION: "input 2 object",
             self.DCTERMS_FORMAT: self.TEXT_FILE,
@@ -1054,7 +1054,7 @@ class ProvAPITests(TestCase):
         self.assertEqual(prov_out, expected_result)
 
         expected_result = {
-            self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
+            self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.XSD_QNAME},
             self.PROV_AT_LOCATION: "https://data.fairdatapipeline.org/api/text_file/input/3",
             self.DCTERMS_DESCRIPTION: "input 3 object",
             self.DCTERMS_FORMAT: self.TEXT_FILE,
@@ -1067,7 +1067,7 @@ class ProvAPITests(TestCase):
         self.assertEqual(prov_out, expected_result)
 
         expected_result = {
-            self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
+            self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.XSD_QNAME},
             self.DCTERMS_TITLE: "this is cr test input 1",
             self.DCTERMS_ISSUED: {
                 "$": "2020-07-10T18:38:00+00:00",
@@ -1084,7 +1084,7 @@ class ProvAPITests(TestCase):
         )
 
         expected_result = {
-            self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.PROV_QUALIFIED_NAME},
+            self.RDF_TYPE: {"$": self.DCAT_DATASET, "type": self.XSD_QNAME},
             self.DCTERMS_TITLE: "this is cr test output 1",
             self.DCTERMS_ISSUED: {
                 "$": "2021-07-10T18:38:00+00:00",
@@ -1108,7 +1108,7 @@ class ProvAPITests(TestCase):
             "fair:website": "https://github.com/ScottishCovidResponse/SCRCdata",
             self.RDF_TYPE: {
                 "$": "dcmitype:Software",
-                "type": self.PROV_QUALIFIED_NAME,
+                "type": self.XSD_QNAME,
             },
         }
         prov_out = results["entity"]["lreg:api/code_repo_release/1"]
@@ -1127,7 +1127,7 @@ class ProvAPITests(TestCase):
             self.PROV_AT_LOCATION: "https://data.fairdatapipeline.org/api/text_file/16/?format=text",
             self.RDF_TYPE: {
                 "$": "dcmitype:Software",
-                "type": self.PROV_QUALIFIED_NAME,
+                "type": self.XSD_QNAME,
             },
         }
         prov_out = results["entity"][f"{self.LREG_OBJECT}4"]
@@ -1137,7 +1137,7 @@ class ProvAPITests(TestCase):
         expected_result = {
             f"{self.LREG_CODE_RUN}1": {
                 "prov:startTime": "2021-07-17T18:21:11+00:00",
-                self.RDF_TYPE: {"$": "fair:Run", "type": self.PROV_QUALIFIED_NAME},
+                self.RDF_TYPE: {"$": "fair:Run", "type": self.XSD_QNAME},
                 self.DCTERMS_DESCRIPTION: "Test run",
             }
         }
@@ -1146,28 +1146,28 @@ class ProvAPITests(TestCase):
             f"{self.LREG_AUTHOR}3": {
                 self.RDF_TYPE: {
                     "$": self.PROV_PERSON,
-                    "type": self.PROV_QUALIFIED_NAME,
+                    "type": self.XSD_QNAME,
                 },
                 self.FOAF_NAME: "Rosanna Massabeti",
             },
             f"{self.LREG_USER}1": {
                 self.RDF_TYPE: {
                     "$": self.PROV_PERSON,
-                    "type": self.PROV_QUALIFIED_NAME,
+                    "type": self.XSD_QNAME,
                 },
                 self.FOAF_NAME: "User Not Found",
             },
             f"{self.LREG_AUTHOR}1": {
                 self.RDF_TYPE: {
                     "$": self.PROV_PERSON,
-                    "type": self.PROV_QUALIFIED_NAME,
+                    "type": self.XSD_QNAME,
                 },
                 self.FOAF_NAME: "Ivana Valenti",
             },
             f"{self.LREG_AUTHOR}2": {
                 self.RDF_TYPE: {
                     "$": self.PROV_PERSON,
-                    "type": self.PROV_QUALIFIED_NAME,
+                    "type": self.XSD_QNAME,
                 },
                 self.FOAF_NAME: "Maria Cipriani",
             },
@@ -1192,7 +1192,7 @@ class ProvAPITests(TestCase):
                 self.PROV_ENTITY: "lreg:api/code_repo_release/1",
                 self.PROV_ROLE: {
                     "$": "fair:software",
-                    "type": self.PROV_QUALIFIED_NAME,
+                    "type": self.XSD_QNAME,
                 },
             },
             "_:id6": {
@@ -1200,7 +1200,7 @@ class ProvAPITests(TestCase):
                 self.PROV_ENTITY: f"{self.LREG_OBJECT}3",
                 self.PROV_ROLE: {
                     "$": "fair:model_configuration",
-                    "type": self.PROV_QUALIFIED_NAME,
+                    "type": self.XSD_QNAME,
                 },
             },
             "_:id7": {
@@ -1208,7 +1208,7 @@ class ProvAPITests(TestCase):
                 self.PROV_ENTITY: f"{self.LREG_OBJECT}4",
                 self.PROV_ROLE: {
                     "$": "fair:submission_script",
-                    "type": self.PROV_QUALIFIED_NAME,
+                    "type": self.XSD_QNAME,
                 },
             },
             "_:id10": {
@@ -1216,7 +1216,7 @@ class ProvAPITests(TestCase):
                 self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}1",
                 self.PROV_ROLE: {
                     "$": self.FAIR_INPUT_DATA,
-                    "type": self.PROV_QUALIFIED_NAME,
+                    "type": self.XSD_QNAME,
                 },
             },
             "_:id13": {
@@ -1224,7 +1224,7 @@ class ProvAPITests(TestCase):
                 self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}4",
                 self.PROV_ROLE: {
                     "$": self.FAIR_INPUT_DATA,
-                    "type": self.PROV_QUALIFIED_NAME,
+                    "type": self.XSD_QNAME,
                 },
             },
             "_:id16": {
@@ -1232,7 +1232,7 @@ class ProvAPITests(TestCase):
                 self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}5",
                 self.PROV_ROLE: {
                     "$": self.FAIR_INPUT_DATA,
-                    "type": self.PROV_QUALIFIED_NAME,
+                    "type": self.XSD_QNAME,
                 },
             },
         }
@@ -1244,7 +1244,7 @@ class ProvAPITests(TestCase):
                 self.PROV_AGENT: f"{self.LREG_AUTHOR}3",
                 self.PROV_ROLE: {
                     "$": self.DCTERMS_CREATOR,
-                    "type": self.PROV_QUALIFIED_NAME,
+                    "type": self.XSD_QNAME,
                 },
             },
             self.ID9: {
@@ -1252,7 +1252,7 @@ class ProvAPITests(TestCase):
                 self.PROV_AGENT: f"{self.LREG_AUTHOR}1",
                 self.PROV_ROLE: {
                     "$": self.DCTERMS_CREATOR,
-                    "type": self.PROV_QUALIFIED_NAME,
+                    "type": self.XSD_QNAME,
                 },
             },
             "_:id12": {
@@ -1260,7 +1260,7 @@ class ProvAPITests(TestCase):
                 self.PROV_AGENT: f"{self.LREG_AUTHOR}2",
                 self.PROV_ROLE: {
                     "$": self.DCTERMS_CREATOR,
-                    "type": self.PROV_QUALIFIED_NAME,
+                    "type": self.XSD_QNAME,
                 },
             },
             "_:id15": {
@@ -1268,7 +1268,7 @@ class ProvAPITests(TestCase):
                 self.PROV_AGENT: f"{self.LREG_AUTHOR}3",
                 self.PROV_ROLE: {
                     "$": self.DCTERMS_CREATOR,
-                    "type": self.PROV_QUALIFIED_NAME,
+                    "type": self.XSD_QNAME,
                 },
             },
         }
@@ -1305,7 +1305,7 @@ class ProvAPITests(TestCase):
                 "prov:time": "2021-07-17T18:21:11+00:00",
                 self.PROV_ROLE: {
                     "$": "fair:code_runner",
-                    "type": self.PROV_QUALIFIED_NAME,
+                    "type": self.XSD_QNAME,
                 },
             }
         }

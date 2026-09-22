@@ -14,7 +14,7 @@ class VersionValidator:
 
     def __call__(self, value):
         try:
-            semver.parse(value)
+            semver.Version.parse(value)
         except ValueError:
             raise ValidationError(
                 self.message,
