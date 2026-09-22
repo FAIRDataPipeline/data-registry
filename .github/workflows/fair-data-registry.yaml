@@ -9,10 +9,6 @@ on:
   schedule:
     - cron: "0 9 * * 1" # Run Every Monday at 9AM
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-emergency-bypass
-  cancel-in-progress: true
-
 jobs:
   test:
     name: Test ${{ matrix.os }} with Python ${{ matrix.python }}
