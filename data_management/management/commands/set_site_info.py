@@ -25,7 +25,7 @@ class Command(BaseCommand):
                     domain_url = settings.DOMAIN_URL
                     if domain_url[-1] != "/":
                         domain_url += "/"
-                    root = f"{settings.DOMAIN_URL}data/"
+                    root = f"{settings.DOMAIN_URL}/data/"
                     StorageRoot.objects.create(
                         updated_by=user,
                         root=root,
