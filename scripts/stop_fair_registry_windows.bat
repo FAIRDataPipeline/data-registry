@@ -4,6 +4,8 @@ rem With no options every one of them is stopped; -p PORT (and -a ADDRESS) stops
 rem only the server listening there. stop_fair_registry_windows.ps1 does the work.
 setlocal
 
+rem The script's folder must be read before any shift, which moves argument 0 too
+set "SCRIPT_DIR=%~dp0"
 set PORT=
 set ADDRESS=
 
@@ -38,5 +40,5 @@ exit /b 1
 set STOP_ARGS=
 if defined PORT set "STOP_ARGS=-p %PORT%"
 if defined ADDRESS set "STOP_ARGS=%STOP_ARGS% -a %ADDRESS%"
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0stop_fair_registry_windows.ps1" %STOP_ARGS%
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%stop_fair_registry_windows.ps1" %STOP_ARGS%
 exit /b %ERRORLEVEL%
