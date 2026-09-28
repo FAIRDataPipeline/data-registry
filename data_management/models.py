@@ -46,6 +46,16 @@ class BaseModel(models.Model):
             )
         return cls._field_names
 
+    @classmethod
+    def filter_field_names(cls):
+        """
+        Return the names of the fields a list of this model can be filtered by: by
+        default every field, including the reverse side of each relation.
+        """
+        if cls.FILTERSET_FIELDS == "__all__":
+            return cls.field_names()
+        return cls.FILTERSET_FIELDS
+
     class Meta:
         abstract = True
         ordering = ["-last_updated"]

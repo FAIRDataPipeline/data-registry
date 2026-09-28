@@ -481,7 +481,9 @@ class GlobFilter(filters.Filter):
 
 class CustomFilterSet(filterset.FilterSet):
     """
-    Custom filters which we use to add glob filtering to all NameField fields.
+    Custom filters which we use to add glob filtering to all NameField fields, and to
+    filter by the id of a related object from either side of a one-to-one or
+    one-to-many relation, and from the reverse side of a many-to-many relation.
     """
 
     FILTER_DEFAULTS = deepcopy(filterset.FILTER_FOR_DBFIELD_DEFAULTS)
@@ -490,6 +492,9 @@ class CustomFilterSet(filterset.FilterSet):
             models.NameField: {"filter_class": GlobFilter},
             db.models.OneToOneField: {"filter_class": filters.NumberFilter},
             db.models.ForeignKey: {"filter_class": filters.NumberFilter},
+            db.models.OneToOneRel: {"filter_class": filters.NumberFilter},
+            db.models.ManyToOneRel: {"filter_class": filters.NumberFilter},
+            db.models.ManyToManyRel: {"filter_class": filters.NumberFilter},
         }
     )
 
@@ -523,20 +528,12 @@ class BaseViewSet(
     ordering = ["-id"]
 
     def list(self, request, *args, **kwargs):
-        if self.model.FILTERSET_FIELDS == "__all__":
-            filterset_fields = self.model.field_names() + (
-                "cursor",
-                "format",
-                "ordering",
-                "page_size",
-            )
-        else:
-            filterset_fields = self.model.FILTERSET_FIELDS + (
-                "cursor",
-                "format",
-                "ordering",
-                "page_size",
-            )
+        filterset_fields = self.model.filter_field_names() + (
+            "cursor",
+            "format",
+            "ordering",
+            "page_size",
+        )
         if set(request.query_params.keys()) - set(filterset_fields):
             args = ", ".join(filterset_fields)
             raise BadQuery(
@@ -616,7 +613,7 @@ class ObjectStorageView(views.APIView):
 class IssueViewSet(BaseViewSet, mixins.UpdateModelMixin):
     model = models.Issue
     serializer_class = serializers.IssueSerializer
-    filterset_fields = models.Issue.FILTERSET_FIELDS
+    filterset_fields = models.Issue.filter_field_names()
     __doc__ = models.Issue.__doc__
 
     def create(self, request, *args, **kwargs):
@@ -628,7 +625,7 @@ class IssueViewSet(BaseViewSet, mixins.UpdateModelMixin):
 class DataProductViewSet(BaseViewSet, mixins.UpdateModelMixin):
     model = models.DataProduct
     serializer_class = serializers.DataProductSerializer
-    filterset_fields = models.DataProduct.FILTERSET_FIELDS
+    filterset_fields = models.DataProduct.filter_field_names()
     __doc__ = models.DataProduct.__doc__
 
     def create(self, request, *args, **kwargs):
@@ -642,7 +639,7 @@ class DataProductViewSet(BaseViewSet, mixins.UpdateModelMixin):
 class CodeRunViewSet(BaseViewSet, mixins.UpdateModelMixin, mixins.DestroyModelMixin):
     model = models.CodeRun
     serializer_class = serializers.CodeRunSerializer
-    filterset_fields = models.CodeRun.FILTERSET_FIELDS
+    filterset_fields = models.CodeRun.filter_field_names()
     __doc__ = models.CodeRun.__doc__
 
 
@@ -652,7 +649,7 @@ for name, cls in models.all_models.items():
     data = {
         "model": cls,
         "serializer_class": getattr(serializers, name + "Serializer"),
-        "filterset_fields": cls.FILTERSET_FIELDS,
+        "filterset_fields": cls.filter_field_names(),
         "__doc__": cls.__doc__,
     }
     if name == "TextFile":
