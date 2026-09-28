@@ -16,7 +16,11 @@ while getopts ":a:p:h" opt; do
         echo "stop_fair_registry [-p <port>][-a <address>]"
         exit 0
     ;;
+    :) echo "Option -${OPTARG} needs a value, see -h" >&2
+       exit 1
+    ;;
     \?) echo "Invalid option -${OPTARG} see -h" >&2
+        exit 1
     ;;
   esac
 done
