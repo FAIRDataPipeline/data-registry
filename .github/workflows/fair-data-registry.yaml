@@ -14,6 +14,7 @@ jobs:
     name: Test ${{ matrix.os }} with Python ${{ matrix.python }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
         python: ['3.10', '3.11', '3.12', '3.x']
@@ -46,8 +47,13 @@ jobs:
           verbose: true
   deploy-local-registry:
     name: Deploy local registry on ${{ matrix.os }} with Python ${{ matrix.python }}
+    # The installer clones a branch by name, which a pull request's merge ref is
+    # not; the push of the branch behind a pull request runs these jobs instead.
+    if: github.event_name != 'pull_request'
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
         python: ['3.10', '3.11', '3.12', '3.x']
@@ -69,29 +75,32 @@ jobs:
         run:  |
               $INSTALL_DIR/registry/scripts/start_fair_registry -p $REGISTRY_PORT
       - name: Test registry
-        run: curl http://localhost:$REGISTRY_PORT/api/
+        run: curl --retry 10 --retry-connrefused --retry-delay 2 http://localhost:$REGISTRY_PORT/api/
       - name: Test registry scripts
         run: |
           scripts=$INSTALL_DIR/registry/scripts
-          # Wait up to 30 s for port $1 to answer ($2 = up) or to stop answering ($2 = down)
+          # Wait up to 60 s for port $1 to answer ($2 = up) or to stop answering ($2 = down)
           wait_for() {
-            for i in $(seq 30); do
-              if curl -sf -m 5 -o /dev/null http://localhost:$1/api/; then
+            for i in $(seq 60); do
+              if curl -sf -m 5 -o /dev/null http://127.0.0.1:$1/api/; then
                 [ $2 = up ] && return 0
               else
                 [ $2 = down ] && return 0
               fi
               sleep 1
             done
+            echo "Port $1 is not $2 after 60 s. Registry processes:"
+            ps -ef | grep "[m]anage.py" || true
+            tail -20 $INSTALL_DIR/registry/output.log
             return 1
           }
           # -h prints usage rather than starting a server, and a bad option is refused
-          $scripts/start_fair_registry -h | grep -q "^start_fair_registry \["
-          ! $scripts/start_fair_registry -d 5 || exit 1
+          $scripts/start_fair_registry -h | grep -q "^start_fair_registry \[" || { echo "-h did not print usage"; exit 1; }
+          ! $scripts/start_fair_registry -d 5 || { echo "-d was accepted"; exit 1; }
           # -p stops only that server, and no option (as the CLI calls it) stops the rest
           $scripts/start_fair_registry -p 8002
           wait_for 8002 up
-          ! $scripts/stop_fair_registry -P 8002 || exit 1
+          ! $scripts/stop_fair_registry -P 8002 || { echo "-P was accepted"; exit 1; }
           $scripts/stop_fair_registry -p 8002
           wait_for 8002 down
           wait_for $REGISTRY_PORT up
@@ -99,7 +108,10 @@ jobs:
           wait_for $REGISTRY_PORT down
   deploy-local-registry-windows:
     name: Deploy Local Registry on Windows
+    # As for deploy-local-registry
+    if: github.event_name != 'pull_request'
     runs-on: windows-latest
+    timeout-minutes: 20
     env:
       REGISTRY_PORT: 8001
       INSTALL_DIR: fair
@@ -138,18 +150,20 @@ jobs:
         shell: cmd
         run:  |
             start /wait /b %INSTALL_DIR%\scripts\start_fair_registry_windows.bat -p %REGISTRY_PORT% -a 127.0.0.1 -b
-            curl http://127.0.0.1:%REGISTRY_PORT%/api/
+            curl --retry 10 --retry-connrefused --retry-delay 2 http://127.0.0.1:%REGISTRY_PORT%/api/
       - name: Test registry scripts
         shell: cmd
         run: |
           set SCRIPTS=%INSTALL_DIR%\scripts
+          rem A server that should be up is retried while it starts; one that should be down is not
+          set UP=curl -sf --retry 10 --retry-connrefused --retry-delay 2
           rem -h prints usage rather than starting a server
           call %SCRIPTS%\start_fair_registry_windows.bat -h | findstr /b /c:"Usage" || exit /b 1
           rem A bad option, or a port this install has no server on, stops nothing
           call %SCRIPTS%\stop_fair_registry_windows.bat -P %REGISTRY_PORT% && exit /b 1
           call %SCRIPTS%\stop_fair_registry_windows.bat -p 8002 || exit /b 1
           ping -n 4 127.0.0.1 >NUL
-          curl -sf http://127.0.0.1:%REGISTRY_PORT%/api/ >NUL || exit /b 1
+          %UP% http://127.0.0.1:%REGISTRY_PORT%/api/ >NUL || exit /b 1
           rem -p stops the server on that port
           call %SCRIPTS%\stop_fair_registry_windows.bat -p %REGISTRY_PORT% || exit /b 1
           ping -n 4 127.0.0.1 >NUL
@@ -160,12 +174,12 @@ jobs:
           xcopy %INSTALL_DIR% fair2 /E /I /Q /H /Y >NUL || exit /b 1
           start /wait /b %SCRIPTS%\start_fair_registry_windows.bat -p %REGISTRY_PORT% -a 127.0.0.1 -b
           start /wait /b fair2\scripts\start_fair_registry_windows.bat -p 8002 -a 127.0.0.1 -b
-          curl -sf http://127.0.0.1:%REGISTRY_PORT%/api/ >NUL || exit /b 1
-          curl -sf http://127.0.0.1:8002/api/ >NUL || exit /b 1
+          %UP% http://127.0.0.1:%REGISTRY_PORT%/api/ >NUL || exit /b 1
+          %UP% http://127.0.0.1:8002/api/ >NUL || exit /b 1
           call %SCRIPTS%\stop_fair_registry_windows.bat ""
           ping -n 4 127.0.0.1 >NUL
           curl -sf http://127.0.0.1:%REGISTRY_PORT%/api/ >NUL && exit /b 1
-          curl -sf http://127.0.0.1:8002/api/ >NUL || exit /b 1
+          %UP% http://127.0.0.1:8002/api/ >NUL || exit /b 1
           call fair2\scripts\stop_fair_registry_windows.bat ""
           ping -n 4 127.0.0.1 >NUL
           curl -sf http://127.0.0.1:8002/api/ >NUL && exit /b 1
