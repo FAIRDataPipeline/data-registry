@@ -145,16 +145,29 @@ jobs:
           set SCRIPTS=%INSTALL_DIR%\scripts
           rem -h prints usage rather than starting a server
           call %SCRIPTS%\start_fair_registry_windows.bat -h | findstr /b /c:"Usage" || exit /b 1
-          rem -p stops only that server, and no option (as the CLI calls it) stops the rest
-          start /wait /b %SCRIPTS%\start_fair_registry_windows.bat -p 8002 -a 127.0.0.1 -b
-          curl -sf http://127.0.0.1:8002/api/ >NUL || exit /b 1
-          call %SCRIPTS%\stop_fair_registry_windows.bat -P 8002 && exit /b 1
+          rem A bad option, or a port this install has no server on, stops nothing
+          call %SCRIPTS%\stop_fair_registry_windows.bat -P %REGISTRY_PORT% && exit /b 1
           call %SCRIPTS%\stop_fair_registry_windows.bat -p 8002 || exit /b 1
           ping -n 4 127.0.0.1 >NUL
-          curl -sf http://127.0.0.1:8002/api/ >NUL && exit /b 1
           curl -sf http://127.0.0.1:%REGISTRY_PORT%/api/ >NUL || exit /b 1
+          rem -p stops the server on that port
+          call %SCRIPTS%\stop_fair_registry_windows.bat -p %REGISTRY_PORT% || exit /b 1
+          ping -n 4 127.0.0.1 >NUL
+          curl -sf http://127.0.0.1:%REGISTRY_PORT%/api/ >NUL && exit /b 1
+          rem No option, as the CLI calls it, stops this install's servers and not another
+          rem install's. The second server needs its own install: on Windows two servers
+          rem cannot share an install's output.log.
+          xcopy %INSTALL_DIR% fair2 /E /I /Q /H /Y >NUL || exit /b 1
+          start /wait /b %SCRIPTS%\start_fair_registry_windows.bat -p %REGISTRY_PORT% -a 127.0.0.1 -b
+          start /wait /b fair2\scripts\start_fair_registry_windows.bat -p 8002 -a 127.0.0.1 -b
+          curl -sf http://127.0.0.1:%REGISTRY_PORT%/api/ >NUL || exit /b 1
+          curl -sf http://127.0.0.1:8002/api/ >NUL || exit /b 1
           call %SCRIPTS%\stop_fair_registry_windows.bat ""
           ping -n 4 127.0.0.1 >NUL
           curl -sf http://127.0.0.1:%REGISTRY_PORT%/api/ >NUL && exit /b 1
+          curl -sf http://127.0.0.1:8002/api/ >NUL || exit /b 1
+          call fair2\scripts\stop_fair_registry_windows.bat ""
+          ping -n 4 127.0.0.1 >NUL
+          curl -sf http://127.0.0.1:8002/api/ >NUL && exit /b 1
           exit /b 0
 
