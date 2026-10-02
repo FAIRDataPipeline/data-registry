@@ -1,4 +1,5 @@
 import boto3
+from botocore.config import Config
 
 from django.conf import settings
 
@@ -11,6 +12,9 @@ def create_url(name, method, filename=None):
         aws_access_key_id=bucket["access_key"],
         aws_secret_access_key=bucket["secret_key"],
         endpoint_url=bucket["url"],
+        # boto3 presigns S3 URLs with the legacy SigV2 unless told otherwise,
+        # and SigV2 URLs fail behind a proxy that rewrites the path
+        config=Config(signature_version="s3v4"),
     )
     if method == "GET":
         response = s3_client.generate_presigned_url(
