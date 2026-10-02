@@ -16,7 +16,11 @@ while getopts ":a:p:h" opt; do
         echo "stop_fair_registry [-p <port>][-a <address>]"
         exit 0
     ;;
+    :) echo "Option -${OPTARG} needs a value, see -h" >&2
+       exit 1
+    ;;
     \?) echo "Invalid option -${OPTARG} see -h" >&2
+        exit 1
     ;;
   esac
 done
@@ -32,4 +36,10 @@ FAIR_HOME="$(dirname "${DIR}")"
 # The server's command line ends "runserver <address>:<port>"; an unset
 # address or port matches any
 PATTERN="$FAIR_HOME/manage.py runserver ${ADDRESS:-[^: ]*}:${PORT:-[0-9]+}\$"
-pgrep -f "$PATTERN" | xargs kill &> /dev/null 2>&1
+# pkill, not pgrep | xargs kill: kill fails for a server that exits between
+# being found and being signalled, and xargs then fails the whole stop.
+# Status 1 means nothing matched, so there was nothing to stop
+pkill -f "$PATTERN"
+status=$?
+[ $status -eq 1 ] && exit 0
+exit $status

@@ -5,19 +5,23 @@ ADDRESS="127.0.0.1"
 SETTINGS="drams.local-settings"
 ORIGINAL_PWD=`pwd`
 
-while getopts ":a:p:s:h:address:port:settings:help" opt; do
+while getopts ":a:p:s:h" opt; do
   case ${opt} in
-    a|address) ADDRESS="${OPTARG}"
+    a) ADDRESS="${OPTARG}"
     ;;
-    p|port) PORT="${OPTARG}"
+    p) PORT="${OPTARG}"
     ;;
-    s|settings) SETTINGS="$OPTARG"
+    s) SETTINGS="$OPTARG"
     ;;
-    h|help)
-        echo "start_fair_registry [-p <port>][-a <address>]"
+    h)
+        echo "start_fair_registry [-p <port>][-a <address>][-s <settings>]"
         exit 0
     ;;
+    :) echo "Option -${OPTARG} needs a value, see -h" >&2
+       exit 1
+    ;;
     \?) echo "Invalid option -${OPTARG} see -h" >&2
+        exit 1
     ;;
   esac
 done

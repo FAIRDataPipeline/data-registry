@@ -3,6 +3,8 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
+from data_management import models
+from data_management.rest import views
 from .initdb import init_db
 from .init_prov_db import init_db as init_prov_db
 
@@ -381,6 +383,31 @@ class ObjectComponentAPITests(TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["name"], "nhs_health_board/per_location/all_deaths")
 
+    def test_filter_by_outputs_of(self):
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse("objectcomponent-list")
+        code_run = models.CodeRun.objects.get()
+        response = client.get(url, data={"outputs_of": code_run.id}, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/json")
+        results = response.json()["results"]
+        self.assertEqual(len(results), 3)
+        self.assertEqual(
+            sorted(result["name"] for result in results),
+            sorted(code_run.outputs.values_list("name", flat=True)),
+        )
+
+    def test_filter_by_unknown_outputs_of(self):
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse("objectcomponent-list")
+        response = client.get(url, data={"outputs_of": "99999"}, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["results"], [])
+
 
 class IssueAPITests(TestCase):
 
@@ -420,6 +447,47 @@ class IssueAPITests(TestCase):
         results = response.json()["results"]
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["description"], "Test Issue 2")
+
+    def test_filter_by_component_issues(self):
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse("issue-list")
+        with_issue, without_issue = models.ObjectComponent.objects.all()[:2]
+        with_issue.issues.add(models.Issue.objects.get(description="Test Issue 2"))
+
+        response = client.get(
+            url, data={"component_issues": with_issue.id}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+        results = response.json()["results"]
+        self.assertEqual(
+            [result["description"] for result in results], ["Test Issue 2"]
+        )
+
+        response = client.get(
+            url, data={"component_issues": without_issue.id}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["results"], [])
+
+
+class FilterFieldsTests(TestCase):
+
+    def test_every_query_key_has_a_filter(self):
+        """
+        Test that every field a list endpoint accepts as a query key, including the
+        reverse side of each relation, has a filter rather than being accepted and
+        ignored. This checks only that each filter exists; what the filters match is
+        tested per endpoint.
+        """
+        backend = views.CustomDjangoFilterBackend()
+        for name, model in models.all_models.items():
+            with self.subTest(model=name):
+                view = getattr(views, name + "ViewSet")()
+                filterset = backend.get_filterset_class(view, model.objects.all())
+                self.assertEqual(
+                    set(model.filter_field_names()) - set(filterset.base_filters), set()
+                )
 
 
 class CodeRunAPITests(TestCase):

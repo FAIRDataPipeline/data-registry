@@ -1,5 +1,6 @@
 import re
-from django.core.management.base import BaseCommand
+from urllib.parse import urlsplit
+from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
 from data_management import settings as dm_settings
 from django.contrib.sites.models import Site
@@ -25,8 +26,14 @@ class Command(BaseCommand):
                     domain_url = settings.DOMAIN_URL
                     if domain_url[-1] != "/":
                         domain_url += "/"
-                    root = f"{settings.DOMAIN_URL}/data/"
-                    StorageRoot.objects.create(
-                        updated_by=user,
-                        root=root,
+                    url = urlsplit(domain_url)
+                    if url.scheme not in ("http", "https") or not url.netloc:
+                        raise CommandError(
+                            f"DOMAIN_URL '{settings.DOMAIN_URL}' must be an "
+                            "http:// or https:// URL, as it is the root of the "
+                            "data store's file URLs"
+                        )
+                    StorageRoot.objects.get_or_create(
+                        root=f"{domain_url}data/",
+                        defaults={"updated_by": user},
                     )

@@ -157,8 +157,8 @@ SITE_ID = 1
 ACCOUNT_EMAIL_VERIFICATION = "none"
 ACCOUNT_UNIQUE_EMAIL = False
 
-# Redirect authenticated users to this URL
-# LOGIN_REDIRECT_URL = 'index'
+# Redirect users here after login when no next page was given
+LOGIN_REDIRECT_URL = "index"
 
 CRISPY_TEMPLATE_PACK = "bootstrap3"
 
