@@ -61,9 +61,15 @@ class SocialLoginTests(TestCase):
         )
         self.assertIsNotNone(match)
         action, form_body = match.groups()
-        token = re.search(r'name="csrfmiddlewaretoken" value="([^"]+)"', form_body).group(1)
+        # submit the form's fields as a browser would
+        fields = {
+            name: html.unescape(value)
+            for name, value in re.findall(r'<input[^>]*name="([^"]+)"[^>]*value="([^"]*)"', form_body)
+        }
 
-        response = client.post(html.unescape(action), {"csrfmiddlewaretoken": token})
+        response = client.post(html.unescape(action), fields)
 
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response["Location"].startswith("https://github.com/login/oauth/authorize"))
+        # where to return to after GitHub sends the user back
+        self.assertEqual(client.session["next"], reverse("index"))
