@@ -37,7 +37,12 @@ def init_db():
     text_file = FileType.objects.create(
         updated_by=user, name="text file", extension="txt"
     )
-    namespace = Namespace.objects.create(updated_by=user, name="shared")
+    namespace = Namespace.objects.create(
+        updated_by=user,
+        name="shared",
+        full_name="Shared Ancestry",
+        website="https://example.org/shared",
+    )
     author = Author.objects.create(updated_by=user, name="Ivana Valenti")
     hashes = iter(range(1, 100))
 

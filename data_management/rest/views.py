@@ -261,6 +261,10 @@ class CodeRunROCrateView(views.APIView):
     the commit that was run: the commit is its `softwareVersion`, and its `url` is the
     repo.
 
+    A `DataProduct` file has the `name` and `version` of the `DataProduct`, and its
+    `namespace` is an entity of type `Namespace`, whose `name` is the name of the
+    `Namespace`, `alternateName` its full name and `url` its website.
+
     `CreateAction` (`CodeRun`) properties:
 
     * `instrument`: the software used to generate the output
@@ -333,6 +337,10 @@ class DataProductROCrateView(views.APIView):
     generate the product. For our purposes `instrument` is the link to the repo, at
     the commit that was run: the commit is its `softwareVersion`, and its `url` is the
     repo.
+
+    A `DataProduct` file has the `name` and `version` of the `DataProduct`, and its
+    `namespace` is an entity of type `Namespace`, whose `name` is the name of the
+    `Namespace`, `alternateName` its full name and `url` its website.
 
     `CreateAction` (`CodeRun`) properties:
 

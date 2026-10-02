@@ -1954,6 +1954,65 @@ class RoCrateSharedAncestryTests(TestCase):
         self.assertEqual(instruments.pop("final"), f"{url}#{second_commit}")
         self.assertEqual(set(instruments.values()), {f"{url}#{first_commit}"})
 
+    def test_data_product_identity(self):
+        # give one data product a version and a namespace of its own
+        raw = models.DataProduct.objects.get(name="raw")
+        raw.version = "2.3.4"
+        raw.namespace = models.Namespace.objects.create(
+            updated_by=self.user, name="other / one"
+        )
+        raw.save()
+        end = models.DataProduct.objects.get(name="end")
+
+        crate, _ = self._get("data_product_ro_crate", end.id, 100)
+        graph = {entity["@id"]: entity for entity in crate["@graph"]}
+
+        vocab = "https://data.fairdatapipeline.org/vocab/#"
+        self.assertEqual(crate["@context"][1]["namespace"], f"{vocab}namespace")
+        self.assertEqual(crate["@context"][1]["Namespace"], f"{vocab}Namespace")
+
+        # a namespace is identified by its name, whichever registry it is in
+        shared_id = "#namespace-shared"
+        other_id = "#namespace-other%20%2F%20one"
+        self.assertEqual(
+            graph[shared_id],
+            {
+                "@id": shared_id,
+                "@type": "Namespace",
+                "name": "shared",
+                "alternateName": "Shared Ancestry",
+                "url": "https://example.org/shared",
+            },
+        )
+        # a namespace need not have a full name or a website
+        self.assertEqual(
+            graph[other_id],
+            {"@id": other_id, "@type": "Namespace", "name": "other / one"},
+        )
+
+        identities = {
+            entity["name"]: (entity["version"], entity["namespace"]["@id"])
+            for entity in graph.values()
+            if entity["@type"] == "File"
+        }
+        expected = {
+            name: ("1.0.0", shared_id)
+            for name in ("end", "first", "second", "left", "right", "source")
+        }
+        expected["raw"] = ("2.3.4", other_id)
+        self.assertEqual(identities, expected)
+
+        # the config and the script are files, but not data products
+        software = [
+            entity
+            for entity in graph.values()
+            if entity["@type"] == ["File", "SoftwareSourceCode"]
+        ]
+        self.assertEqual(len(software), 2)
+        for entity in software:
+            self.assertNotIn("version", entity)
+            self.assertNotIn("namespace", entity)
+
     def test_code_run(self):
         final = models.CodeRun.objects.get(description="final")
         names = ["first", "left", "raw", "right", "second", "source"]

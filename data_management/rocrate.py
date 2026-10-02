@@ -30,7 +30,13 @@ see
 [software-used-to-create-files](https://www.researchobject.org/ro-crate/1.1/provenance.html#software-used-to-create-files).
 
 A `CreateAction` has `instrument` property, which represents the software used to
-generate the product. For our purposes `instrument` is the link to the repo.
+generate the product. For our purposes `instrument` is the link to the repo, at
+the commit that was run: the commit is its `softwareVersion`, and its `url` is the
+repo.
+
+A `DataProduct` file has the `name` and `version` of the `DataProduct`, and its
+`namespace` is an entity of type `Namespace`, whose `name` is the name of the
+`Namespace`, `alternateName` its full name and `url` its website.
 
 `CreateAction` (`CodeRun`) properties:
 
@@ -49,7 +55,9 @@ import json
 import mimetypes
 import os
 import tempfile
+from urllib.parse import quote
 
+from django.conf import settings as django_settings
 from rocrate.model.person import Person
 from rocrate.rocrate import ContextEntity
 from rocrate.rocrate import ROCrate
@@ -683,6 +691,7 @@ def _get_local_data_product(crate, data_product, registry_url, output):
 
     properties = {
         "name": data_product.name,
+        "version": data_product.version,
         "encodingFormat": encoding_format,
     }
 
@@ -699,6 +708,7 @@ def _get_local_data_product(crate, data_product, registry_url, output):
         properties=properties,
         fetch_remote=_fetch_remote,
     )
+    crate_data_product["namespace"] = _get_namespace(crate, data_product.namespace)
 
     return crate_data_product
 
@@ -718,6 +728,45 @@ def _get_mime_type(extension):
         # mime type not found, use extension
         mime_type = extension
     return mime_type
+
+
+def _get_namespace(crate, namespace):
+    """
+    Create an RO Crate ContextEntity representing a namespace.
+
+    Its id is made from its name, which is what identifies a namespace in every
+    registry.
+
+    @param crate: the RO Crate object
+    @param namespace: a namespace from the Namespace table
+
+    @return an RO Crate ContextEntity representing the namespace
+
+    """
+    # these are the registry's own terms, as in the provenance report
+    central_registry_url = django_settings.CENTRAL_REGISTRY_URL
+    if not central_registry_url.endswith("/"):
+        central_registry_url = f"{central_registry_url}/"
+    crate.metadata.extra_terms.update(
+        {
+            "Namespace": f"{central_registry_url}vocab/#Namespace",
+            "namespace": f"{central_registry_url}vocab/#namespace",
+        }
+    )
+
+    properties = {RO_TYPE: "Namespace", "name": namespace.name}
+    if namespace.full_name:
+        properties["alternateName"] = namespace.full_name
+    if namespace.website:
+        properties["url"] = namespace.website
+
+    return crate.add(
+        ContextEntity(
+            crate,
+            f"#namespace-{quote(namespace.name, safe='')}",
+            properties=properties,
+        )
+    )
 
 
 def _get_software(crate, software_object, registry_url, software_type):
