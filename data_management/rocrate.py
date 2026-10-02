@@ -823,11 +823,19 @@ def generate_ro_crate_from_cr(code_run, depth, request):
 
     input_data_products = _get_input_files_for_code_run(code_run)
 
+    # a data product reached by several routes is added once, at the first level it
+    # is reached
+    data_product_ids = set()
+
     # add extra layers to the report if requested by the user
     while depth > 1:
         next_level_input_data_products = []
 
         for data_product in input_data_products:
+            if data_product.id in data_product_ids:
+                continue
+            data_product_ids.add(data_product.id)
+
             _generate_ro_crate_from_dp(data_product, crate, registry_url, False)
 
             next_level_input_data_products.extend(
@@ -876,11 +884,19 @@ def generate_ro_crate_from_dp(data_product, depth, request):
 
     input_data_products = _get_input_files_for_data_product(data_product)
 
+    # a data product reached by several routes is added once, at the first level it
+    # is reached
+    data_product_ids = {data_product.id}
+
     # add extra layers to the report if requested by the user
     while depth > 1:
         next_level_input_data_products = []
 
         for data_product in input_data_products:
+            if data_product.id in data_product_ids:
+                continue
+            data_product_ids.add(data_product.id)
+
             _generate_ro_crate_from_dp(data_product, crate, registry_url, False)
 
             next_level_input_data_products.extend(

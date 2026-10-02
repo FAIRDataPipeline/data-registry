@@ -1,12 +1,15 @@
-from django.test import TestCase
+from unittest import mock
+
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
-from data_management import models
+from data_management import models, prov, rocrate
 from data_management.rest import views
 from .initdb import init_db
 from .init_prov_db import init_db as init_prov_db
+from .init_shared_ancestry_db import init_db as init_shared_ancestry_db
 
 
 class UsersAPITests(TestCase):
@@ -1559,6 +1562,179 @@ endDocument"""
         )
 
 
+class ProvSharedAncestryTests(TestCase):
+    """
+    The provenance report of a data product whose ancestry is shared: everything in
+    it is reported once, however many routes lead to it.
+
+    The expected content is written out from the fixture, so these tests also fail
+    if something that belongs in the report is left out. The fixture has no
+    external object, no code repo release and no component that is the output of
+    two code runs, so they say nothing about those.
+    """
+
+    APPLICATION_JSON = "application/json"
+    RUNS = ["final", "left", "pair", "prepare", "right"]
+
+    def setUp(self):
+        self.user = get_user_model().objects.create(username="Test User")
+        init_shared_ancestry_db()
+
+    def _data_product(self, name):
+        return f"lreg:api/data_product/{models.DataProduct.objects.get(name=name).id}"
+
+    def _code_run(self, description):
+        code_run = models.CodeRun.objects.get(description=description)
+        return f"lreg:api/code_run/{code_run.id}"
+
+    def _object(self, path):
+        return f"lreg:api/object/{models.Object.objects.get(storage_location__path=path).id}"
+
+    def _get(self, depth):
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        end = models.DataProduct.objects.get(name="end")
+        url = reverse("prov_report", kwargs={"pk": end.id})
+        response = client.get(
+            url, data={"depth": depth}, format="json", HTTP_ACCEPT=self.APPLICATION_JSON
+        )
+        self.assertEqual(response.status_code, 200)
+        return response.json()
+
+    def _pairs(self, results, relation, first, second):
+        # sorted lists, not sets, so that a repeated relation fails the comparison
+        return sorted((r[first], r[second]) for r in results[relation].values())
+
+    def test_whole_ancestry(self):
+        results = self._get(100)
+        dp = self._data_product
+        cr = self._code_run
+        user = f"lreg:api/users/{self.user.id}"
+        author = f"lreg:api/author/{models.Author.objects.get().id}"
+        script = self._object("script")
+        repo = self._object("FAIRDataPipeline/shared")
+        model_config = self._object("model_config")
+
+        # an identifier described more than once has a list of descriptions
+        for kind in ("entity", "activity", "agent"):
+            for identifier, description in results[kind].items():
+                self.assertIsInstance(description, dict, identifier)
+
+        names = ["end", "first", "second", "raw", "left", "right", "source"]
+        self.assertEqual(
+            set(results["entity"]),
+            {script, repo, model_config, *(dp(name) for name in names)},
+        )
+        self.assertEqual(set(results["activity"]), {cr(run) for run in self.RUNS})
+        self.assertEqual(set(results["agent"]), {user, author})
+
+        self.assertEqual(
+            self._pairs(results, "wasGeneratedBy", "prov:entity", "prov:activity"),
+            sorted(
+                [
+                    (dp("end"), cr("final")),
+                    (dp("first"), cr("pair")),
+                    (dp("second"), cr("pair")),
+                    (dp("raw"), cr("prepare")),
+                    (dp("left"), cr("left")),
+                    (dp("right"), cr("right")),
+                ]
+            ),
+        )
+        self.assertEqual(
+            self._pairs(results, "used", "prov:activity", "prov:entity"),
+            sorted(
+                [
+                    (cr("final"), dp("first")),
+                    (cr("final"), dp("second")),
+                    (cr("final"), dp("raw")),
+                    (cr("pair"), dp("left")),
+                    (cr("pair"), dp("right")),
+                    (cr("prepare"), dp("source")),
+                    (cr("left"), dp("raw")),
+                    (cr("right"), dp("raw")),
+                    *((cr(run), script) for run in self.RUNS),
+                    *((cr(run), repo) for run in self.RUNS),
+                    *((cr(run), model_config) for run in ("prepare", "left", "right")),
+                ]
+            ),
+        )
+        self.assertEqual(
+            self._pairs(
+                results, "wasDerivedFrom", "prov:generatedEntity", "prov:usedEntity"
+            ),
+            sorted(
+                [
+                    (dp("end"), dp("first")),
+                    (dp("end"), dp("second")),
+                    (dp("end"), dp("raw")),
+                    (dp("first"), dp("left")),
+                    (dp("first"), dp("right")),
+                    (dp("second"), dp("left")),
+                    (dp("second"), dp("right")),
+                    (dp("raw"), dp("source")),
+                    (dp("left"), dp("raw")),
+                    (dp("right"), dp("raw")),
+                ]
+            ),
+        )
+        self.assertEqual(
+            self._pairs(results, "wasStartedBy", "prov:activity", "prov:trigger"),
+            sorted((cr(run), user) for run in self.RUNS),
+        )
+        self.assertEqual(
+            self._pairs(results, "wasAttributedTo", "prov:entity", "prov:agent"),
+            sorted((entity, author) for entity in (script, repo, model_config)),
+        )
+
+    def test_depth(self):
+        cr = self._code_run
+
+        self.assertEqual(set(self._get(1)["activity"]), {cr("final")})
+        # raw is an input of the final run, so the run that made it is at depth 2
+        self.assertEqual(
+            set(self._get(2)["activity"]), {cr("final"), cr("pair"), cr("prepare")}
+        )
+        whole_ancestry = self._get(3)
+        self.assertEqual(
+            set(whole_ancestry["activity"]), {cr(run) for run in self.RUNS}
+        )
+        # raw is reached again at depth 4, through left and right
+        self.assertEqual(self._get(4), whole_ancestry)
+        self.assertEqual(self._get(100), whole_ancestry)
+
+    def test_no_record_is_repeated(self):
+        end = models.DataProduct.objects.get(name="end")
+        request = RequestFactory().get("/")
+
+        for depth in (1, 2, 3, 4, 100):
+            doc = prov.generate_prov_document(end, depth, request)
+            records = doc.get_records()
+            self.assertEqual(len(records), len(set(records)), f"depth {depth}")
+
+    def test_object_with_two_roles(self):
+        # an object that is the model config of one code run and the submission
+        # script of another is described as each, because the descriptions differ
+        script = models.Object.objects.get(storage_location__path="script")
+        final = models.CodeRun.objects.get(description="final")
+        final.model_config = script
+        final.save()
+
+        results = self._get(100)
+        descriptions = results["entity"][self._object("script")]
+
+        self.assertEqual(len(descriptions), 2)
+        self.assertEqual(
+            sorted("rdf:type" in description for description in descriptions),
+            [False, True],
+        )
+        # its author is attributed to the object, not to each description of it
+        attributed = self._pairs(
+            results, "wasAttributedTo", "prov:entity", "prov:agent"
+        )
+        self.assertEqual(len(attributed), len(set(attributed)))
+
+
 class RoCrateAPITest(TestCase):
 
     APPLICATION_JSON_LD = "application/ld+json"
@@ -1641,3 +1817,80 @@ class RoCrateAPITest(TestCase):
         self.assertEqual(
             response["Content-Type"], f"{self.APPLICATION_JSON_LD}; {self.CHARSET_UTF8}"
         )
+
+
+class RoCrateSharedAncestryTests(TestCase):
+    """
+    The RO Crate of a data product or code run whose ancestry is shared: each data
+    product is walked once, and the crate still holds every code run.
+
+    Only the code runs are looked for in the crate; the rest of its content is not
+    checked here.
+    """
+
+    APPLICATION_JSON_LD = "application/ld+json"
+
+    def setUp(self):
+        self.user = get_user_model().objects.create(username="Test User")
+        init_shared_ancestry_db()
+
+    def _get(self, view, pk, depth):
+        """Return the crate, and the names of the data products walked to make it."""
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse(view, kwargs={"pk": pk})
+        with mock.patch.object(
+            rocrate,
+            "_generate_ro_crate_from_dp",
+            wraps=rocrate._generate_ro_crate_from_dp,
+        ) as walk:
+            response = client.get(
+                url,
+                data={"depth": depth},
+                format="json-ld",
+                HTTP_ACCEPT=self.APPLICATION_JSON_LD,
+            )
+        self.assertEqual(response.status_code, 200)
+        walked = sorted(call.args[0].name for call in walk.call_args_list)
+        return response.json(), walked
+
+    def _code_runs(self, crate):
+        return {
+            entity["@id"].split("/api/code_run/")[1]
+            for entity in crate["@graph"]
+            if entity["@type"] == "CreateAction"
+        }
+
+    def _ids(self, *descriptions):
+        code_runs = models.CodeRun.objects.filter(description__in=descriptions)
+        return {str(code_run.id) for code_run in code_runs}
+
+    def test_data_product(self):
+        end = models.DataProduct.objects.get(name="end")
+        names = ["end", "first", "left", "raw", "right", "second", "source"]
+
+        crate, walked = self._get("data_product_ro_crate", end.id, 100)
+        self.assertEqual(walked, names)
+        self.assertEqual(
+            self._code_runs(crate),
+            self._ids("final", "pair", "prepare", "left", "right"),
+        )
+
+        crate, walked = self._get("data_product_ro_crate", end.id, 2)
+        self.assertEqual(walked, ["end", "first", "raw", "second"])
+        self.assertEqual(self._code_runs(crate), self._ids("final", "pair", "prepare"))
+
+    def test_code_run(self):
+        final = models.CodeRun.objects.get(description="final")
+        names = ["first", "left", "raw", "right", "second", "source"]
+
+        crate, walked = self._get("code_run_ro_crate", final.id, 100)
+        self.assertEqual(walked, names)
+        self.assertEqual(
+            self._code_runs(crate),
+            self._ids("final", "pair", "prepare", "left", "right"),
+        )
+
+        crate, walked = self._get("code_run_ro_crate", final.id, 2)
+        self.assertEqual(walked, ["first", "raw", "second"])
+        self.assertEqual(self._code_runs(crate), self._ids("final", "pair", "prepare"))
