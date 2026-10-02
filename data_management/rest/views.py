@@ -267,6 +267,7 @@ class CodeRunROCrateView(views.APIView):
 
     `CreateAction` (`CodeRun`) properties:
 
+    * `identifier`: the `uuid` of the `CodeRun`, which is also in its `@id`
     * `instrument`: the software used to generate the output
     * `object`: the input files
     * `result`: the output file
@@ -344,6 +345,7 @@ class DataProductROCrateView(views.APIView):
 
     `CreateAction` (`CodeRun`) properties:
 
+    * `identifier`: the `uuid` of the `CodeRun`, which is also in its `@id`
     * `instrument`: the software used to generate the output
     * `object`: the input files
     * `result`: the output file

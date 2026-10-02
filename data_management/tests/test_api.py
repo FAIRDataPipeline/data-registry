@@ -1899,14 +1899,14 @@ class RoCrateSharedAncestryTests(TestCase):
 
     def _code_runs(self, crate):
         return {
-            entity["@id"].split("/api/code_run/")[1]
+            entity["@id"]
             for entity in crate["@graph"]
             if entity["@type"] == "CreateAction"
         }
 
     def _ids(self, *descriptions):
         code_runs = models.CodeRun.objects.filter(description__in=descriptions)
-        return {str(code_run.id) for code_run in code_runs}
+        return {f"urn:uuid:{code_run.uuid}" for code_run in code_runs}
 
     def test_data_product(self):
         end = models.DataProduct.objects.get(name="end")
@@ -1946,9 +1946,9 @@ class RoCrateSharedAncestryTests(TestCase):
 
         # and each code run points at the commit it was run from
         instruments = {
-            code_run.description: graph[
-                f"http://testserver/api/code_run/{code_run.id}"
-            ]["instrument"]["@id"]
+            code_run.description: graph[f"urn:uuid:{code_run.uuid}"]["instrument"][
+                "@id"
+            ]
             for code_run in models.CodeRun.objects.all()
         }
         self.assertEqual(instruments.pop("final"), f"{url}#{second_commit}")
@@ -2012,6 +2012,21 @@ class RoCrateSharedAncestryTests(TestCase):
         for entity in software:
             self.assertNotIn("version", entity)
             self.assertNotIn("namespace", entity)
+
+    def test_code_run_identity(self):
+        final = models.CodeRun.objects.get(description="final")
+
+        crate, _ = self._get("code_run_ro_crate", final.id, 1)
+        graph = {entity["@id"]: entity for entity in crate["@graph"]}
+
+        # a code run is identified by its uuid, whichever registry it is in
+        code_run = graph[f"urn:uuid:{final.uuid}"]
+        self.assertEqual(code_run["identifier"], str(final.uuid))
+        self.assertEqual(code_run["name"], f"code run {final.uuid}")
+        self.assertEqual(graph["./"]["name"], f"RO Crate for code run {final.uuid}")
+        # and nothing names it by its row in this registry
+        self.assertNotIn(f"api/code_run/{final.id}", str(crate))
+        self.assertNotIn(f"code run {final.id}", str(crate))
 
     def test_code_run(self):
         final = models.CodeRun.objects.get(description="final")

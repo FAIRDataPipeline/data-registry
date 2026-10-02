@@ -40,6 +40,7 @@ A `DataProduct` file has the `name` and `version` of the `DataProduct`, and its
 
 `CreateAction` (`CodeRun`) properties:
 
+* `identifier`: the `uuid` of the `CodeRun`, which is also in its `@id`
 * `instrument`: the software used to generate the output
 * `object`: the input files
 * `result`: the output file
@@ -467,13 +468,15 @@ def _get_code_run(crate_data_product, crate, code_run, registry_url):
 
     """
 
-    code_run_id = f"{registry_url}api/code_run/{code_run.id}"
+    # the uuid identifies a code run in every registry
+    code_run_id = f"urn:uuid:{code_run.uuid}"
     crate_code_run = ContextEntity(
         crate,
         code_run_id,
         properties={
             RO_TYPE: "CreateAction",
-            "name": f"code run {code_run.id}",
+            "name": f"code run {code_run.uuid}",
+            "identifier": str(code_run.uuid),
             "startTime": code_run.run_date.isoformat(),
             "description": code_run.description,
         },
@@ -860,7 +863,7 @@ def generate_ro_crate_from_cr(code_run, depth, request):
     crate = ROCrate()
     crate.publisher = "FAIR Data Pipeline"
     crate.datePublished = datetime.now().isoformat()
-    crate.name = f"RO Crate for code run {code_run.id}"
+    crate.name = f"RO Crate for code run {code_run.uuid}"
 
     # add the licenses from each of the data products to the ROCrate
     for output in code_run.outputs.all():
