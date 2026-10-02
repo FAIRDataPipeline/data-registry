@@ -1176,6 +1176,7 @@ class ProvAPITests(TestCase):
             self.PROV_AT_LOCATION: "https://github.com/ScottishCovidResponse/SCRCdata repository",
             self.DCTERMS_TITLE: "ScottishCovidResponse/SCRCdata",
             self.DCAT_HAS_VERSION: "0.1.0",
+            "fair:commit": "b98782baaaea3bf6cc2882ad7d1c5de7aece362a",
             "fair:website": "https://github.com/ScottishCovidResponse/SCRCdata",
             self.RDF_TYPE: {
                 "$": "dcmitype:Software",
@@ -1562,6 +1563,29 @@ endDocument"""
         )
 
 
+def run_final_from_another_commit():
+    """
+    Move the shared ancestry's final code run to a second commit of the same repo.
+
+    @return the first commit, and the second
+
+    """
+    final = models.CodeRun.objects.get(description="final")
+    location = final.code_repo.storage_location
+    commit = "f" * 40
+    final.code_repo = models.Object.objects.create(
+        updated_by=final.updated_by,
+        storage_location=models.StorageLocation.objects.create(
+            updated_by=final.updated_by,
+            path=location.path,
+            hash=commit,
+            storage_root=location.storage_root,
+        ),
+    )
+    final.save()
+    return location.hash, commit
+
+
 class ProvSharedAncestryTests(TestCase):
     """
     The provenance report of a data product whose ancestry is shared: everything in
@@ -1711,6 +1735,25 @@ class ProvSharedAncestryTests(TestCase):
             doc = prov.generate_prov_document(end, depth, request)
             records = doc.get_records()
             self.assertEqual(len(records), len(set(records)), f"depth {depth}")
+
+    def test_commit(self):
+        first_commit, second_commit = run_final_from_another_commit()
+        final = models.CodeRun.objects.get(description="final")
+        pair = models.CodeRun.objects.get(description="pair")
+        results = self._get(100)
+        repo = f"lreg:api/object/{pair.code_repo.id}"
+        second_repo = f"lreg:api/object/{final.code_repo.id}"
+
+        self.assertEqual(results["entity"][repo]["fair:commit"], first_commit)
+        self.assertEqual(results["entity"][second_repo]["fair:commit"], second_commit)
+        used = self._pairs(results, "used", "prov:activity", "prov:entity")
+        self.assertIn((self._code_run("final"), second_repo), used)
+        self.assertNotIn((self._code_run("final"), repo), used)
+        self.assertIn((self._code_run("pair"), repo), used)
+        # only a repo has a commit
+        for identifier, description in results["entity"].items():
+            if identifier not in (repo, second_repo):
+                self.assertNotIn("fair:commit", description, identifier)
 
     def test_object_with_two_roles(self):
         # an object that is the model config of one code run and the submission
@@ -1879,6 +1922,37 @@ class RoCrateSharedAncestryTests(TestCase):
         crate, walked = self._get("data_product_ro_crate", end.id, 2)
         self.assertEqual(walked, ["end", "first", "raw", "second"])
         self.assertEqual(self._code_runs(crate), self._ids("final", "pair", "prepare"))
+
+    def test_commit(self):
+        first_commit, second_commit = run_final_from_another_commit()
+        end = models.DataProduct.objects.get(name="end")
+        url = "https://github.com/FAIRDataPipeline/shared"
+
+        crate, _ = self._get("data_product_ro_crate", end.id, 100)
+        graph = {entity["@id"]: entity for entity in crate["@graph"]}
+
+        # the repo at each commit is an entity of its own
+        software = {
+            identifier: entity
+            for identifier, entity in graph.items()
+            if entity["@type"] == "SoftwareApplication"
+        }
+        self.assertEqual(
+            set(software), {f"{url}#{first_commit}", f"{url}#{second_commit}"}
+        )
+        for commit in (first_commit, second_commit):
+            self.assertEqual(software[f"{url}#{commit}"]["softwareVersion"], commit)
+            self.assertEqual(software[f"{url}#{commit}"]["url"], url)
+
+        # and each code run points at the commit it was run from
+        instruments = {
+            code_run.description: graph[
+                f"http://testserver/api/code_run/{code_run.id}"
+            ]["instrument"]["@id"]
+            for code_run in models.CodeRun.objects.all()
+        }
+        self.assertEqual(instruments.pop("final"), f"{url}#{second_commit}")
+        self.assertEqual(set(instruments.values()), {f"{url}#{first_commit}"})
 
     def test_code_run(self):
         final = models.CodeRun.objects.get(description="final")

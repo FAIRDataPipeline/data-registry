@@ -422,6 +422,13 @@ def _get_code_repo_release(crate, code_repo, registry_url):
             "version": code_repo_release.version,
         }
 
+    if code_repo.storage_location is not None:
+        # the hash of a repo's location is the commit that was run, and the same repo
+        # at another commit is different software
+        commit = code_repo.storage_location.hash
+        properties["softwareVersion"] = commit
+        code_repo_id = f"{code_repo_id}#{commit}"
+
     crate_code_release = ContextEntity(
         crate,
         code_repo_id,

@@ -257,7 +257,9 @@ class CodeRunROCrateView(views.APIView):
     [software-used-to-create-files](https://www.researchobject.org/ro-crate/1.1/provenance.html#software-used-to-create-files).
 
     A `CreateAction` has `instrument` property, which represents the software used to
-    generate the product. For our purposes `instrument` is the link to the repo.
+    generate the product. For our purposes `instrument` is the link to the repo, at
+    the commit that was run: the commit is its `softwareVersion`, and its `url` is the
+    repo.
 
     `CreateAction` (`CodeRun`) properties:
 
@@ -328,7 +330,9 @@ class DataProductROCrateView(views.APIView):
     [software-used-to-create-files](https://www.researchobject.org/ro-crate/1.1/provenance.html#software-used-to-create-files).
 
     A `CreateAction` has `instrument` property, which represents the software used to
-    generate the product. For our purposes `instrument` is the link to the repo.
+    generate the product. For our purposes `instrument` is the link to the repo, at
+    the commit that was run: the commit is its `softwareVersion`, and its `url` is the
+    repo.
 
     `CreateAction` (`CodeRun`) properties:
 

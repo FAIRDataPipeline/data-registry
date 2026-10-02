@@ -183,11 +183,21 @@ def _add_code_repo_release(
     except models.Object.code_repo_release.RelatedObjectDoesNotExist:
         code_repo_release = None
 
+    code_repo_meta = _generate_object_meta(code_repo, vocab_namespaces)
+    if code_repo.storage_location:
+        # the hash of a repo's location is the commit that was run
+        code_repo_meta.append(
+            (
+                QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], "commit"),
+                code_repo.storage_location.hash,
+            )
+        )
+
     if code_repo_release is None:
         code_release_entity, first = _add_entity(
             doc,
             f"{reg_uri_prefix}:api/object/{code_repo.id}",
-            (*_generate_object_meta(code_repo, vocab_namespaces),),
+            (*code_repo_meta,),
         )
     else:
         code_release_entity, first = _add_entity(
@@ -198,7 +208,7 @@ def _add_code_repo_release(
                     QualifiedName(vocab_namespaces[RDF_VOCAB_PREFIX], "type"),
                     QualifiedName(vocab_namespaces[DCMITYPE_VOCAB_PREFIX], "Software"),
                 ),
-                *_generate_object_meta(code_repo, vocab_namespaces),
+                *code_repo_meta,
                 (
                     QualifiedName(vocab_namespaces[DCTERMS_VOCAB_PREFIX], "title"),
                     code_repo_release.name,
