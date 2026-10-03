@@ -1645,9 +1645,10 @@ class ProvSharedAncestryTests(TestCase):
                 self.assertIsInstance(description, dict, identifier)
 
         names = ["end", "first", "second", "raw", "left", "right", "source"]
+        source = f"lreg:api/external_object/{models.ExternalObject.objects.get().id}"
         self.assertEqual(
             set(results["entity"]),
-            {script, repo, model_config, *(dp(name) for name in names)},
+            {script, repo, model_config, source, *(dp(name) for name in names)},
         )
         self.assertEqual(set(results["activity"]), {cr(run) for run in self.RUNS})
         self.assertEqual(set(results["agent"]), {user, author})
@@ -1990,14 +1991,16 @@ class RoCrateSharedAncestryTests(TestCase):
             {"@id": other_id, "@type": "Namespace", "name": "other / one"},
         )
 
+        # the files with a hash are the data products; the external source has none
         identities = {
             entity["name"]: (entity["version"], entity["namespace"]["@id"])
             for entity in graph.values()
-            if entity["@type"] == "File"
+            if entity["@type"] == "File" and "sha1" in entity
         }
+        # source, registered from an external source, is shown as that source instead
         expected = {
             name: ("1.0.0", shared_id)
-            for name in ("end", "first", "second", "left", "right", "source")
+            for name in ("end", "first", "second", "left", "right")
         }
         expected["raw"] = ("2.3.4", other_id)
         self.assertEqual(identities, expected)

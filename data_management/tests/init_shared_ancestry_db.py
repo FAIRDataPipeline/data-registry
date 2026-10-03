@@ -1,8 +1,13 @@
+from dateutil import parser
+
 from data_management.models import (
     Author,
     CodeRun,
     DataProduct,
+    ExternalObject,
     FileType,
+    Issue,
+    Licence,
     Namespace,
     Object,
     ObjectComponent,
@@ -25,7 +30,9 @@ def init_db():
     `pair` is the source of two data products, `first` has named components that
     are written by `pair` and read by `final`, and the code runs share a user, a
     repo, a submission script and (the first three) a model config, each of which
-    has the same author.
+    has the same author. `source` was registered from an external source with a
+    DOI; `end` has a licence with an identifier and `first` one without; one issue is
+    raised against `raw` and another against both `left` and `right`.
 
     """
     user = get_user_model().objects.first()
@@ -101,6 +108,30 @@ def init_db():
         ObjectComponent.objects.create(updated_by=user, object=o_first, name=name)
     o_second = create_data_product("second")
     o_end = create_data_product("end")
+
+    ExternalObject.objects.create(
+        updated_by=user,
+        data_product=DataProduct.objects.get(object=o_source),
+        identifier="https://doi.org/10.5281/zenodo.1234567",
+        title="The source data",
+        description="Where the source data came from",
+        release_date=parser.isoparse("2020-07-10T18:38:00Z"),
+    )
+    Licence.objects.create(
+        updated_by=user,
+        object=o_end,
+        licence_info="Creative Commons Attribution 4.0",
+        identifier="https://creativecommons.org/licenses/by/4.0/",
+    )
+    Licence.objects.create(
+        updated_by=user, object=o_first, licence_info="For project use only"
+    )
+    Issue.objects.create(
+        updated_by=user, severity=7, description="raw has a bad row"
+    ).component_issues.set([whole(o_raw)])
+    Issue.objects.create(
+        updated_by=user, severity=2, description="left and right disagree"
+    ).component_issues.set([whole(o_left), whole(o_right)])
 
     create_code_run("prepare", [whole(o_source)], [whole(o_raw)], o_model_config)
     create_code_run("left", [whole(o_raw)], [whole(o_left)], o_model_config)
