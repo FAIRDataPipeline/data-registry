@@ -490,9 +490,8 @@ class RoundTripTests(TestCase):
 
     @expectedFailure
     def test_reexport(self):
-        # three differences remain: a run reading two components of one file lists
-        # the file twice in the first crate and once in the second; a registered
-        # input is in the first crate only as its source, which the import cannot
-        # register; and the import loses one of a run's two software files, not
-        # knowing which is the config and which the script
+        # two differences remain: a registered input is in the first crate only as
+        # its source, which the import cannot register; and the import loses one of
+        # a run's two software files, not knowing which is the config and which the
+        # script
         self.assertEqual(_path(self._export()), _path(self.crate))

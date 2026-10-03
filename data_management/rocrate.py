@@ -228,9 +228,15 @@ def _add_licenses(crate, crate_entity, file_object, registry_url):
         license_entities.append(license_entity)
 
     # where the crate_entity is a crate we are adding the licenses from all the
-    # data products in turn, so there may already be some there
+    # data products in turn, so there may already be some there - one, or a list
     if isinstance(crate_entity, ROCrate) and crate_entity.license is not None:
-        license_entities.extend(crate_entity.license)
+        existing = crate_entity.license
+        license_entities.extend(existing if isinstance(existing, list) else [existing])
+
+    # a licence reached by several routes is listed once
+    license_entities = list(
+        {entity.id: entity for entity in license_entities}.values()
+    )
 
     if len(license_entities) == 1:
         if isinstance(crate_entity, ROCrate):
@@ -322,6 +328,7 @@ def _generate_ro_crate_from_dp(data_product, crate, registry_url):
 
     # add the activity, i.e. the code run
     components = data_product.object.components.all()
+    code_run_ids = set()
 
     for component in components:
         try:
@@ -330,6 +337,11 @@ def _generate_ro_crate_from_dp(data_product, crate, registry_url):
             # there is no code run for this component so we cannot add any more
             # provenance data
             continue
+
+        # the components of a data product are usually outputs of the same code run
+        if code_run.id in code_run_ids:
+            continue
+        code_run_ids.add(code_run.id)
 
         input_files = []
 
@@ -569,13 +581,17 @@ def _get_data_products(crate, object_components, registry_url):
 
     """
     all_data_products = []
+    data_product_ids = set()
     for component in object_components:
-        obj = component.object
-        data_products = obj.data_products.all()
-
-        for data_product in data_products:
-            crate_data_product = _get_data_product(crate, data_product, registry_url)
-            all_data_products.append(crate_data_product)
+        for data_product in component.object.data_products.all():
+            # a run that reads or writes several components of a file lists each of
+            # its data products once
+            if data_product.id in data_product_ids:
+                continue
+            data_product_ids.add(data_product.id)
+            all_data_products.append(
+                _get_data_product(crate, data_product, registry_url)
+            )
 
     return all_data_products
 
@@ -675,7 +691,11 @@ def _get_local_data_product(crate, data_product, registry_url):
     storage_location = obj.storage_location
     dest_path = _data_product_path(data_product)
     _fetch_remote = False
-    if storage_location.public is not True:
+    if storage_location is None:
+        # an object with no file: the data product is recorded, with nothing to pack
+        source_loc = None
+
+    elif storage_location.public is not True:
         # a file that is not public is still named by its storage location
         source_loc = f"{registry_url}api/storage_location/{storage_location.id}"
         dest_path = None
@@ -704,7 +724,7 @@ def _get_local_data_product(crate, data_product, registry_url):
     if extension is not None:
         properties["encodingFormat"] = _get_mime_type(extension)
 
-    if storage_location.hash is not None:
+    if storage_location is not None and storage_location.hash is not None:
         properties["sha1"] = storage_location.hash
         crate.metadata.extra_terms.update(SHA1)
 
@@ -791,10 +811,17 @@ def _get_software(crate, software_object, registry_url, software_type):
 
     """
     storage_location = software_object.storage_location
-    file_name = str(storage_location).split("/")[-1]
+    if storage_location is None:
+        # an object with no file can only be named by its uuid
+        file_name = str(software_object.uuid)
+    else:
+        file_name = str(storage_location).split("/")[-1]
     dest_path = f"{software_type}/{file_name}"
     _fetch_remote = False
-    if storage_location.public is not True:
+    if storage_location is None:
+        source_loc = None
+
+    elif storage_location.public is not True:
         # a file that is not public is still named by its storage location
         source_loc = f"{registry_url}api/storage_location/{storage_location.id}"
         dest_path = None
@@ -822,7 +849,7 @@ def _get_software(crate, software_object, registry_url, software_type):
         dest_path=dest_path,
         properties={
             RO_TYPE: ["File", "SoftwareSourceCode"],
-            "name": str(software_object.storage_location).split("/")[-1],
+            "name": file_name,
             "identifier": str(software_object.uuid),
         },
         fetch_remote=_fetch_remote,
@@ -835,8 +862,8 @@ def _get_software(crate, software_object, registry_url, software_type):
     if extension is not None:
         crate_software_object["encodingFormat"] = _get_mime_type(extension)
 
-    if software_object.storage_location.hash is not None:
-        crate_software_object["sha1"] = software_object.storage_location.hash
+    if storage_location is not None and storage_location.hash is not None:
+        crate_software_object["sha1"] = storage_location.hash
         crate.metadata.extra_terms.update(SHA1)
 
     _add_licenses(crate, crate_software_object, software_object, registry_url)

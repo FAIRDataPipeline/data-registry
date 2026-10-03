@@ -2065,16 +2065,60 @@ class RoCrateSharedAncestryTests(TestCase):
         self.assertEqual(
             files["shared/raw/1.0.0.txt"]["identifier"], str(raw.object.uuid)
         )
-        self.assertEqual(files["shared/raw/1.0.0.txt"]["encodingFormat"], "text/plain")
+        self.assertEqual(
+            files["shared/raw/1.0.0.txt"]["encodingFormat"], "text/plain"
+        )
 
         software = {
             identifier
             for identifier, entity in graph.items()
             if entity["@type"] == ["File", "SoftwareSourceCode"]
         }
-        self.assertEqual(software, {"model_config/model_config", "submission_script/script"})
+        self.assertEqual(
+            software, {"model_config/model_config", "submission_script/script"}
+        )
         # a file is neither an input nor an output: at any depth above one it is both
-        self.assertFalse([i for i in graph if i.startswith(("inputs/", "outputs/"))])
+        self.assertFalse(
+            [i for i in graph if i.startswith(("inputs/", "outputs/"))]
+        )
+
+    def test_files_listed_once(self):
+        # a run that writes or reads several components of first lists it once
+        pair = models.CodeRun.objects.get(description="pair")
+        final = models.CodeRun.objects.get(description="final")
+
+        crate, _ = self._get("code_run_ro_crate", pair.id, 1)
+        graph = {entity["@id"]: entity for entity in crate["@graph"]}
+        results = [ref["@id"] for ref in graph[f"urn:uuid:{pair.uuid}"]["result"]]
+        self.assertEqual(
+            sorted(results),
+            ["shared/first/1.0.0.txt", "shared/second/1.0.0.txt", "shared/twin/1.0.0.txt"],
+        )
+        # and its root lists first's licence once, as a reference
+        licence = models.Licence.objects.get(object=models.Object.objects.get(
+            storage_location__path="first"
+        ))
+        self.assertEqual(
+            graph["./"]["license"], {"@id": f"http://testserver/api/license/{licence.id}"}
+        )
+
+        crate, _ = self._get("code_run_ro_crate", final.id, 1)
+        graph = {entity["@id"]: entity for entity in crate["@graph"]}
+        objects = [ref["@id"] for ref in graph[f"urn:uuid:{final.uuid}"]["object"]]
+        self.assertEqual(objects.count("shared/first/1.0.0.txt"), 1)
+
+    def test_object_without_storage_location(self):
+        # a data product whose object has no file is recorded, with nothing to pack
+        raw = models.DataProduct.objects.get(name="raw")
+        models.Object.objects.filter(pk=raw.object.pk).update(storage_location=None)
+        end = models.DataProduct.objects.get(name="end")
+
+        crate, _ = self._get("data_product_ro_crate", end.id, 100)
+        graph = {entity["@id"]: entity for entity in crate["@graph"]}
+        for name in ("raw", "alias"):
+            self.assertIn(f"shared/{name}/1.0.0.txt", graph)
+            self.assertNotIn("sha1", graph[f"shared/{name}/1.0.0.txt"])
+        self.assertIn("sha1", graph["shared/end/1.0.0.txt"])
 
     def test_file_paths_without_a_file_type(self):
         # an object may have no file type; its path then has no extension
@@ -2105,12 +2149,12 @@ class RoCrateSharedAncestryTests(TestCase):
             self.assertEqual(archive.read("shared/raw/1.0.0.txt"), b"raw\n")
             self.assertEqual(archive.read("shared/twin/1.0.0.txt"), b"second\n")
             self.assertEqual(archive.read("shared/second/1.0.0.txt"), b"second\n")
-            self.assertEqual(archive.read("model_config/model_config"), b"model_config\n")
+            self.assertEqual(
+                archive.read("model_config/model_config"), b"model_config\n"
+            )
             self.assertEqual(archive.read("submission_script/script"), b"script\n")
-        expected = {
-            f"shared/{name}/1.0.0.txt"
-            for name in ("alias", "end", "first", "left", "raw", "right", "second", "twin")
-        }
+        products = ["alias", "end", "first", "left", "raw", "right", "second", "twin"]
+        expected = {f"shared/{name}/1.0.0.txt" for name in products}
         self.assertTrue(expected <= names, names)
 
     def test_code_run_identity(self):
