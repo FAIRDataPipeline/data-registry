@@ -833,7 +833,7 @@ class Keyword(BaseModel):
 
     `keyphrase`: Free text field for the key phrase to associate with the `Object`
 
-    `identifier` (*optional*): URL of ontology annotation to associate with this `Keyword`
+    `identifier` (*optional*): URL of ontology annotation to associate with this `Keyword`, unique in the context of the `Object`
 
     ### Read-only Fields:
     `url`: Reference to the instance of the `Keyword`, final integer is the `Keyword` id
@@ -849,14 +849,15 @@ class Keyword(BaseModel):
         Object, on_delete=models.PROTECT, related_name="keywords"
     )
     keyphrase = NameField(null=False, blank=False)
-    identifier = models.URLField(
-        max_length=TEXT_FIELD_LENGTH, null=True, blank=False, unique=True
-    )
+    identifier = models.URLField(max_length=TEXT_FIELD_LENGTH, null=True, blank=False)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
                 fields=("object", "keyphrase"), name="unique_keyword"
+            ),
+            models.UniqueConstraint(
+                fields=("object", "identifier"), name="unique_keyword_identifier"
             ),
         ]
 
@@ -874,7 +875,7 @@ class Licence(BaseModel):
 
     `licence_info`: Free text field to store the information about the `Licence`
 
-    `identifier` (*optional*): URL of the `Licence`
+    `identifier` (*optional*): URL of the `Licence`, unique in the context of the `Object`: one `Object` carries a licence once, and many `Object`s may carry the same licence
 
     ### Read-only Fields:
     `url`: Reference to the instance of the `Licence`, final integer is the `Licence` id
@@ -890,9 +891,14 @@ class Licence(BaseModel):
         Object, on_delete=models.PROTECT, related_name="licences"
     )
     licence_info = models.TextField()
-    identifier = models.URLField(
-        max_length=TEXT_FIELD_LENGTH, null=True, blank=False, unique=True
-    )
+    identifier = models.URLField(max_length=TEXT_FIELD_LENGTH, null=True, blank=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("object", "identifier"), name="unique_licence_identifier"
+            ),
+        ]
 
 
 class CodeRepoRelease(BaseModel):

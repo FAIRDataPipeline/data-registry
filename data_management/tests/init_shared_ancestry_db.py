@@ -39,8 +39,8 @@ def init_db(test_case):
     `final`; and the code runs share a user, a repo, a submission script and (the
     first three) a model config, each of which has the same author. `source` was
     registered from an external source with a DOI, an alternate identifier and the
-    address it was fetched from; `end` has a licence with an
-    identifier and `first` one without; one issue is raised against `raw` and
+    address it was fetched from; `end` and `second` have the same licence, with an
+    identifier, and `first` one without; one issue is raised against `raw` and
     another against both `left` and `right`.
 
     The data store is a `file://` root over real files in a temporary directory
@@ -160,12 +160,13 @@ def init_db(test_case):
             storage_root=sr_web,
         ),
     )
-    Licence.objects.create(
-        updated_by=user,
-        object=o_end,
-        licence_info="Creative Commons Attribution 4.0",
-        identifier="https://creativecommons.org/licenses/by/4.0/",
-    )
+    for obj in (o_end, o_second):
+        Licence.objects.create(
+            updated_by=user,
+            object=obj,
+            licence_info="Creative Commons Attribution 4.0",
+            identifier="https://creativecommons.org/licenses/by/4.0/",
+        )
     Licence.objects.create(
         updated_by=user, object=o_first, licence_info="For project use only"
     )

@@ -716,6 +716,28 @@ class KeywordAPITests(TestCase):
         results = response.json()["results"]
         self.assertEqual(len(results), 2)
 
+    def test_one_identifier_on_many_objects(self):
+        # the same ontology term applies to many objects, but to one object once
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        term = "http://purl.obolibrary.org/obo/NCIT_C16960"
+
+        def post(pk):
+            obj = reverse("object-detail", kwargs={"pk": pk})
+            return client.post(
+                reverse("keyword-list"),
+                {
+                    "object": f"http://testserver{obj}",
+                    "keyphrase": "patient",
+                    "identifier": term,
+                },
+                format="json",
+            )
+
+        self.assertEqual(post(1).status_code, 201)
+        self.assertEqual(post(2).status_code, 201)
+        self.assertEqual(post(1).status_code, 409)
+
 
 class AuthorAPITests(TestCase):
 
@@ -806,6 +828,28 @@ class LicenceAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/json")
         self.assertIn("Copyright 2020 SCRC", response.json()["licence_info"])
+
+    def test_one_url_on_many_objects(self):
+        # the same licence applies to many objects, but to one object once
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        cc_by = "https://creativecommons.org/licenses/by/4.0/"
+
+        def post(pk):
+            obj = reverse("object-detail", kwargs={"pk": pk})
+            return client.post(
+                reverse("licence-list"),
+                {
+                    "object": f"http://testserver{obj}",
+                    "licence_info": "CC BY 4.0",
+                    "identifier": cc_by,
+                },
+                format="json",
+            )
+
+        self.assertEqual(post(1).status_code, 201)
+        self.assertEqual(post(2).status_code, 201)
+        self.assertEqual(post(1).status_code, 409)
 
 
 class NamespaceAPITests(TestCase):
@@ -2130,9 +2174,13 @@ class RoCrateSharedAncestryTests(TestCase):
             sorted(results),
             [f"shared/{name}/1.0.0.txt" for name in ("first", "second", "twin")],
         )
-        # and its root lists first's licence once, as a reference
+        # and its root lists first's licence and second's once each
         first = models.Object.objects.get(storage_location__path="first")
-        self.assertEqual(graph["./"]["license"], {"@id": f"#licence-{first.uuid}"})
+        cc_by = "https://creativecommons.org/licenses/by/4.0/"
+        self.assertEqual(
+            {ref["@id"] for ref in graph["./"]["license"]},
+            {f"#licence-{first.uuid}", cc_by},
+        )
 
         crate, _ = self._get("code_run_ro_crate", final.id, 1)
         graph = {entity["@id"]: entity for entity in crate["@graph"]}
