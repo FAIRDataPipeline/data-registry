@@ -2392,6 +2392,42 @@ class RoCrateSharedAncestryTests(TestCase):
         self.assertEqual(extraction["result"], {"@id": "shared/source/1.0.0.txt"})
         self.assertNotIn("sameAs", graph["shared/source/1.0.0.txt"])
 
+    def test_issues(self):
+        # an issue is a line on each file it was raised against: its uuid, then its
+        # severity, then its description, so that a reader can parse it
+        end = models.DataProduct.objects.get(name="end")
+        bad_row = models.Issue.objects.get(severity=7)
+        disagree = models.Issue.objects.get(severity=2)
+        repo = models.Object.objects.get(
+            storage_location__path="FAIRDataPipeline/shared"
+        )
+        dirty = models.Issue.objects.create(
+            updated_by=self.user, severity=1, description="run from a dirty tree"
+        )
+        dirty.component_issues.set([repo.components.get(whole_object=True)])
+
+        crate, _ = self._get("data_product_ro_crate", end.id, 100)
+        graph = {entity["@id"]: entity for entity in crate["@graph"]}
+        vocab = "https://data.fairdatapipeline.org/vocab/#"
+        self.assertEqual(crate["@context"][1]["issue"], f"{vocab}issue")
+
+        bad_row_line = f"{bad_row.uuid} severity 7: raw has a bad row"
+        self.assertEqual(graph["shared/raw/1.0.0.txt"]["issue"], [bad_row_line])
+        # a second name for the same object carries its issues too
+        self.assertEqual(graph["shared/alias/1.0.0.txt"]["issue"], [bad_row_line])
+        disagree_line = f"{disagree.uuid} severity 2: left and right disagree"
+        for name in ("left", "right"):
+            entity = graph[f"shared/{name}/1.0.0.txt"]
+            self.assertEqual(entity["issue"], [disagree_line])
+        self.assertNotIn("issue", graph["shared/end/1.0.0.txt"])
+        self.assertNotIn("issue", graph["submission_script/script"])
+        software = [
+            e for e in graph.values() if e.get("@type") == "SoftwareApplication"
+        ]
+        self.assertEqual(
+            software[0]["issue"], [f"{dirty.uuid} severity 1: run from a dirty tree"]
+        )
+
     def test_code_run_identity(self):
         final = models.CodeRun.objects.get(description="final")
 

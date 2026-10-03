@@ -24,6 +24,7 @@ derives from the account that created the row, so that no import can keep it.
 """
 
 from pathlib import PurePosixPath
+import re
 from unittest import expectedFailure
 from urllib.parse import quote, urlparse
 
@@ -35,6 +36,10 @@ from data_management import models
 from .init_shared_ancestry_db import init_db as init_shared_ancestry_db
 
 IMPORT_ROOT = "https://import.example.org/"
+# an issue line: the uuid, then the severity, then the description
+ISSUE_LINE = re.compile(
+    r"(?P<uuid>\S+) severity (?P<severity>\d+): (?P<description>.*)", re.S
+)
 
 
 def _id(url):
@@ -190,6 +195,8 @@ class CrateImporter:
         self.client = client
         self.urls = {}
         self.objects = {}
+        # uuid -> severity, description, and the components it is raised against
+        self.issues = {}
 
     def _post(self, table, data):
         response = self.client.post(f"/api/{table}/", data, format="json")
@@ -294,6 +301,13 @@ class CrateImporter:
                 {"name": extension, "extension": extension},
             )
         object_url = self.objects[uuid] = self._post("object", data)
+        lines = entity.get("issue", [])
+        for line in lines if isinstance(lines, list) else [lines]:
+            match = ISSUE_LINE.fullmatch(line)
+            issue = self.issues.setdefault(
+                match["uuid"], (int(match["severity"]), match["description"], [])
+            )
+            issue[2].append(self._whole_object(object_url))
         for licence in self._referenced(entity, "license"):
             # a licence given as text alone has a local id
             identifier = licence["@id"]
@@ -394,6 +408,17 @@ class CrateImporter:
         for entity_id, entity in self.entities.items():
             if entity.get("@type") == "CreateAction":
                 self._ensure(entity_id, self._code_run)
+        # issues last, once every component they are raised against exists
+        for uuid, (severity, description, components) in self.issues.items():
+            self._post(
+                "issue",
+                {
+                    "uuid": uuid,
+                    "severity": severity,
+                    "description": description,
+                    "component_issues": components,
+                },
+            )
 
 
 class RoundTripTests(TestCase):
@@ -486,9 +511,7 @@ class RoundTripTests(TestCase):
                     (code_run["config"], code_run["script"]),
                 )
 
-    @expectedFailure
     def test_issues(self):
-        # issues are not in the crate
         self.assertEqual(self.after["issues"], self.before["issues"])
 
     def test_reexport(self):

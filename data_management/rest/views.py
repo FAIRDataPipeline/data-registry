@@ -265,6 +265,8 @@ class CodeRunROCrateView(views.APIView):
     registry has one, else by their `uuid`; a user with no author linked by a local id;
     a licence by its URL, else by the file it applies to. Nothing is named by its row in
     the registry.
+    An issue raised against a file is a line on the file's entity, under the registry's
+    own term `issue`: the issue's uuid, its severity and its description, in that order.
 
     What travels with each file is chosen by the request's `level`, each level including the
     one before: 1, the hash and any persistent identifier, with the source's metadata; 2,
@@ -371,6 +373,8 @@ class DataProductROCrateView(views.APIView):
     registry has one, else by their `uuid`; a user with no author linked by a local id;
     a licence by its URL, else by the file it applies to. Nothing is named by its row in
     the registry.
+    An issue raised against a file is a line on the file's entity, under the registry's
+    own term `issue`: the issue's uuid, its severity and its description, in that order.
 
     What travels with each file is chosen by the request's `level`, each level including the
     one before: 1, the hash and any persistent identifier, with the source's metadata; 2,

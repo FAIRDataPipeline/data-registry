@@ -24,6 +24,8 @@ People are identified by their ORCID, GitHub or other identifier where the
 registry has one, else by their `uuid`; a user with no author linked by a local id;
 a licence by its URL, else by the file it applies to. Nothing is named by its row in
 the registry.
+An issue raised against a file is a line on the file's entity, under the registry's
+own term `issue`: the issue's uuid, its severity and its description, in that order.
 
 What travels with each file is chosen by the request's `level`, each level including the
 one before: 1, the hash and any persistent identifier, with the source's metadata; 2,
@@ -218,6 +220,29 @@ def _add_external_object(crate, external_object):
         )
 
     return crate_external_object
+
+
+def _add_issues(crate, entity, obj):
+    """
+    List an object's issues on its entity, one line each.
+
+    The lines are the registry's own term `issue`, and each gives the issue's uuid,
+    then its severity, then its description, in that order so that a reader can
+    parse them.
+
+    @param crate: the RO Crate object
+    @param entity: the RO Crate entity representing the object
+    @param obj: an object from the Object table
+
+    """
+    lines = {}
+    for component in obj.components.all():
+        for issue in component.issues.all():
+            lines[issue.uuid] = (
+                f"{issue.uuid} severity {issue.severity}: {issue.description}"
+            )
+    if lines:
+        entity[_fair_term(crate, "issue")] = list(lines.values())
 
 
 def _add_licenses(crate, crate_entity, file_object):
@@ -527,6 +552,7 @@ def _get_code_repo_release(crate, code_repo, registry_url):
         crate,
         crate_code_release,
     )
+    _add_issues(crate, crate_code_release, code_repo)
     crate.add(crate_code_release)
 
     return crate_code_release
@@ -778,6 +804,7 @@ def _get_local_data_product(crate, data_product, registry_url, level):
         fetch_remote=_fetch_remote,
     )
     crate_data_product["namespace"] = _get_namespace(crate, data_product.namespace)
+    _add_issues(crate, crate_data_product, obj)
 
     return crate_data_product
 
@@ -909,6 +936,7 @@ def _get_software(crate, software_object, registry_url, software_type, level):
         crate,
         crate_software_object,
     )
+    _add_issues(crate, crate_software_object, software_object)
 
     return crate_software_object
 
