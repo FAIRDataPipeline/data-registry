@@ -1897,11 +1897,12 @@ class RoCrateSharedAncestryTests(TestCase):
         self.user = get_user_model().objects.create(username="Test User")
         init_shared_ancestry_db(self)
 
-    def _get(self, view, pk, depth):
+    def _get(self, view, pk, depth, level=None):
         """Return the crate, and the names of the data products walked to make it."""
         client = APIClient()
         client.force_authenticate(user=self.user)
         url = reverse(view, kwargs={"pk": pk})
+        data = {"depth": depth} if level is None else {"depth": depth, "level": level}
         with mock.patch.object(
             rocrate,
             "_generate_ro_crate_from_dp",
@@ -1909,7 +1910,7 @@ class RoCrateSharedAncestryTests(TestCase):
         ) as walk:
             response = client.get(
                 url,
-                data={"depth": depth},
+                data=data,
                 format="json-ld",
                 HTTP_ACCEPT=self.APPLICATION_JSON_LD,
             )
@@ -2159,8 +2160,87 @@ class RoCrateSharedAncestryTests(TestCase):
         products = ["alias", "end", "first", "left", "raw", "right", "second", "twin"]
         expected = {f"shared/{name}/1.0.0.txt" for name in products}
         self.assertTrue(expected <= names, names)
-        # extra is outside end's provenance: described, not packaged
+        # extra is outside end's provenance: described, not packaged; and at level
+        # 3, a zip's default, source's primary source stands for its bytes
         self.assertNotIn("shared/extra/1.0.0.txt", names)
+        self.assertNotIn("shared/source/1.0.0.txt", names)
+
+    def _zip_names(self, level):
+        """The paths a zip of end's crate holds at a level."""
+        end = models.DataProduct.objects.get(name="end")
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse("data_product_ro_crate", kwargs={"pk": end.id})
+        response = client.get(
+            url,
+            data={"depth": 100, "level": level},
+            format="zip",
+            HTTP_ACCEPT="application/zip",
+        )
+        self.assertEqual(response.status_code, 200)
+        with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+            return set(archive.namelist())
+
+    def test_zip_levels(self):
+        # every level packs the config and script; level 3 adds the public files
+        # that no primary source stands for, and level 4 those too
+        level_1 = self._zip_names(1)
+        self.assertTrue(
+            {"model_config/model_config", "submission_script/script"} <= level_1
+        )
+        self.assertFalse([name for name in level_1 if name.startswith("shared/")])
+        self.assertEqual(self._zip_names(2), level_1)
+
+        level_3 = self._zip_names(3)
+        self.assertIn("shared/raw/1.0.0.txt", level_3)
+        self.assertNotIn("shared/source/1.0.0.txt", level_3)
+        self.assertNotIn("shared/extra/1.0.0.txt", level_3)
+        self.assertEqual(self._zip_names(4) - level_3, {"shared/source/1.0.0.txt"})
+
+    def test_levels(self):
+        # level 1, the JSON-LD default, gives no address; level 2 gives every public
+        # file in the crate's provenance the address of the registry's copy
+        end = models.DataProduct.objects.get(name="end")
+        raw = models.DataProduct.objects.get(name="raw")
+        source = models.ExternalObject.objects.get()
+
+        crate, _ = self._get("data_product_ro_crate", end.id, 100)
+        graph = {entity["@id"]: entity for entity in crate["@graph"]}
+        addressed = [i for i, e in graph.items() if "contentUrl" in e]
+        # the source's own address, where the registry fetched it from, is metadata
+        # about the source and travels at every level
+        self.assertEqual(addressed, [source.identifier])
+        self.assertEqual(
+            graph[source.identifier]["contentUrl"],
+            "https://example.org/downloads/source.txt",
+        )
+
+        crate, _ = self._get("data_product_ro_crate", end.id, 100, level=2)
+        graph = {entity["@id"]: entity for entity in crate["@graph"]}
+        self.assertEqual(
+            graph["shared/raw/1.0.0.txt"]["contentUrl"],
+            str(raw.object.storage_location),
+        )
+        self.assertTrue(
+            graph["shared/raw/1.0.0.txt"]["contentUrl"].startswith("file://")
+        )
+        self.assertIn("contentUrl", graph["submission_script/script"])
+        self.assertIn("contentUrl", graph["shared/source/1.0.0.txt"])
+        self.assertNotIn("contentUrl", graph["shared/extra/1.0.0.txt"])
+
+    def test_bad_level(self):
+        end = models.DataProduct.objects.get(name="end")
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse("data_product_ro_crate", kwargs={"pk": end.id})
+        for level in (0, 5, "three"):
+            response = client.get(
+                url,
+                data={"level": level},
+                format="json-ld",
+                HTTP_ACCEPT=self.APPLICATION_JSON_LD,
+            )
+            self.assertEqual(response.status_code, 400, level)
 
     def test_conformance(self):
         # the crate declares Process Run Crate, and every run has an instrument

@@ -38,7 +38,8 @@ def init_db(test_case):
     products; `first` has named components that are written by `pair` and read by
     `final`; and the code runs share a user, a repo, a submission script and (the
     first three) a model config, each of which has the same author. `source` was
-    registered from an external source with a DOI; `end` has a licence with an
+    registered from an external source with a DOI, an alternate identifier and the
+    address it was fetched from; `end` has a licence with an
     identifier and `first` one without; one issue is raised against `raw` and
     another against both `left` and `right`.
 
@@ -55,6 +56,7 @@ def init_db(test_case):
 
     sr_github = StorageRoot.objects.create(updated_by=user, root="https://github.com")
     sr_store = StorageRoot.objects.create(updated_by=user, root=f"file://{store}/")
+    sr_web = StorageRoot.objects.create(updated_by=user, root="https://example.org/")
     text_file = FileType.objects.create(
         updated_by=user, name="text file", extension="txt"
     )
@@ -151,6 +153,12 @@ def init_db(test_case):
         title="The source data",
         description="Where the source data came from",
         release_date=parser.isoparse("2020-07-10T18:38:00Z"),
+        original_store=StorageLocation.objects.create(
+            updated_by=user,
+            path="downloads/source.txt",
+            hash=o_source.storage_location.hash,
+            storage_root=sr_web,
+        ),
     )
     Licence.objects.create(
         updated_by=user,

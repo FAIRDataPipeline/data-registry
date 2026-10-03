@@ -230,6 +230,20 @@ class ProvReportView(views.APIView):
         return Response(value)
 
 
+# The level of an RO Crate request, 1 to 4: what travels with each file, as the
+# rocrate module explains. A zip defaults to 3, every other format to 1.
+def _crate_level(request):
+    default = 3 if request.accepted_renderer.format == "zip" else 1
+    level = request.query_params.get("level", default)
+    try:
+        level = int(level)
+    except ValueError:
+        level = 0
+    if not 1 <= level <= 4:
+        raise BadQuery(detail="level must be an integer from 1 to 4")
+    return level
+
+
 class CodeRunROCrateView(views.APIView):
     """
     ***The RO Crate for a `CodeRun`.***
@@ -247,6 +261,15 @@ class CodeRunROCrateView(views.APIView):
     crate; the working config and the submission script are under `model_config/` and
     `submission_script/`. Every file carries the SHA-1 of its bytes (`sha1`) and the `uuid`
     of its object in the registry (`identifier`).
+
+    What travels with each file is chosen by the request's `level`, each level including the
+    one before: 1, the hash and any persistent identifier, with the source's metadata; 2,
+    the address the registry's copy can be downloaded from (`contentUrl`); 3, the bytes of
+    every public file that no primary source stands for; 4, the bytes of every public file.
+    A zip defaults to level 3 and the JSON-LD to level 1. The JSON-LD never holds a file, so
+    the working config and the submission script, which every zip packs, are metadata alone
+    there. A run's outputs outside the crate's provenance are described at level 1 whatever
+    was asked, and a file that is not public is named by its storage location, as before.
 
     A data product registered from an external source is in the crate as itself, and the
     source is a `File` named by its identifier (a DOI, or else its alternate identifier),
@@ -291,6 +314,9 @@ class CodeRunROCrateView(views.APIView):
 
     `depth` (optional): An integer used to determine how many code runs to include,
     the default is 1.
+
+    `level` (optional): An integer from 1 to 4 choosing what travels with each file (see
+    above); the default is 3 for a zip and 1 otherwise.
 
     """
 
@@ -313,7 +339,9 @@ class CodeRunROCrateView(views.APIView):
         if depth < 1:
             depth = 1
 
-        crate = generate_ro_crate_from_cr(code_run, depth, request)
+        crate = generate_ro_crate_from_cr(
+            code_run, depth, request, _crate_level(request)
+        )
 
         return Response(serialize_ro_crate(crate, request.accepted_renderer.format))
 
@@ -335,6 +363,15 @@ class DataProductROCrateView(views.APIView):
     crate; the working config and the submission script are under `model_config/` and
     `submission_script/`. Every file carries the SHA-1 of its bytes (`sha1`) and the `uuid`
     of its object in the registry (`identifier`).
+
+    What travels with each file is chosen by the request's `level`, each level including the
+    one before: 1, the hash and any persistent identifier, with the source's metadata; 2,
+    the address the registry's copy can be downloaded from (`contentUrl`); 3, the bytes of
+    every public file that no primary source stands for; 4, the bytes of every public file.
+    A zip defaults to level 3 and the JSON-LD to level 1. The JSON-LD never holds a file, so
+    the working config and the submission script, which every zip packs, are metadata alone
+    there. A run's outputs outside the crate's provenance are described at level 1 whatever
+    was asked, and a file that is not public is named by its storage location, as before.
 
     A data product registered from an external source is in the crate as itself, and the
     source is a `File` named by its identifier (a DOI, or else its alternate identifier),
@@ -380,6 +417,9 @@ class DataProductROCrateView(views.APIView):
     `depth` (optional): An integer used to determine how many code runs to include,
     the default is 1.
 
+    `level` (optional): An integer from 1 to 4 choosing what travels with each file (see
+    above); the default is 3 for a zip and 1 otherwise.
+
     """
 
     renderer_classes = [
@@ -401,7 +441,9 @@ class DataProductROCrateView(views.APIView):
         if depth < 1:
             depth = 1
 
-        crate = generate_ro_crate_from_dp(data_product, depth, request)
+        crate = generate_ro_crate_from_dp(
+            data_product, depth, request, _crate_level(request)
+        )
 
         return Response(serialize_ro_crate(crate, request.accepted_renderer.format))
 
