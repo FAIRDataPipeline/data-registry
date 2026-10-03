@@ -320,7 +320,7 @@ class CrateImporter:
             return None
         object_url = self._object(entity)
         if "namespace" in entity:
-            self._post(
+            data_product_url = self._post(
                 "data_product",
                 {
                     "object": object_url,
@@ -331,7 +331,28 @@ class CrateImporter:
                     "version": entity["version"],
                 },
             )
+            if "sameAs" in entity:
+                self._external_object(
+                    data_product_url, self.entities[entity["sameAs"]["@id"]]
+                )
         return object_url
+
+    def _external_object(self, data_product_url, source):
+        """The source a data product is a copy of: a primary external object."""
+        identifier = source["@id"]
+        self._post(
+            "external_object",
+            {
+                "data_product": data_product_url,
+                "identifier": identifier if identifier.startswith("http") else None,
+                "alternate_identifier": source.get("alternate_identifier"),
+                "alternate_identifier_type": source.get("alternate_identifier_type"),
+                "title": source["name"],
+                "release_date": source["datePublished"],
+                "description": source.get("description"),
+                "primary_not_supplement": True,
+            },
+        )
 
     def _whole_object(self, object_url):
         components = self.client.get(
@@ -341,11 +362,6 @@ class CrateImporter:
         return components[0]["url"]
 
     def _code_run(self, entity):
-        software = [
-            self._ensure(file["@id"], self._file)
-            for file in self._referenced(entity, "object")
-            if "SoftwareSourceCode" in file["@type"]
-        ]
         inputs = [
             self._ensure(file["@id"], self._file)
             for file in self._referenced(entity, "object")
@@ -355,20 +371,25 @@ class CrateImporter:
             self._ensure(file["@id"], self._file)
             for file in self._referenced(entity, "result")
         ]
+        # a run without a repo has its submission script, a file, as instrument
         instrument = self._referenced(entity, "instrument")
+        code_repo = (
+            self._ensure(instrument[0]["@id"], self._software)
+            if instrument and "url" in instrument[0]
+            else None
+        )
+
+        def software(role):
+            ref = entity.get(role)
+            return self._ensure(ref["@id"], self._file) if ref else None
+
         data = {
             "uuid": entity["@id"].removeprefix("urn:uuid:"),
             "description": entity.get("description", ""),
             "run_date": entity["startTime"],
-            "code_repo": (
-                self._ensure(instrument[0]["@id"], self._software)
-                if instrument
-                else None
-            ),
-            # the crate does not say which software file is the config and which the
-            # script, so the first is taken as the script and nothing as the config
-            "submission_script": software[0] if software else None,
-            "model_config": None,
+            "code_repo": code_repo,
+            "submission_script": software("submission_script"),
+            "model_config": software("model_configuration"),
             # two names for one object are one component read
             "inputs": list({self._whole_object(url): 1 for url in inputs if url}),
             "outputs": list({self._whole_object(url): 1 for url in outputs if url}),
@@ -417,20 +438,14 @@ class RoundTripTests(TestCase):
             if name not in snapshot["external_objects"]
         }
 
-    @expectedFailure
     def test_data_products(self):
-        # extra, prepare's other output, is not in the crate at all, as a run's
-        # outputs outside the ancestry are not listed
         before, after = self._local(self.before), self._local(self.after)
         self.assertEqual(set(after), set(before))
         for name, data_product in before.items():
             with self.subTest(data_product=name):
                 self.assertEqual(after[name], data_product)
 
-    @expectedFailure
     def test_registered_inputs(self):
-        # a data product registered from an external source is in the crate only as
-        # its identifier: the data product itself, and the source's details, are not
         self.assertEqual(
             self.after["external_objects"], self.before["external_objects"]
         )
@@ -463,18 +478,14 @@ class RoundTripTests(TestCase):
                     after["inputs"] - registered, code_run["inputs"] - registered
                 )
 
-    @expectedFailure
     def test_code_run_outputs(self):
-        # a data product's crate gives a run with several outputs only one of them
         for uuid, code_run in self.before["code_runs"].items():
             with self.subTest(code_run=code_run["description"]):
                 self.assertEqual(
                     self.after["code_runs"][uuid]["outputs"], code_run["outputs"]
                 )
 
-    @expectedFailure
     def test_code_run_software(self):
-        # the crate does not say which software file is the config and which the script
         for uuid, code_run in self.before["code_runs"].items():
             with self.subTest(code_run=code_run["description"]):
                 after = self.after["code_runs"][uuid]
@@ -488,10 +499,6 @@ class RoundTripTests(TestCase):
         # issues are not in the crate
         self.assertEqual(self.after["issues"], self.before["issues"])
 
-    @expectedFailure
     def test_reexport(self):
-        # two differences remain: a registered input is in the first crate only as
-        # its source, which the import cannot register; and the import loses one of
-        # a run's two software files, not knowing which is the config and which the
-        # script
+        # the path read back from a crate of the rebuilt registry is the original's
         self.assertEqual(_path(self._export()), _path(self.crate))

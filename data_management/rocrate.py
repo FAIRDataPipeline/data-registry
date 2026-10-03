@@ -21,14 +21,14 @@ crate; the working config and the submission script are under `model_config/` an
 `submission_script/`. Every file carries the SHA-1 of its bytes (`sha1`) and the `uuid`
 of its object in the registry (`identifier`).
 
-External files may point directly to data, in which case they will be used directly as
-inputs to a `CodeRun`. External files will have a link to them in the metadata file, but
-will not be packaged in the zip file. However, it maybe that data has had to be
-extracted from an external file before it can be used by a `CodeRun`, i.e. from a
-journal article, In which case there will be an associated `DataProduct` that would have
-been made to contain the data so that it can be used in a `CodeRun`. If this is the case
-the relationship between the external file and `DataProduct` is modelled as a RO Crate
-`ContextEntity` of type `CreateAction`.
+A data product registered from an external source is in the crate as itself, and the
+source is a `File` named by its identifier (a DOI, or else its alternate identifier),
+linked but not packaged. Where the registered bytes are the identified item, or one of
+its files (a primary source), the data product's `sameAs` points at the source; where
+the data was extracted from the source before it could be used (a supplementary source,
+e.g. a journal article), the extraction is modelled as a RO Crate `ContextEntity` of
+type `CreateAction` with the source as its `object` and the data product as its
+`result`.
 
 The `CodeRun` has been modelled as a RO Crate `ContextEntity` of type `CreateAction`,
 see
@@ -46,10 +46,15 @@ A `DataProduct` file has the `name` and `version` of the `DataProduct`, and its
 `CreateAction` (`CodeRun`) properties:
 
 * `identifier`: the `uuid` of the `CodeRun`, which is also in its `@id`
-* `instrument`: the software used to generate the output
-* `object`: the input files
-* `result`: the output file
+* `instrument`: the code repo at the commit that was run, or the submission script for a
+  run without a repo
+* `object`: the input files, the working config and the submission script
+* `model_configuration`, `submission_script`: which of those files is which
+* `result`: every output of the run; those outside the crate's provenance are described
+  but not packaged
 * `agent`: the `Author`
+
+The crate conforms to Process Run Crate 0.6 (https://w3id.org/ro/wfrun/process/0.6).
 The RO Crate is available as a `zip` file.
 
 The contents of the ro-crate-metadata file can be viewed as `JSON` or `JSON-LD`.
@@ -80,6 +85,7 @@ from . import settings
 RO_TYPE = "@type"
 FILE = "file:"
 SHA1 = {"sha1": "https://w3id.org/ro/terms/workflow-run#sha1"}
+PROCESS_RUN_CRATE = "https://w3id.org/ro/wfrun/process/0.6"
 CLI_URL = "https://github.com/FAIRDataPipeline/FAIR-CLI"
 REMOTE_STORAGE_ROOT = "https://data.fairdatapipeline.org/data/"
 
@@ -110,16 +116,17 @@ def _add_authors(authors, crate, entity, registry_url):
     entity["author"] = cr_authors
 
 
-def _add_data_extraction_action(crate, data_product, external_object, registry_url):
+def _add_data_extraction_action(
+    crate, crate_data_product, data_product, external_object, registry_url
+):
     """
     Create an RO Crate context entity to link the data product and external object.
 
     @param crate: the RO Crate object
+    @param crate_data_product: the RO Crate file entity representing the data product
     @param data_product: a data_product from the DataProduct table
     @param external_object: a external_object from the ExternalObject table
     @param registry_url: a str containing the registry URL
-
-    @return an RO Crate file entity representing the data product
 
     """
     data_extraction_id = f"{registry_url}api/data_extraction/{data_product.id}"
@@ -133,8 +140,6 @@ def _add_data_extraction_action(crate, data_product, external_object, registry_u
             "description": "import/extract data from an external source",
         },
     )
-
-    crate_data_product = _get_local_data_product(crate, data_product, registry_url)
 
     crate_data_extraction["result"] = crate_data_product
     crate_data_extraction["object"] = _add_external_object(crate, external_object)
@@ -156,8 +161,6 @@ def _add_data_extraction_action(crate, data_product, external_object, registry_u
     crate.add(crate_instrument)
     crate.add(crate_data_extraction)
 
-    return crate_data_product
-
 
 def _add_external_object(crate, external_object):
     """
@@ -177,6 +180,14 @@ def _add_external_object(crate, external_object):
         source_loc = external_object.identifier
     else:
         source_loc = external_object.alternate_identifier
+
+    if external_object.alternate_identifier:
+        properties[_fair_term(crate, "alternate_identifier")] = (
+            external_object.alternate_identifier
+        )
+        properties[_fair_term(crate, "alternate_identifier_type")] = (
+            external_object.alternate_identifier_type
+        )
 
     if external_object.description:
         properties["description"] = external_object.description
@@ -293,6 +304,32 @@ def _extension(obj):
     return obj.file_type.extension or None
 
 
+# Declare the crate's conformance to Process Run Crate, whose terms its code runs use
+def _declare_profile(crate):
+    profile = crate.add(
+        ContextEntity(
+            crate,
+            PROCESS_RUN_CRATE,
+            properties={
+                RO_TYPE: "CreativeWork",
+                "name": "Process Run Crate",
+                "version": "0.6",
+            },
+        )
+    )
+    crate.root_dataset["conformsTo"] = profile
+
+
+# Define one of the registry's own terms in the crate's context, as in the provenance
+# report, and return it as the property name to use
+def _fair_term(crate, name):
+    central_registry_url = django_settings.CENTRAL_REGISTRY_URL
+    if not central_registry_url.endswith("/"):
+        central_registry_url = f"{central_registry_url}/"
+    crate.metadata.extra_terms[name] = f"{central_registry_url}vocab/#{name}"
+    return name
+
+
 def _get_default_license(crate):
     """
     Get a ContextEntity representing a CC BY 4.0 license.
@@ -343,39 +380,14 @@ def _generate_ro_crate_from_dp(data_product, crate, registry_url):
             continue
         code_run_ids.add(code_run.id)
 
-        input_files = []
+        crate_code_run = _get_code_run(crate, code_run, registry_url)
+        _add_code_run_files(crate, crate_code_run, code_run, registry_url)
 
-        # add the code run
-        crate_code_run = _get_code_run(
-            crate_data_product, crate, code_run, registry_url
+        # every output of the run; those outside this crate's provenance are
+        # described but not packaged
+        crate_code_run["result"] = _get_data_products(
+            crate, code_run.outputs.all(), registry_url, pack=False
         )
-
-        # add the code repo release
-        if code_run.code_repo is not None:
-            crate_code_run["instrument"] = _get_code_repo_release(
-                crate, code_run.code_repo, registry_url
-            )
-
-        # add the model config
-        if code_run.model_config is not None:
-            model_config = _get_software(
-                crate, code_run.model_config, registry_url, "model_config"
-            )
-            input_files.append(model_config)
-
-        # add the submission script
-        submission_script = _get_software(
-            crate, code_run.submission_script, registry_url, "submission_script"
-        )
-        input_files.append(submission_script)
-
-        # get data files
-        input_files.extend(
-            _get_data_products(crate, code_run.inputs.all(), registry_url)
-        )
-
-        # add input files
-        crate_code_run["object"] = input_files
 
 
 def _generate_ro_crate_from_cr(code_run, crate, registry_url):
@@ -389,41 +401,53 @@ def _generate_ro_crate_from_cr(code_run, crate, registry_url):
     @return the RO Crate object
 
     """
-    input_files = []
-    crate_data_product = None
-
-    # add the code run
-    crate_code_run = _get_code_run(crate_data_product, crate, code_run, registry_url)
-
-    # add the code repo release
-    if code_run.code_repo is not None:
-        crate_code_run["instrument"] = _get_code_repo_release(
-            crate, code_run.code_repo, registry_url
-        )
-
-    # add the model config
-    if code_run.model_config is not None:
-        model_config = _get_software(
-            crate, code_run.model_config, registry_url, "model_config"
-        )
-        input_files.append(model_config)
-
-    # add the submission script
-    submission_script = _get_software(
-        crate, code_run.submission_script, registry_url, "submission_script"
-    )
-    input_files.append(submission_script)
-
-    # get data files
-    input_files.extend(_get_data_products(crate, code_run.inputs.all(), registry_url))
-
-    # add input files
-    crate_code_run["object"] = input_files
+    crate_code_run = _get_code_run(crate, code_run, registry_url)
+    _add_code_run_files(crate, crate_code_run, code_run, registry_url)
 
     # add output files
     crate_code_run["result"] = _get_data_products(
         crate, code_run.outputs.all(), registry_url
     )
+
+
+def _add_code_run_files(crate, crate_code_run, code_run, registry_url):
+    """
+    Add a code run's software and inputs to its CreateAction.
+
+    The repo at the commit that was run is the instrument, or the submission script
+    for a run without a repo. The working config and the submission script are among
+    the run's objects, and the run names which is which.
+
+    @param crate: the RO Crate object
+    @param crate_code_run: the RO Crate ContextEntity representing the code run
+    @param code_run: a code_run from the CodeRun table
+    @param registry_url: a str containing the registry URL
+
+    """
+    input_files = []
+
+    if code_run.model_config is not None:
+        model_config = _get_software(
+            crate, code_run.model_config, registry_url, "model_config"
+        )
+        crate_code_run[_fair_term(crate, "model_configuration")] = model_config
+        input_files.append(model_config)
+
+    submission_script = _get_software(
+        crate, code_run.submission_script, registry_url, "submission_script"
+    )
+    crate_code_run[_fair_term(crate, "submission_script")] = submission_script
+    input_files.append(submission_script)
+
+    if code_run.code_repo is not None:
+        crate_code_run["instrument"] = _get_code_repo_release(
+            crate, code_run.code_repo, registry_url
+        )
+    else:
+        crate_code_run["instrument"] = submission_script
+
+    input_files.extend(_get_data_products(crate, code_run.inputs.all(), registry_url))
+    crate_code_run["object"] = input_files
 
 
 def _get_code_repo_release(crate, code_repo, registry_url):
@@ -449,21 +473,28 @@ def _get_code_repo_release(crate, code_repo, registry_url):
         properties = {
             RO_TYPE: "SoftwareApplication",
             "url": code_repo_id,
+            "name": (
+                code_repo.storage_location.path
+                if code_repo.storage_location is not None
+                else str(code_repo.uuid)
+            ),
         }
     else:
         properties = {
             RO_TYPE: "SoftwareApplication",
             "url": code_repo_id,
             "name": code_repo_release.name,
-            "version": code_repo_release.version,
+            "softwareVersion": code_repo_release.version,
         }
 
     if code_repo.storage_location is not None:
         # the hash of a repo's location is the commit that was run, and the same repo
-        # at another commit is different software
+        # at another commit is different software, so the commit is in the id; it
+        # also stands as the version where there is no release
         commit = code_repo.storage_location.hash
-        properties["softwareVersion"] = commit
         code_repo_id = f"{code_repo_id}#{commit}"
+        if code_repo_release is None:
+            properties["version"] = commit
 
     crate_code_release = ContextEntity(
         crate,
@@ -482,11 +513,10 @@ def _get_code_repo_release(crate, code_repo, registry_url):
     return crate_code_release
 
 
-def _get_code_run(crate_data_product, crate, code_run, registry_url):
+def _get_code_run(crate, code_run, registry_url):
     """
-    Create an RO Crate ContextEntity representing the code run and add the data product.
+    Create an RO Crate ContextEntity representing the code run.
 
-    @param crate_data_product: an RO data entity representing a data product
     @param crate: the RO Crate object
     @param code_run: a code_run object
     @param registry_url: a str containing the registry URL
@@ -534,28 +564,42 @@ def _get_code_run(crate_data_product, crate, code_run, registry_url):
 
     crate_code_run["agent"] = {"@id": agent_id}
 
-    # add the data product to the code run
-    crate_code_run["result"] = crate_data_product
-
     return crate_code_run
 
 
-def _get_data_product(crate, data_product, registry_url):
+def _get_data_product(crate, data_product, registry_url, pack=True):
     """
     Create an RO Crate file entity representing the data product.
+
+    A data product registered from an external source is linked to that source: by
+    `sameAs` where the registered bytes are the identified item or one of its files,
+    and by a data extraction action where the data was extracted from the source
+    before it could be used.
 
     @param crate: RO Crate entity
     @param data_product: a data_product from the DataProduct table
     @param registry_url: a str containing the registry URL
+    @param pack (bool): false to describe the file without packaging its bytes
 
     @return an RO Crate file entity representing the data product
 
     """
-    # Is it an external data product?
-    crate_data_product = _get_external_object(crate, data_product, registry_url)
+    crate_data_product = _get_local_data_product(
+        crate, data_product, registry_url, pack
+    )
 
-    if crate_data_product is None:
-        crate_data_product = _get_local_data_product(crate, data_product, registry_url)
+    try:
+        external_object = data_product.external_object
+    except models.DataProduct.external_object.RelatedObjectDoesNotExist:
+        external_object = None
+
+    if external_object is not None:
+        if external_object.primary_not_supplement is False:
+            _add_data_extraction_action(
+                crate, crate_data_product, data_product, external_object, registry_url
+            )
+        else:
+            crate_data_product["sameAs"] = _add_external_object(crate, external_object)
 
     _add_licenses(crate, crate_data_product, data_product.object, registry_url)
 
@@ -569,13 +613,14 @@ def _get_data_product(crate, data_product, registry_url):
     return crate_data_product
 
 
-def _get_data_products(crate, object_components, registry_url):
+def _get_data_products(crate, object_components, registry_url, pack=True):
     """
-    Add input data products to the RO Crate code run entity.
+    Add the data products of a code run's components to the RO Crate.
 
     @param crate: the RO Crate object
     @param object_components: a list of object_components from the ObjectComponent table
     @param registry_url: a str containing the registry URL
+    @param pack (bool): false to describe the files without packaging their bytes
 
     @return a list of RO Crate file entities representing the data products
 
@@ -590,40 +635,10 @@ def _get_data_products(crate, object_components, registry_url):
                 continue
             data_product_ids.add(data_product.id)
             all_data_products.append(
-                _get_data_product(crate, data_product, registry_url)
+                _get_data_product(crate, data_product, registry_url, pack)
             )
 
     return all_data_products
-
-
-def _get_external_object(crate, data_product, registry_url):
-    """
-    Create an RO Crate file entity for the given data product if it is an external
-    product.
-
-    If the data product is not an external product then `None` will be returned.
-
-    @param crate: the RO Crate object
-    @param data_product: a data_product from the DataProduct table
-    @param registry_url: a str containing the registry URL
-
-    @return an RO Crate file entity representing the external object, may be None
-
-    """
-    # check for external object linked to the data product
-    try:
-        external_object = data_product.external_object
-    except (models.DataProduct.external_object.RelatedObjectDoesNotExist,):
-        # no external object
-        return None
-
-    if external_object.primary_not_supplement is False:
-        # the data_product was derived from the external object
-        return _add_data_extraction_action(
-            crate, data_product, external_object, registry_url
-        )
-
-    return _add_external_object(crate, external_object)
 
 
 def _get_input_files_for_code_run(code_run):
@@ -671,7 +686,7 @@ def _get_input_files_for_data_product(data_product):
     return all_input_files
 
 
-def _get_local_data_product(crate, data_product, registry_url):
+def _get_local_data_product(crate, data_product, registry_url, pack=True):
     """
     Create an RO Crate file entity representing the data product.
 
@@ -683,6 +698,8 @@ def _get_local_data_product(crate, data_product, registry_url):
     @param crate: the RO Crate object
     @param data_product: a data_product from the DataProduct table
     @param registry_url: a str containing the registry URL
+    @param pack (bool): false to describe the file without packaging its bytes; a
+        file the crate already holds is left as it is
 
     @return an RO Crate file entity representing the data product
 
@@ -690,6 +707,9 @@ def _get_local_data_product(crate, data_product, registry_url):
     obj = data_product.object
     storage_location = obj.storage_location
     dest_path = _data_product_path(data_product)
+    if not pack and dest_path in crate:
+        return crate.dereference(dest_path)
+
     _fetch_remote = False
     if storage_location is None:
         # an object with no file: the data product is recorded, with nothing to pack
@@ -699,6 +719,9 @@ def _get_local_data_product(crate, data_product, registry_url):
         # a file that is not public is still named by its storage location
         source_loc = f"{registry_url}api/storage_location/{storage_location.id}"
         dest_path = None
+
+    elif not pack:
+        source_loc = None
 
     elif len(str(storage_location).split(FILE)) > 1:
         source_loc = str(storage_location).split(FILE)[1]
@@ -772,23 +795,13 @@ def _get_namespace(crate, namespace):
     @return an RO Crate ContextEntity representing the namespace
 
     """
-    # these are the registry's own terms, as in the provenance report
-    central_registry_url = django_settings.CENTRAL_REGISTRY_URL
-    if not central_registry_url.endswith("/"):
-        central_registry_url = f"{central_registry_url}/"
-    crate.metadata.extra_terms.update(
-        {
-            "Namespace": f"{central_registry_url}vocab/#Namespace",
-            "namespace": f"{central_registry_url}vocab/#namespace",
-        }
-    )
-
-    properties = {RO_TYPE: "Namespace", "name": namespace.name}
+    properties = {RO_TYPE: _fair_term(crate, "Namespace"), "name": namespace.name}
     if namespace.full_name:
         properties["alternateName"] = namespace.full_name
     if namespace.website:
         properties["url"] = namespace.website
 
+    _fair_term(crate, "namespace")
     return crate.add(
         ContextEntity(
             crate,
@@ -906,6 +919,7 @@ def generate_ro_crate_from_cr(code_run, depth, request):
         crate.license = crate_license
 
     _add_metadata_license(crate)
+    _declare_profile(crate)
 
     _generate_ro_crate_from_cr(code_run, crate, registry_url)
 
@@ -966,6 +980,7 @@ def generate_ro_crate_from_dp(data_product, depth, request):
         crate.license = crate_license
 
     _add_metadata_license(crate)
+    _declare_profile(crate)
 
     # add the the main data product
     _generate_ro_crate_from_dp(data_product, crate, registry_url)

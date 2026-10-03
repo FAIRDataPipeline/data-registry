@@ -248,14 +248,14 @@ class CodeRunROCrateView(views.APIView):
     `submission_script/`. Every file carries the SHA-1 of its bytes (`sha1`) and the `uuid`
     of its object in the registry (`identifier`).
 
-    External files may point directly to data, in which case they will be used directly as
-    inputs to a `CodeRun`. External files will have a link to them in the metadata file, but
-    will not be packaged in the zip file. However, it maybe that data has had to be
-    extracted from an external file before it can be used by a `CodeRun`, i.e. from a
-    journal article, In which case there will be an associated `DataProduct` that would have
-    been made to contain the data so that it can be used in a `CodeRun`. If this is the case
-    the relationship between the external file and `DataProduct` is modelled as a RO Crate
-    `ContextEntity` of type `CreateAction`.
+    A data product registered from an external source is in the crate as itself, and the
+    source is a `File` named by its identifier (a DOI, or else its alternate identifier),
+    linked but not packaged. Where the registered bytes are the identified item, or one of
+    its files (a primary source), the data product's `sameAs` points at the source; where
+    the data was extracted from the source before it could be used (a supplementary source,
+    e.g. a journal article), the extraction is modelled as a RO Crate `ContextEntity` of
+    type `CreateAction` with the source as its `object` and the data product as its
+    `result`.
 
     The `CodeRun` has been modelled as a RO Crate `ContextEntity` of type `CreateAction`,
     see
@@ -273,10 +273,15 @@ class CodeRunROCrateView(views.APIView):
     `CreateAction` (`CodeRun`) properties:
 
     * `identifier`: the `uuid` of the `CodeRun`, which is also in its `@id`
-    * `instrument`: the software used to generate the output
-    * `object`: the input files
-    * `result`: the output file
+    * `instrument`: the code repo at the commit that was run, or the submission script for a
+      run without a repo
+    * `object`: the input files, the working config and the submission script
+    * `model_configuration`, `submission_script`: which of those files is which
+    * `result`: every output of the run; those outside the crate's provenance are described
+      but not packaged
     * `agent`: the `Author`
+
+    The crate conforms to Process Run Crate 0.6 (https://w3id.org/ro/wfrun/process/0.6).
 
     The RO Crate is available as a `zip` file.
 
@@ -331,14 +336,14 @@ class DataProductROCrateView(views.APIView):
     `submission_script/`. Every file carries the SHA-1 of its bytes (`sha1`) and the `uuid`
     of its object in the registry (`identifier`).
 
-    External files may point directly to data, in which case they will be used directly as
-    inputs to a `CodeRun`. External files will have a link to them in the metadata file, but
-    will not be packaged in the zip file. However, it maybe that data has had to be
-    extracted from an external file before it can be used by a `CodeRun`, i.e. from a
-    journal article, In which case there will be an associated `DataProduct` that would have
-    been made to contain the data so that it can be used in a `CodeRun`. If this is the case
-    the relationship between the external file and `DataProduct` is modelled as a RO Crate
-    `ContextEntity` of type `CreateAction`.
+    A data product registered from an external source is in the crate as itself, and the
+    source is a `File` named by its identifier (a DOI, or else its alternate identifier),
+    linked but not packaged. Where the registered bytes are the identified item, or one of
+    its files (a primary source), the data product's `sameAs` points at the source; where
+    the data was extracted from the source before it could be used (a supplementary source,
+    e.g. a journal article), the extraction is modelled as a RO Crate `ContextEntity` of
+    type `CreateAction` with the source as its `object` and the data product as its
+    `result`.
 
     The `CodeRun` has been modelled as a RO Crate `ContextEntity` of type `CreateAction`,
     see
@@ -356,10 +361,15 @@ class DataProductROCrateView(views.APIView):
     `CreateAction` (`CodeRun`) properties:
 
     * `identifier`: the `uuid` of the `CodeRun`, which is also in its `@id`
-    * `instrument`: the software used to generate the output
-    * `object`: the input files
-    * `result`: the output file
+    * `instrument`: the code repo at the commit that was run, or the submission script for a
+      run without a repo
+    * `object`: the input files, the working config and the submission script
+    * `model_configuration`, `submission_script`: which of those files is which
+    * `result`: every output of the run; those outside the crate's provenance are described
+      but not packaged
     * `agent`: the `Author`
+
+    The crate conforms to Process Run Crate 0.6 (https://w3id.org/ro/wfrun/process/0.6).
 
     The RO Crate is available as a `zip` file.
 

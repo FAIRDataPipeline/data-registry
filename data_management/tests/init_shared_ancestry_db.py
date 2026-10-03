@@ -146,6 +146,8 @@ def init_db(test_case):
         updated_by=user,
         data_product=DataProduct.objects.get(object=o_source),
         identifier="https://doi.org/10.5281/zenodo.1234567",
+        alternate_identifier="source-2020",
+        alternate_identifier_type="project name",
         title="The source data",
         description="Where the source data came from",
         release_date=parser.isoparse("2020-07-10T18:38:00Z"),

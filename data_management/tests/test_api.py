@@ -1963,9 +1963,14 @@ class RoCrateSharedAncestryTests(TestCase):
         self.assertEqual(
             set(software), {f"{url}#{first_commit}", f"{url}#{second_commit}"}
         )
+        # with no release the commit stands as the version; the id carries it anyway
         for commit in (first_commit, second_commit):
-            self.assertEqual(software[f"{url}#{commit}"]["softwareVersion"], commit)
+            self.assertEqual(software[f"{url}#{commit}"]["version"], commit)
+            self.assertNotIn("softwareVersion", software[f"{url}#{commit}"])
             self.assertEqual(software[f"{url}#{commit}"]["url"], url)
+            self.assertEqual(
+                software[f"{url}#{commit}"]["name"], "FAIRDataPipeline/shared"
+            )
 
         # and each code run points at the commit it was run from
         instruments = {
@@ -2019,13 +2024,10 @@ class RoCrateSharedAncestryTests(TestCase):
             for entity in graph.values()
             if entity["@type"] == "File" and "sha1" in entity
         }
-        # source, registered from an external source, is shown as that source instead
         # alias is a data product of its own on raw's object, so it keeps its own
         # version and namespace
-        expected = {
-            name: ("1.0.0", shared_id)
-            for name in ("end", "first", "second", "twin", "left", "right", "alias")
-        }
+        names = ("end", "first", "second", "twin", "left", "right", "alias", "source")
+        expected = {name: ("1.0.0", shared_id) for name in (*names, "extra")}
         expected["raw"] = ("2.3.4", other_id)
         self.assertEqual(identities, expected)
 
@@ -2054,7 +2056,8 @@ class RoCrateSharedAncestryTests(TestCase):
             if entity["@type"] == "File" and identifier.startswith("shared/")
         }
 
-        names = ["alias", "end", "first", "left", "raw", "right", "second", "twin"]
+        names = ["alias", "end", "extra", "first", "left", "raw", "right", "second"]
+        names += ["source", "twin"]
         self.assertEqual(set(files), {f"shared/{name}/1.0.0.txt" for name in names})
         second, twin = files["shared/second/1.0.0.txt"], files["shared/twin/1.0.0.txt"]
         self.assertEqual(twin["sha1"], second["sha1"])
@@ -2092,14 +2095,14 @@ class RoCrateSharedAncestryTests(TestCase):
         results = [ref["@id"] for ref in graph[f"urn:uuid:{pair.uuid}"]["result"]]
         self.assertEqual(
             sorted(results),
-            ["shared/first/1.0.0.txt", "shared/second/1.0.0.txt", "shared/twin/1.0.0.txt"],
+            [f"shared/{name}/1.0.0.txt" for name in ("first", "second", "twin")],
         )
         # and its root lists first's licence once, as a reference
-        licence = models.Licence.objects.get(object=models.Object.objects.get(
-            storage_location__path="first"
-        ))
+        first = models.Object.objects.get(storage_location__path="first")
+        licence = models.Licence.objects.get(object=first)
         self.assertEqual(
-            graph["./"]["license"], {"@id": f"http://testserver/api/license/{licence.id}"}
+            graph["./"]["license"],
+            {"@id": f"http://testserver/api/license/{licence.id}"},
         )
 
         crate, _ = self._get("code_run_ro_crate", final.id, 1)
@@ -2156,6 +2159,106 @@ class RoCrateSharedAncestryTests(TestCase):
         products = ["alias", "end", "first", "left", "raw", "right", "second", "twin"]
         expected = {f"shared/{name}/1.0.0.txt" for name in products}
         self.assertTrue(expected <= names, names)
+        # extra is outside end's provenance: described, not packaged
+        self.assertNotIn("shared/extra/1.0.0.txt", names)
+
+    def test_conformance(self):
+        # the crate declares Process Run Crate, and every run has an instrument
+        end = models.DataProduct.objects.get(name="end")
+        crate, _ = self._get("data_product_ro_crate", end.id, 100)
+        graph = {entity["@id"]: entity for entity in crate["@graph"]}
+        profile = "https://w3id.org/ro/wfrun/process/0.6"
+        self.assertEqual(graph["./"]["conformsTo"], {"@id": profile})
+        self.assertEqual(graph[profile]["@type"], "CreativeWork")
+        runs = [
+            entity
+            for entity in graph.values()
+            if entity.get("@type") == "CreateAction" and "identifier" in entity
+        ]
+        self.assertEqual(len(runs), 5)
+        for run in runs:
+            self.assertIn("instrument", run)
+
+    def test_software_roles(self):
+        # the run says which of its objects is the config and which the script
+        prepare = models.CodeRun.objects.get(description="prepare")
+        final = models.CodeRun.objects.get(description="final")
+        end = models.DataProduct.objects.get(name="end")
+        crate, _ = self._get("data_product_ro_crate", end.id, 100)
+        graph = {entity["@id"]: entity for entity in crate["@graph"]}
+        vocab = "https://data.fairdatapipeline.org/vocab/#"
+        for term in ("model_configuration", "submission_script"):
+            self.assertEqual(crate["@context"][1][term], f"{vocab}{term}")
+
+        run = graph[f"urn:uuid:{prepare.uuid}"]
+        self.assertEqual(
+            run["model_configuration"], {"@id": "model_config/model_config"}
+        )
+        self.assertEqual(run["submission_script"], {"@id": "submission_script/script"})
+        objects = [ref["@id"] for ref in run["object"]]
+        self.assertIn("model_config/model_config", objects)
+        self.assertIn("submission_script/script", objects)
+
+        run = graph[f"urn:uuid:{final.uuid}"]
+        self.assertNotIn("model_configuration", run)
+        self.assertEqual(run["submission_script"], {"@id": "submission_script/script"})
+
+    def test_run_without_repo(self):
+        # a run with no repo has its submission script as its instrument
+        final = models.CodeRun.objects.get(description="final")
+        final.code_repo = None
+        final.save()
+
+        crate, _ = self._get("code_run_ro_crate", final.id, 1)
+        graph = {entity["@id"]: entity for entity in crate["@graph"]}
+        self.assertEqual(
+            graph[f"urn:uuid:{final.uuid}"]["instrument"],
+            {"@id": "submission_script/script"},
+        )
+
+    def test_registered_input(self):
+        # a data product registered from an external source is a file like any
+        # other, the same as the source it was registered from, which the run did
+        # not read directly
+        end = models.DataProduct.objects.get(name="end")
+        prepare = models.CodeRun.objects.get(description="prepare")
+        source = models.ExternalObject.objects.get()
+        crate, _ = self._get("data_product_ro_crate", end.id, 100)
+        graph = {entity["@id"]: entity for entity in crate["@graph"]}
+
+        product = graph["shared/source/1.0.0.txt"]
+        self.assertIn("sha1", product)
+        self.assertEqual(product["sameAs"], {"@id": source.identifier})
+        described = graph[source.identifier]
+        self.assertEqual(described["name"], "The source data")
+        self.assertEqual(described["alternate_identifier"], "source-2020")
+        self.assertEqual(described["alternate_identifier_type"], "project name")
+        vocab = "https://data.fairdatapipeline.org/vocab/#"
+        self.assertEqual(
+            crate["@context"][1]["alternate_identifier"], f"{vocab}alternate_identifier"
+        )
+        objects = [ref["@id"] for ref in graph[f"urn:uuid:{prepare.uuid}"]["object"]]
+        self.assertIn("shared/source/1.0.0.txt", objects)
+        self.assertNotIn(source.identifier, objects)
+
+    def test_all_outputs_listed(self):
+        # a data product's crate lists every output of each run; one outside the
+        # crate's provenance is described, with its hash, but not packaged (test_zip)
+        end = models.DataProduct.objects.get(name="end")
+        prepare = models.CodeRun.objects.get(description="prepare")
+        crate, _ = self._get("data_product_ro_crate", end.id, 100)
+        graph = {entity["@id"]: entity for entity in crate["@graph"]}
+
+        results = [ref["@id"] for ref in graph[f"urn:uuid:{prepare.uuid}"]["result"]]
+        self.assertEqual(
+            sorted(results),
+            [f"shared/{name}/1.0.0.txt" for name in ("alias", "extra", "raw")],
+        )
+        extra = graph["shared/extra/1.0.0.txt"]
+        self.assertEqual(extra["name"], "extra")
+        self.assertEqual(extra["version"], "1.0.0")
+        self.assertEqual(extra["namespace"], {"@id": "#namespace-shared"})
+        self.assertIn("sha1", extra)
 
     def test_code_run_identity(self):
         final = models.CodeRun.objects.get(description="final")
