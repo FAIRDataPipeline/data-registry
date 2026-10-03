@@ -779,7 +779,7 @@ def generate_prov_document(data_product, depth, request):
         reg_uri_prefix = "lreg"
         doc.add_namespace(reg_uri_prefix, url)
 
-    # the vocab namespace is always the main registry
+    # the vocab namespace is always the main registry; its vocab/ page defines the terms
     doc.add_namespace(FAIR_VOCAB_PREFIX, f"{central_registry_url}vocab/#")
 
     doc.add_namespace(DCAT_VOCAB_PREFIX, DCAT_VOCAB_NAMESPACE)

@@ -49,6 +49,7 @@ urlpatterns = [
     path("revoke-token", views.revoke_token, name="revoke_token"),
     path("docs/", cache_page(cache_duration)(views.doc_index), name="docs_index"),
     path("docs/<str:name>", cache_page(cache_duration)(views.docs)),
+    path("vocab/", views.vocab_page, name="vocab"),
     path(
         "tables/dataproducts",
         cache_page(cache_duration)(tables.data_product_table_data),

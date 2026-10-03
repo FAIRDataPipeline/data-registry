@@ -363,7 +363,8 @@ def _declare_profile(crate):
 
 
 # Define one of the registry's own terms in the crate's context, as in the provenance
-# report, and return it as the property name to use
+# report (the central registry's vocab/ page defines them), and return it as the
+# property name to use
 def _fair_term(crate, name):
     central_registry_url = django_settings.CENTRAL_REGISTRY_URL
     if not central_registry_url.endswith("/"):

@@ -18,6 +18,7 @@ from . import models
 from . import object_storage
 from . import settings
 from . import version
+from . import vocab
 
 
 def index(request):
@@ -197,6 +198,19 @@ def doc_index(request):
         text = file.read()
     ctx = {"text": text}
     return render(request, os.path.join("data_management", "docs.html"), ctx)
+
+
+def vocab_page(request):
+    """
+    The registry's own vocabulary: the terms its provenance reports and RO Crates use,
+    each anchored by its name, so that the central registry's vocab/#<term> addresses
+    resolve to their definitions.
+    """
+    ctx = {
+        "classes": [term for term in vocab.TERMS if term.kind == vocab.CLASS],
+        "properties": [term for term in vocab.TERMS if term.kind == vocab.PROPERTY],
+    }
+    return render(request, os.path.join("data_management", "vocab.html"), ctx)
 
 
 def get_data(request, name):
