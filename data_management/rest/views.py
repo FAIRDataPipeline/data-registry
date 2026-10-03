@@ -242,6 +242,11 @@ class CodeRunROCrateView(views.APIView):
     [CC0 Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/).
     Please note individual files may have their own licenses.
     All of the packaged files are represented as `File` data entities in the metadata file.
+    A data product's file is at `<namespace>/<name>/<version>.<extension>`, which is how a
+    registry's data store lays out the files it pulls, whether or not its bytes are in the
+    crate; the working config and the submission script are under `model_config/` and
+    `submission_script/`. Every file carries the SHA-1 of its bytes (`sha1`) and the `uuid`
+    of its object in the registry (`identifier`).
 
     External files may point directly to data, in which case they will be used directly as
     inputs to a `CodeRun`. External files will have a link to them in the metadata file, but
@@ -320,6 +325,11 @@ class DataProductROCrateView(views.APIView):
     [CC0 Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/).
     Please note individual files may have their own licenses.
     All of the packaged files are represented as `File` data entities in the metadata file.
+    A data product's file is at `<namespace>/<name>/<version>.<extension>`, which is how a
+    registry's data store lays out the files it pulls, whether or not its bytes are in the
+    crate; the working config and the submission script are under `model_config/` and
+    `submission_script/`. Every file carries the SHA-1 of its bytes (`sha1`) and the `uuid`
+    of its object in the registry (`identifier`).
 
     External files may point directly to data, in which case they will be used directly as
     inputs to a `CodeRun`. External files will have a link to them in the metadata file, but

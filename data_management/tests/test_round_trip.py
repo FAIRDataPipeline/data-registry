@@ -25,8 +25,9 @@ whole file stands for it); file types; and who ran a code run, which the registr
 derives from the account that created the row, so that no import can keep it.
 """
 
+from pathlib import PurePosixPath
 from unittest import expectedFailure
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -169,6 +170,7 @@ def _empty_registry():
         models.CodeRepoRelease,
         models.ObjectComponent,
         models.Object,
+        models.FileType,
         models.StorageLocation,
         models.StorageRoot,
         models.Namespace,
@@ -189,6 +191,7 @@ class CrateImporter:
         self.entities = {entity["@id"]: entity for entity in graph}
         self.client = client
         self.urls = {}
+        self.objects = {}
 
     def _post(self, table, data):
         response = self.client.post(f"/api/{table}/", data, format="json")
@@ -256,23 +259,44 @@ class CrateImporter:
         storage_location = self._storage_location(root, parsed.path.lstrip("/"), commit)
         return self._post("object", {"storage_location": storage_location})
 
-    def _file(self, entity):
-        """A file in the data store, named by its hash; a data product if it has one."""
-        if "sha1" not in entity:
-            # a source outside the registry, with nothing to register
-            return None
-        storage_location = self._storage_location(
-            IMPORT_ROOT, entity["sha1"], entity["sha1"]
-        )
+    def _extension(self, entity):
+        """
+        The extension of a file's path, which is all the crate says of its file type.
+
+        A data product's path ends in its version, which has dots of its own, so the
+        extension is what follows the version; a software file's path is the file's
+        name.
+        """
+        last = entity["@id"].rsplit("/", 1)[-1]
+        if "version" in entity:
+            last = last[len(quote(entity["version"], safe="")) :]
+            return last.lstrip(".") or None
+        return PurePosixPath(last).suffix.lstrip(".") or None
+
+    def _object(self, entity):
+        """A file's object, which every data product of the object shares."""
+        uuid = entity["identifier"]
+        if uuid in self.objects:
+            return self.objects[uuid]
         data = {
-            "storage_location": storage_location,
+            "uuid": uuid,
+            "storage_location": self._storage_location(
+                IMPORT_ROOT, entity["sha1"], entity["sha1"]
+            ),
             "description": entity.get("description"),
             "authors": [
                 self._ensure(author["@id"], self._author)
                 for author in self._referenced(entity, "author")
             ],
         }
-        object_url = self._post("object", data)
+        extension = self._extension(entity)
+        if extension is not None:
+            data["file_type"] = self._get_or_post(
+                "file_type",
+                {"extension": extension},
+                {"name": extension, "extension": extension},
+            )
+        object_url = self.objects[uuid] = self._post("object", data)
         for licence in self._referenced(entity, "license"):
             # a licence with no identifier is identified by the exporting registry's
             # URL, recognisable only by its shape
@@ -287,6 +311,14 @@ class CrateImporter:
                     "identifier": identifier,
                 },
             )
+        return object_url
+
+    def _file(self, entity):
+        """A file in the data store: its object, and a data product if it is one."""
+        if "sha1" not in entity:
+            # a source outside the registry, with nothing to register
+            return None
+        object_url = self._object(entity)
         if "namespace" in entity:
             self._post(
                 "data_product",
@@ -337,8 +369,9 @@ class CrateImporter:
             # script, so the first is taken as the script and nothing as the config
             "submission_script": software[0] if software else None,
             "model_config": None,
-            "inputs": [self._whole_object(url) for url in inputs if url],
-            "outputs": [self._whole_object(url) for url in outputs if url],
+            # two names for one object are one component read
+            "inputs": list({self._whole_object(url): 1 for url in inputs if url}),
+            "outputs": list({self._whole_object(url): 1 for url in outputs if url}),
         }
         return self._post("code_run", data)
 
@@ -386,11 +419,8 @@ class RoundTripTests(TestCase):
 
     @expectedFailure
     def test_data_products(self):
-        # a File is named from its storage location, so twin and second (one
-        # location, two objects) and raw and alias (one object, two names) each
-        # collapse into one entity, and one of each pair is not imported; and extra,
-        # prepare's other output, is not in the crate at all, as a run's outputs
-        # outside the ancestry are not listed
+        # extra, prepare's other output, is not in the crate at all, as a run's
+        # outputs outside the ancestry are not listed
         before, after = self._local(self.before), self._local(self.after)
         self.assertEqual(set(after), set(before))
         for name, data_product in before.items():
@@ -421,10 +451,7 @@ class RoundTripTests(TestCase):
     def test_code_runs_exist(self):
         self.assertEqual(set(self.after["code_runs"]), set(self.before["code_runs"]))
 
-    @expectedFailure
     def test_code_run_details(self):
-        # the collapse of test_data_products: final loses twin or second, and every
-        # run that reads raw loses raw or alias
         registered = set(self.before["external_objects"])
         for uuid, code_run in self.before["code_runs"].items():
             with self.subTest(code_run=code_run["description"]):
@@ -463,6 +490,9 @@ class RoundTripTests(TestCase):
 
     @expectedFailure
     def test_reexport(self):
-        # the crate carries no file type, so the imported objects have none, and the
-        # crate of a data product cannot be made without one
+        # three differences remain: a run reading two components of one file lists
+        # the file twice in the first crate and once in the second; a registered
+        # input is in the first crate only as its source, which the import cannot
+        # register; and the import loses one of a run's two software files, not
+        # knowing which is the config and which the script
         self.assertEqual(_path(self._export()), _path(self.crate))

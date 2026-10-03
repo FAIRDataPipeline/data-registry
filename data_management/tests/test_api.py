@@ -1,4 +1,6 @@
-from unittest import expectedFailure, mock
+import io
+from unittest import mock
+import zipfile
 
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
@@ -1975,12 +1977,7 @@ class RoCrateSharedAncestryTests(TestCase):
         self.assertEqual(instruments.pop("final"), f"{url}#{second_commit}")
         self.assertEqual(set(instruments.values()), {f"{url}#{first_commit}"})
 
-    @expectedFailure
     def test_data_product_identity(self):
-        # a File is named from its storage location, so twin and second (one
-        # location, two objects) and raw and alias (one object, two names) each
-        # collapse into one entity; passes once a File is identified by its data
-        # product
         # give one data product a version and a namespace of its own
         raw = models.DataProduct.objects.get(name="raw")
         raw.version = "2.3.4"
@@ -2042,6 +2039,79 @@ class RoCrateSharedAncestryTests(TestCase):
         for entity in software:
             self.assertNotIn("version", entity)
             self.assertNotIn("namespace", entity)
+
+    def test_file_paths(self):
+        # a data product's file is at its namespace, name and version, whether or
+        # not it is packed: identical bytes under two data products are two files
+        # with one hash, and two names for one object two files with one identifier
+        end = models.DataProduct.objects.get(name="end")
+        raw = models.DataProduct.objects.get(name="raw")
+        crate, _ = self._get("data_product_ro_crate", end.id, 100)
+        graph = {entity["@id"]: entity for entity in crate["@graph"]}
+        files = {
+            identifier: entity
+            for identifier, entity in graph.items()
+            if entity["@type"] == "File" and identifier.startswith("shared/")
+        }
+
+        names = ["alias", "end", "first", "left", "raw", "right", "second", "twin"]
+        self.assertEqual(set(files), {f"shared/{name}/1.0.0.txt" for name in names})
+        second, twin = files["shared/second/1.0.0.txt"], files["shared/twin/1.0.0.txt"]
+        self.assertEqual(twin["sha1"], second["sha1"])
+        self.assertNotEqual(twin["identifier"], second["identifier"])
+        self.assertEqual(
+            files["shared/alias/1.0.0.txt"]["identifier"], str(raw.object.uuid)
+        )
+        self.assertEqual(
+            files["shared/raw/1.0.0.txt"]["identifier"], str(raw.object.uuid)
+        )
+        self.assertEqual(files["shared/raw/1.0.0.txt"]["encodingFormat"], "text/plain")
+
+        software = {
+            identifier
+            for identifier, entity in graph.items()
+            if entity["@type"] == ["File", "SoftwareSourceCode"]
+        }
+        self.assertEqual(software, {"model_config/model_config", "submission_script/script"})
+        # a file is neither an input nor an output: at any depth above one it is both
+        self.assertFalse([i for i in graph if i.startswith(("inputs/", "outputs/"))])
+
+    def test_file_paths_without_a_file_type(self):
+        # an object may have no file type; its path then has no extension
+        raw = models.DataProduct.objects.get(name="raw")
+        # not save(), which would try to create the object's whole_object again
+        models.Object.objects.filter(pk=raw.object.pk).update(file_type=None)
+        end = models.DataProduct.objects.get(name="end")
+
+        crate, _ = self._get("data_product_ro_crate", end.id, 100)
+        graph = {entity["@id"]: entity for entity in crate["@graph"]}
+        self.assertIn("shared/raw/1.0.0", graph)
+        self.assertNotIn("encodingFormat", graph["shared/raw/1.0.0"])
+        self.assertIn("shared/alias/1.0.0", graph)
+
+    def test_zip(self):
+        # the zip holds each public file at its path, identical bytes twice over
+        end = models.DataProduct.objects.get(name="end")
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse("data_product_ro_crate", kwargs={"pk": end.id})
+        response = client.get(
+            url, data={"depth": 100}, format="zip", HTTP_ACCEPT="application/zip"
+        )
+        self.assertEqual(response.status_code, 200)
+
+        with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+            names = set(archive.namelist())
+            self.assertEqual(archive.read("shared/raw/1.0.0.txt"), b"raw\n")
+            self.assertEqual(archive.read("shared/twin/1.0.0.txt"), b"second\n")
+            self.assertEqual(archive.read("shared/second/1.0.0.txt"), b"second\n")
+            self.assertEqual(archive.read("model_config/model_config"), b"model_config\n")
+            self.assertEqual(archive.read("submission_script/script"), b"script\n")
+        expected = {
+            f"shared/{name}/1.0.0.txt"
+            for name in ("alias", "end", "first", "left", "raw", "right", "second", "twin")
+        }
+        self.assertTrue(expected <= names, names)
 
     def test_code_run_identity(self):
         final = models.CodeRun.objects.get(description="final")

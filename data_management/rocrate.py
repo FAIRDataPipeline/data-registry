@@ -15,6 +15,11 @@ Also included in the RO Crate is the metadata file `ro-crate-metadata.json`. The
 [CC0 Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/).
 Please note individual files may have their own licenses.
 All of the packaged files are represented as `File` data entities in the metadata file.
+A data product's file is at `<namespace>/<name>/<version>.<extension>`, which is how a
+registry's data store lays out the files it pulls, whether or not its bytes are in the
+crate; the working config and the submission script are under `model_config/` and
+`submission_script/`. Every file carries the SHA-1 of its bytes (`sha1`) and the `uuid`
+of its object in the registry (`identifier`).
 
 External files may point directly to data, in which case they will be used directly as
 inputs to a `CodeRun`. External files will have a link to them in the metadata file, but
@@ -129,11 +134,7 @@ def _add_data_extraction_action(crate, data_product, external_object, registry_u
         },
     )
 
-    # the data product is an output of the transformation but an input to the code run
-    # therefore output has been set to False
-    crate_data_product = _get_local_data_product(
-        crate, data_product, registry_url, False
-    )
+    crate_data_product = _get_local_data_product(crate, data_product, registry_url)
 
     crate_data_extraction["result"] = crate_data_product
     crate_data_extraction["object"] = _add_external_object(crate, external_object)
@@ -267,6 +268,25 @@ def _add_metadata_license(crate):
     crate.metadata["license"] = metadata_license
 
 
+# A data product's path in the crate: its namespace, name and version, which is how
+# a registry's data store lays out the files it pulls, plus the file's extension
+def _data_product_path(data_product):
+    path = (
+        f"{quote(data_product.namespace.name, safe='')}/"
+        f"{quote(data_product.name, safe='/')}/"
+        f"{quote(data_product.version, safe='')}"
+    )
+    extension = _extension(data_product.object)
+    return path if extension is None else f"{path}.{extension}"
+
+
+# The extension of an object's file type, or None when it has neither
+def _extension(obj):
+    if obj.file_type is None:
+        return None
+    return obj.file_type.extension or None
+
+
 def _get_default_license(crate):
     """
     Get a ContextEntity representing a CC BY 4.0 license.
@@ -289,19 +309,16 @@ def _get_default_license(crate):
     return default_license
 
 
-def _generate_ro_crate_from_dp(data_product, crate, registry_url, output_flag):
+def _generate_ro_crate_from_dp(data_product, crate, registry_url):
     """
     Update an RO Crate based around the data product.
 
     @param data_product: a data_product from the DataProduct table
     @param crate: the RO Crate object
     @param registry_url: a str containing the registry URL
-    @param output_flag (bool): true if the data product is an output
 
     """
-    crate_data_product = _get_data_product(
-        crate, data_product, registry_url, output_flag
-    )
+    crate_data_product = _get_data_product(crate, data_product, registry_url)
 
     # add the activity, i.e. the code run
     components = data_product.object.components.all()
@@ -342,7 +359,7 @@ def _generate_ro_crate_from_dp(data_product, crate, registry_url, output_flag):
 
         # get data files
         input_files.extend(
-            _get_data_products(crate, code_run.inputs.all(), registry_url, False)
+            _get_data_products(crate, code_run.inputs.all(), registry_url)
         )
 
         # add input files
@@ -386,16 +403,14 @@ def _generate_ro_crate_from_cr(code_run, crate, registry_url):
     input_files.append(submission_script)
 
     # get data files
-    input_files.extend(
-        _get_data_products(crate, code_run.inputs.all(), registry_url, False)
-    )
+    input_files.extend(_get_data_products(crate, code_run.inputs.all(), registry_url))
 
     # add input files
     crate_code_run["object"] = input_files
 
     # add output files
     crate_code_run["result"] = _get_data_products(
-        crate, code_run.outputs.all(), registry_url, True
+        crate, code_run.outputs.all(), registry_url
     )
 
 
@@ -513,14 +528,13 @@ def _get_code_run(crate_data_product, crate, code_run, registry_url):
     return crate_code_run
 
 
-def _get_data_product(crate, data_product, registry_url, output):
+def _get_data_product(crate, data_product, registry_url):
     """
     Create an RO Crate file entity representing the data product.
 
     @param crate: RO Crate entity
     @param data_product: a data_product from the DataProduct table
     @param registry_url: a str containing the registry URL
-    @param output (bool): true if the data product is an output
 
     @return an RO Crate file entity representing the data product
 
@@ -529,9 +543,7 @@ def _get_data_product(crate, data_product, registry_url, output):
     crate_data_product = _get_external_object(crate, data_product, registry_url)
 
     if crate_data_product is None:
-        crate_data_product = _get_local_data_product(
-            crate, data_product, registry_url, output
-        )
+        crate_data_product = _get_local_data_product(crate, data_product, registry_url)
 
     _add_licenses(crate, crate_data_product, data_product.object, registry_url)
 
@@ -545,14 +557,13 @@ def _get_data_product(crate, data_product, registry_url, output):
     return crate_data_product
 
 
-def _get_data_products(crate, object_components, registry_url, output):
+def _get_data_products(crate, object_components, registry_url):
     """
     Add input data products to the RO Crate code run entity.
 
     @param crate: the RO Crate object
     @param object_components: a list of object_components from the ObjectComponent table
     @param registry_url: a str containing the registry URL
-    @param output (bool): true if the data product is an output
 
     @return a list of RO Crate file entities representing the data products
 
@@ -563,9 +574,7 @@ def _get_data_products(crate, object_components, registry_url, output):
         data_products = obj.data_products.all()
 
         for data_product in data_products:
-            crate_data_product = _get_data_product(
-                crate, data_product, registry_url, output
-            )
+            crate_data_product = _get_data_product(crate, data_product, registry_url)
             all_data_products.append(crate_data_product)
 
     return all_data_products
@@ -646,64 +655,61 @@ def _get_input_files_for_data_product(data_product):
     return all_input_files
 
 
-def _get_local_data_product(crate, data_product, registry_url, output):
+def _get_local_data_product(crate, data_product, registry_url):
     """
     Create an RO Crate file entity representing the data product.
 
-    @param crate_code_run: RO Crate entity representing the code run
+    The entity is the data product's, at the path its namespace, name and version
+    give it, whether or not the file's bytes are in the crate: two data products
+    with the same bytes are two entities with one hash, and two names for one
+    object two entities with one identifier.
+
+    @param crate: the RO Crate object
     @param data_product: a data_product from the DataProduct table
     @param registry_url: a str containing the registry URL
-    @param output (bool): true if the data product is an output
 
     @return an RO Crate file entity representing the data product
 
     """
+    obj = data_product.object
+    storage_location = obj.storage_location
+    dest_path = _data_product_path(data_product)
     _fetch_remote = False
-    if (
-        data_product.object.storage_location.public is True
-        and len(str(data_product.object.storage_location).split(FILE)) > 1
-    ):
-        source_loc = str(data_product.object.storage_location).split(FILE)[1]
+    if storage_location.public is not True:
+        # a file that is not public is still named by its storage location
+        source_loc = f"{registry_url}api/storage_location/{storage_location.id}"
+        dest_path = None
 
-        if output:
-            dest_path = f"outputs/{source_loc.split('/')[-1]}"
-        else:
-            dest_path = f"inputs/data/{source_loc.split('/')[-1]}"
+    elif len(str(storage_location).split(FILE)) > 1:
+        source_loc = str(storage_location).split(FILE)[1]
 
         if not os.path.isfile(source_loc):
             source_loc = None
 
-    elif (
-        data_product.object.storage_location.public is True and settings.REMOTE_REGISTRY
-    ):
-        file_name = str(data_product.object.storage_location).split("/")[-1]
-        _ext = data_product.object.file_type.extension
-        source_loc = data_product.object.storage_location.full_uri()
-
-        if output:
-            dest_path = f"outputs/{file_name}.{_ext}"
-        else:
-            dest_path = f"inputs/data/{file_name}.{_ext}"
+    elif settings.REMOTE_REGISTRY:
+        source_loc = storage_location.full_uri()
         _fetch_remote = True
 
     else:
-        source_loc = f"{registry_url}api/storage_location/{data_product.object.storage_location.id}"
-        dest_path = None
-
-    encoding_format = _get_mime_type(data_product.object.file_type.extension)
+        # public, but on a root this registry cannot read: recorded, not packed
+        source_loc = None
 
     properties = {
         "name": data_product.name,
         "version": data_product.version,
-        "encodingFormat": encoding_format,
+        "identifier": str(obj.uuid),
     }
 
-    if data_product.object.storage_location.hash is not None:
-        properties["sha1"] = data_product.object.storage_location.hash
+    extension = _extension(obj)
+    if extension is not None:
+        properties["encodingFormat"] = _get_mime_type(extension)
+
+    if storage_location.hash is not None:
+        properties["sha1"] = storage_location.hash
         crate.metadata.extra_terms.update(SHA1)
 
-    if data_product.object.description is not None:
-        properties["description"] = data_product.object.description
+    if obj.description is not None:
+        properties["description"] = obj.description
 
     crate_data_product = crate.add_file(
         source_loc,
@@ -784,30 +790,32 @@ def _get_software(crate, software_object, registry_url, software_type):
     @return an RO Crate file entity representing the model configuration
 
     """
+    storage_location = software_object.storage_location
+    file_name = str(storage_location).split("/")[-1]
+    dest_path = f"{software_type}/{file_name}"
     _fetch_remote = False
-    if (
-        software_object.storage_location.public is True
-        and len(str(software_object.storage_location).split(FILE)) > 1
-    ):
-        source_loc = str(software_object.storage_location).split(FILE)[1]
-        dest_path = f"inputs/{software_type}/{source_loc.split('/')[-1]}"
+    if storage_location.public is not True:
+        # a file that is not public is still named by its storage location
+        source_loc = f"{registry_url}api/storage_location/{storage_location.id}"
+        dest_path = None
+
+    elif len(str(storage_location).split(FILE)) > 1:
+        source_loc = str(storage_location).split(FILE)[1]
 
         if not os.path.isfile(source_loc):
             source_loc = None
 
-    elif software_object.storage_location.public is True and settings.REMOTE_REGISTRY:
-        file_name = str(software_object.storage_location).split("/")[-1]
-        _ext = software_object.file_type.extension
-        source_loc = software_object.storage_location.full_uri()
-
-        dest_path = f"inputs/{software_type}/{file_name}.{_ext}"
+    elif settings.REMOTE_REGISTRY:
+        # a remote's files are named by their hash alone
+        extension = _extension(software_object)
+        if extension is not None:
+            dest_path = f"{dest_path}.{extension}"
+        source_loc = storage_location.full_uri()
         _fetch_remote = True
 
     else:
-        source_loc = (
-            f"{registry_url}api/storage_location/{software_object.storage_location.id}"
-        )
-        dest_path = None
+        # public, but on a root this registry cannot read: recorded, not packed
+        source_loc = None
 
     crate_software_object = crate.add_file(
         source_loc,
@@ -815,6 +823,7 @@ def _get_software(crate, software_object, registry_url, software_type):
         properties={
             RO_TYPE: ["File", "SoftwareSourceCode"],
             "name": str(software_object.storage_location).split("/")[-1],
+            "identifier": str(software_object.uuid),
         },
         fetch_remote=_fetch_remote,
     )
@@ -822,13 +831,9 @@ def _get_software(crate, software_object, registry_url, software_type):
     if software_object.description is not None:
         crate_software_object["description"] = software_object.description
 
-    if (
-        software_object.file_type is not None
-        and software_object.file_type.extension is not None
-    ):
-        crate_software_object["encodingFormat"] = _get_mime_type(
-            software_object.file_type.extension
-        )
+    extension = _extension(software_object)
+    if extension is not None:
+        crate_software_object["encodingFormat"] = _get_mime_type(extension)
 
     if software_object.storage_location.hash is not None:
         crate_software_object["sha1"] = software_object.storage_location.hash
@@ -895,7 +900,7 @@ def generate_ro_crate_from_cr(code_run, depth, request):
                 continue
             data_product_ids.add(data_product.id)
 
-            _generate_ro_crate_from_dp(data_product, crate, registry_url, False)
+            _generate_ro_crate_from_dp(data_product, crate, registry_url)
 
             next_level_input_data_products.extend(
                 _get_input_files_for_data_product(data_product)
@@ -936,7 +941,7 @@ def generate_ro_crate_from_dp(data_product, depth, request):
     _add_metadata_license(crate)
 
     # add the the main data product
-    _generate_ro_crate_from_dp(data_product, crate, registry_url, True)
+    _generate_ro_crate_from_dp(data_product, crate, registry_url)
 
     if depth == 1:
         return crate
@@ -956,7 +961,7 @@ def generate_ro_crate_from_dp(data_product, depth, request):
                 continue
             data_product_ids.add(data_product.id)
 
-            _generate_ro_crate_from_dp(data_product, crate, registry_url, False)
+            _generate_ro_crate_from_dp(data_product, crate, registry_url)
 
             next_level_input_data_products.extend(
                 _get_input_files_for_data_product(data_product)
