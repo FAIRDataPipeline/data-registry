@@ -230,6 +230,20 @@ class ProvReportView(views.APIView):
         return Response(value)
 
 
+# The level of an RO Crate request, 1 to 4: what travels with each file, as the
+# rocrate module explains. A zip defaults to 3, every other format to 1.
+def _crate_level(request):
+    default = 3 if request.accepted_renderer.format == "zip" else 1
+    level = request.query_params.get("level", default)
+    try:
+        level = int(level)
+    except ValueError:
+        level = 0
+    if not 1 <= level <= 4:
+        raise BadQuery(detail="level must be an integer from 1 to 4")
+    return level
+
+
 class CodeRunROCrateView(views.APIView):
     """
     ***The RO Crate for a `CodeRun`.***
@@ -242,29 +256,61 @@ class CodeRunROCrateView(views.APIView):
     [CC0 Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/).
     Please note individual files may have their own licenses.
     All of the packaged files are represented as `File` data entities in the metadata file.
+    A data product's file is at `<namespace>/<name>/<version>.<extension>`, which is how a
+    registry's data store lays out the files it pulls, whether or not its bytes are in the
+    crate; the working config and the submission script are under `model_config/` and
+    `submission_script/`. Every file carries the SHA-1 of its bytes (`sha1`) and the `uuid`
+    of its object in the registry (`identifier`).
+    People are identified by their ORCID, GitHub or other identifier where the
+    registry has one, else by their `uuid`; a user with no author linked by a local id;
+    a licence by its URL, else by the file it applies to. Nothing is named by its row in
+    the registry.
+    An issue raised against a file is a line on the file's entity, under the registry's
+    own term `issue`: the issue's uuid, its severity and its description, in that order.
 
-    External files may point directly to data, in which case they will be used directly as
-    inputs to a `CodeRun`. External files will have a link to them in the metadata file, but
-    will not be packaged in the zip file. However, it maybe that data has had to be
-    extracted from an external file before it can be used by a `CodeRun`, i.e. from a
-    journal article, In which case there will be an associated `DataProduct` that would have
-    been made to contain the data so that it can be used in a `CodeRun`. If this is the case
-    the relationship between the external file and `DataProduct` is modelled as a RO Crate
-    `ContextEntity` of type `CreateAction`.
+    What travels with each file is chosen by the request's `level`, each level including the
+    one before: 1, the hash and any persistent identifier, with the source's metadata; 2,
+    the address the registry's copy can be downloaded from (`contentUrl`); 3, the bytes of
+    every public file that no primary source stands for; 4, the bytes of every public file.
+    A zip defaults to level 3 and the JSON-LD to level 1. The JSON-LD never holds a file, so
+    the working config and the submission script, which every zip packs, are metadata alone
+    there. A run's outputs outside the crate's provenance are described at level 1 whatever
+    was asked, and a file that is not public is named by its storage location, as before.
+
+    A data product registered from an external source is in the crate as itself, and the
+    source is a `File` named by its identifier (a DOI, or else its alternate identifier),
+    linked but not packaged. Where the registered bytes are the identified item, or one of
+    its files (a primary source), the data product's `sameAs` points at the source; where
+    the data was extracted from the source before it could be used (a supplementary source,
+    e.g. a journal article), the extraction is modelled as a RO Crate `ContextEntity` of
+    type `CreateAction` with the source as its `object` and the data product as its
+    `result`.
 
     The `CodeRun` has been modelled as a RO Crate `ContextEntity` of type `CreateAction`,
     see
     [software-used-to-create-files](https://www.researchobject.org/ro-crate/1.1/provenance.html#software-used-to-create-files).
 
     A `CreateAction` has `instrument` property, which represents the software used to
-    generate the product. For our purposes `instrument` is the link to the repo.
+    generate the product. For our purposes `instrument` is the link to the repo, at
+    the commit that was run: the commit is its `softwareVersion`, and its `url` is the
+    repo.
+
+    A `DataProduct` file has the `name` and `version` of the `DataProduct`, and its
+    `namespace` is an entity of type `Namespace`, whose `name` is the name of the
+    `Namespace`, `alternateName` its full name and `url` its website.
 
     `CreateAction` (`CodeRun`) properties:
 
-    * `instrument`: the software used to generate the output
-    * `object`: the input files
-    * `result`: the output file
+    * `identifier`: the `uuid` of the `CodeRun`, which is also in its `@id`
+    * `instrument`: the code repo at the commit that was run, or the submission script for a
+      run without a repo
+    * `object`: the input files, the working config and the submission script
+    * `model_configuration`, `submission_script`: which of those files is which
+    * `result`: every output of the run; those outside the crate's provenance are described
+      but not packaged
     * `agent`: the `Author`
+
+    The crate conforms to Process Run Crate 0.6 (https://w3id.org/ro/wfrun/process/0.6).
 
     The RO Crate is available as a `zip` file.
 
@@ -274,6 +320,9 @@ class CodeRunROCrateView(views.APIView):
 
     `depth` (optional): An integer used to determine how many code runs to include,
     the default is 1.
+
+    `level` (optional): An integer from 1 to 4 choosing what travels with each file (see
+    above); the default is 3 for a zip and 1 otherwise.
 
     """
 
@@ -296,7 +345,9 @@ class CodeRunROCrateView(views.APIView):
         if depth < 1:
             depth = 1
 
-        crate = generate_ro_crate_from_cr(code_run, depth, request)
+        crate = generate_ro_crate_from_cr(
+            code_run, depth, request, _crate_level(request)
+        )
 
         return Response(serialize_ro_crate(crate, request.accepted_renderer.format))
 
@@ -313,29 +364,61 @@ class DataProductROCrateView(views.APIView):
     [CC0 Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/).
     Please note individual files may have their own licenses.
     All of the packaged files are represented as `File` data entities in the metadata file.
+    A data product's file is at `<namespace>/<name>/<version>.<extension>`, which is how a
+    registry's data store lays out the files it pulls, whether or not its bytes are in the
+    crate; the working config and the submission script are under `model_config/` and
+    `submission_script/`. Every file carries the SHA-1 of its bytes (`sha1`) and the `uuid`
+    of its object in the registry (`identifier`).
+    People are identified by their ORCID, GitHub or other identifier where the
+    registry has one, else by their `uuid`; a user with no author linked by a local id;
+    a licence by its URL, else by the file it applies to. Nothing is named by its row in
+    the registry.
+    An issue raised against a file is a line on the file's entity, under the registry's
+    own term `issue`: the issue's uuid, its severity and its description, in that order.
 
-    External files may point directly to data, in which case they will be used directly as
-    inputs to a `CodeRun`. External files will have a link to them in the metadata file, but
-    will not be packaged in the zip file. However, it maybe that data has had to be
-    extracted from an external file before it can be used by a `CodeRun`, i.e. from a
-    journal article, In which case there will be an associated `DataProduct` that would have
-    been made to contain the data so that it can be used in a `CodeRun`. If this is the case
-    the relationship between the external file and `DataProduct` is modelled as a RO Crate
-    `ContextEntity` of type `CreateAction`.
+    What travels with each file is chosen by the request's `level`, each level including the
+    one before: 1, the hash and any persistent identifier, with the source's metadata; 2,
+    the address the registry's copy can be downloaded from (`contentUrl`); 3, the bytes of
+    every public file that no primary source stands for; 4, the bytes of every public file.
+    A zip defaults to level 3 and the JSON-LD to level 1. The JSON-LD never holds a file, so
+    the working config and the submission script, which every zip packs, are metadata alone
+    there. A run's outputs outside the crate's provenance are described at level 1 whatever
+    was asked, and a file that is not public is named by its storage location, as before.
+
+    A data product registered from an external source is in the crate as itself, and the
+    source is a `File` named by its identifier (a DOI, or else its alternate identifier),
+    linked but not packaged. Where the registered bytes are the identified item, or one of
+    its files (a primary source), the data product's `sameAs` points at the source; where
+    the data was extracted from the source before it could be used (a supplementary source,
+    e.g. a journal article), the extraction is modelled as a RO Crate `ContextEntity` of
+    type `CreateAction` with the source as its `object` and the data product as its
+    `result`.
 
     The `CodeRun` has been modelled as a RO Crate `ContextEntity` of type `CreateAction`,
     see
     [software-used-to-create-files](https://www.researchobject.org/ro-crate/1.1/provenance.html#software-used-to-create-files).
 
     A `CreateAction` has `instrument` property, which represents the software used to
-    generate the product. For our purposes `instrument` is the link to the repo.
+    generate the product. For our purposes `instrument` is the link to the repo, at
+    the commit that was run: the commit is its `softwareVersion`, and its `url` is the
+    repo.
+
+    A `DataProduct` file has the `name` and `version` of the `DataProduct`, and its
+    `namespace` is an entity of type `Namespace`, whose `name` is the name of the
+    `Namespace`, `alternateName` its full name and `url` its website.
 
     `CreateAction` (`CodeRun`) properties:
 
-    * `instrument`: the software used to generate the output
-    * `object`: the input files
-    * `result`: the output file
+    * `identifier`: the `uuid` of the `CodeRun`, which is also in its `@id`
+    * `instrument`: the code repo at the commit that was run, or the submission script for a
+      run without a repo
+    * `object`: the input files, the working config and the submission script
+    * `model_configuration`, `submission_script`: which of those files is which
+    * `result`: every output of the run; those outside the crate's provenance are described
+      but not packaged
     * `agent`: the `Author`
+
+    The crate conforms to Process Run Crate 0.6 (https://w3id.org/ro/wfrun/process/0.6).
 
     The RO Crate is available as a `zip` file.
 
@@ -345,6 +428,9 @@ class DataProductROCrateView(views.APIView):
 
     `depth` (optional): An integer used to determine how many code runs to include,
     the default is 1.
+
+    `level` (optional): An integer from 1 to 4 choosing what travels with each file (see
+    above); the default is 3 for a zip and 1 otherwise.
 
     """
 
@@ -367,7 +453,9 @@ class DataProductROCrateView(views.APIView):
         if depth < 1:
             depth = 1
 
-        crate = generate_ro_crate_from_dp(data_product, depth, request)
+        crate = generate_ro_crate_from_dp(
+            data_product, depth, request, _crate_level(request)
+        )
 
         return Response(serialize_ro_crate(crate, request.accepted_renderer.format))
 
