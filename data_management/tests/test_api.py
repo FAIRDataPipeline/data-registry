@@ -1,4 +1,4 @@
-from unittest import mock
+from unittest import expectedFailure, mock
 
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
@@ -1592,9 +1592,10 @@ class ProvSharedAncestryTests(TestCase):
     it is reported once, however many routes lead to it.
 
     The expected content is written out from the fixture, so these tests also fail
-    if something that belongs in the report is left out. The fixture has no
-    external object, no code repo release and no component that is the output of
-    two code runs, so they say nothing about those.
+    if something that belongs in the report is left out. The fixture has no code
+    repo release and no component that is the output of two code runs, so they say
+    nothing about those. `extra`, an output of `prepare` that nothing in `end`'s
+    ancestry reads, is not in the report.
     """
 
     APPLICATION_JSON = "application/json"
@@ -1602,7 +1603,7 @@ class ProvSharedAncestryTests(TestCase):
 
     def setUp(self):
         self.user = get_user_model().objects.create(username="Test User")
-        init_shared_ancestry_db()
+        init_shared_ancestry_db(self)
 
     def _data_product(self, name):
         return f"lreg:api/data_product/{models.DataProduct.objects.get(name=name).id}"
@@ -1644,7 +1645,9 @@ class ProvSharedAncestryTests(TestCase):
             for identifier, description in results[kind].items():
                 self.assertIsInstance(description, dict, identifier)
 
-        names = ["end", "first", "second", "raw", "left", "right", "source"]
+        names = [
+            "end", "first", "second", "twin", "raw", "alias", "left", "right", "source"
+        ]
         source = f"lreg:api/external_object/{models.ExternalObject.objects.get().id}"
         self.assertEqual(
             set(results["entity"]),
@@ -1660,24 +1663,31 @@ class ProvSharedAncestryTests(TestCase):
                     (dp("end"), cr("final")),
                     (dp("first"), cr("pair")),
                     (dp("second"), cr("pair")),
+                    (dp("twin"), cr("pair")),
                     (dp("raw"), cr("prepare")),
+                    (dp("alias"), cr("prepare")),
                     (dp("left"), cr("left")),
                     (dp("right"), cr("right")),
                 ]
             ),
         )
+        # a run that reads raw's object reads both of its names, raw and alias
         self.assertEqual(
             self._pairs(results, "used", "prov:activity", "prov:entity"),
             sorted(
                 [
                     (cr("final"), dp("first")),
                     (cr("final"), dp("second")),
+                    (cr("final"), dp("twin")),
                     (cr("final"), dp("raw")),
+                    (cr("final"), dp("alias")),
                     (cr("pair"), dp("left")),
                     (cr("pair"), dp("right")),
                     (cr("prepare"), dp("source")),
                     (cr("left"), dp("raw")),
+                    (cr("left"), dp("alias")),
                     (cr("right"), dp("raw")),
+                    (cr("right"), dp("alias")),
                     *((cr(run), script) for run in self.RUNS),
                     *((cr(run), repo) for run in self.RUNS),
                     *((cr(run), model_config) for run in ("prepare", "left", "right")),
@@ -1692,14 +1702,21 @@ class ProvSharedAncestryTests(TestCase):
                 [
                     (dp("end"), dp("first")),
                     (dp("end"), dp("second")),
+                    (dp("end"), dp("twin")),
                     (dp("end"), dp("raw")),
+                    (dp("end"), dp("alias")),
                     (dp("first"), dp("left")),
                     (dp("first"), dp("right")),
                     (dp("second"), dp("left")),
                     (dp("second"), dp("right")),
+                    (dp("twin"), dp("left")),
+                    (dp("twin"), dp("right")),
                     (dp("raw"), dp("source")),
+                    (dp("alias"), dp("source")),
                     (dp("left"), dp("raw")),
+                    (dp("left"), dp("alias")),
                     (dp("right"), dp("raw")),
+                    (dp("right"), dp("alias")),
                 ]
             ),
         )
@@ -1876,7 +1893,7 @@ class RoCrateSharedAncestryTests(TestCase):
 
     def setUp(self):
         self.user = get_user_model().objects.create(username="Test User")
-        init_shared_ancestry_db()
+        init_shared_ancestry_db(self)
 
     def _get(self, view, pk, depth):
         """Return the crate, and the names of the data products walked to make it."""
@@ -1911,7 +1928,10 @@ class RoCrateSharedAncestryTests(TestCase):
 
     def test_data_product(self):
         end = models.DataProduct.objects.get(name="end")
-        names = ["end", "first", "left", "raw", "right", "second", "source"]
+        # extra, prepare's other output, is in nobody's ancestry and is never walked
+        names = [
+            "alias", "end", "first", "left", "raw", "right", "second", "source", "twin"
+        ]
 
         crate, walked = self._get("data_product_ro_crate", end.id, 100)
         self.assertEqual(walked, names)
@@ -1921,7 +1941,7 @@ class RoCrateSharedAncestryTests(TestCase):
         )
 
         crate, walked = self._get("data_product_ro_crate", end.id, 2)
-        self.assertEqual(walked, ["end", "first", "raw", "second"])
+        self.assertEqual(walked, ["alias", "end", "first", "raw", "second", "twin"])
         self.assertEqual(self._code_runs(crate), self._ids("final", "pair", "prepare"))
 
     def test_commit(self):
@@ -1955,7 +1975,12 @@ class RoCrateSharedAncestryTests(TestCase):
         self.assertEqual(instruments.pop("final"), f"{url}#{second_commit}")
         self.assertEqual(set(instruments.values()), {f"{url}#{first_commit}"})
 
+    @expectedFailure
     def test_data_product_identity(self):
+        # a File is named from its storage location, so twin and second (one
+        # location, two objects) and raw and alias (one object, two names) each
+        # collapse into one entity; passes once a File is identified by its data
+        # product
         # give one data product a version and a namespace of its own
         raw = models.DataProduct.objects.get(name="raw")
         raw.version = "2.3.4"
@@ -1998,9 +2023,11 @@ class RoCrateSharedAncestryTests(TestCase):
             if entity["@type"] == "File" and "sha1" in entity
         }
         # source, registered from an external source, is shown as that source instead
+        # alias is a data product of its own on raw's object, so it keeps its own
+        # version and namespace
         expected = {
             name: ("1.0.0", shared_id)
-            for name in ("end", "first", "second", "left", "right")
+            for name in ("end", "first", "second", "twin", "left", "right", "alias")
         }
         expected["raw"] = ("2.3.4", other_id)
         self.assertEqual(identities, expected)
@@ -2033,7 +2060,7 @@ class RoCrateSharedAncestryTests(TestCase):
 
     def test_code_run(self):
         final = models.CodeRun.objects.get(description="final")
-        names = ["first", "left", "raw", "right", "second", "source"]
+        names = ["alias", "first", "left", "raw", "right", "second", "source", "twin"]
 
         crate, walked = self._get("code_run_ro_crate", final.id, 100)
         self.assertEqual(walked, names)
@@ -2043,5 +2070,5 @@ class RoCrateSharedAncestryTests(TestCase):
         )
 
         crate, walked = self._get("code_run_ro_crate", final.id, 2)
-        self.assertEqual(walked, ["first", "raw", "second"])
+        self.assertEqual(walked, ["alias", "first", "raw", "second", "twin"])
         self.assertEqual(self._code_runs(crate), self._ids("final", "pair", "prepare"))

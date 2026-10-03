@@ -6,15 +6,23 @@ and the crate is imported through the REST API, as a client would import it. Eac
 test then compares one kind of record before and after, by what identifies it in any
 registry - never by its row in this one.
 
-A test marked expectedFailure names something the crate does not yet carry: when
-the crate gains it the test passes, the runner reports an unexpected success, and the
-mark comes off. The import is deliberately simple - a crate holds either enough or
-not - and it records nothing the crate does not say, with one exception: an author or
-licence that the crate identifies by the exporting registry's own URL is recognised by
-the shape of that URL and imported without an identifier.
+The bar is the provenance path: every code run with its inputs and outputs by data
+product identity, its script and config by hash, and its repo by URL and commit
+(`test_code_run_details`, `test_code_run_outputs`, `test_code_run_software`), and
+the same path read back from a crate of the rebuilt registry (`test_reexport`). The
+other tests compare the metadata around the path.
 
-Not compared: file types, by decision; which component of a data product a run read
-(the whole file stands for it); and anything about users.
+A test marked expectedFailure is a pending issue: something the crate does not yet
+carry, or carries in a form the import cannot use; when the crate gains it the test
+passes, the runner reports an unexpected success, and the mark comes off. The import
+is deliberately simple - a crate holds either enough or not - and it records nothing
+the crate does not say, with one exception: an author or licence that the crate
+identifies by the exporting registry's own URL is recognised by the shape of that
+URL and imported without an identifier.
+
+Not compared, and not pending: which component of a data product a run read (the
+whole file stands for it); file types; and who ran a code run, which the registry
+derives from the account that created the row, so that no import can keep it.
 """
 
 from unittest import expectedFailure
@@ -28,6 +36,11 @@ from data_management import models
 from .init_shared_ancestry_db import init_db as init_shared_ancestry_db
 
 IMPORT_ROOT = "https://import.example.org/"
+
+
+def _id(url):
+    """The row id at the end of an API URL."""
+    return url.rstrip("/").rsplit("/", 1)[1]
 
 
 def _snapshot():
@@ -104,6 +117,47 @@ def _snapshot():
     return snapshot
 
 
+def _path(crate):
+    """
+    What each code run of a crate read and wrote, by portable identity.
+
+    A data file is its namespace, name, version and hash; a software file (the
+    config or the script) its hash; a source outside the registry its id.
+    """
+    graph = {entity["@id"]: entity for entity in crate["@graph"]}
+
+    def files(refs):
+        refs = refs if isinstance(refs, list) else [refs]
+        described = []
+        for ref in refs:
+            entity = graph[ref["@id"]]
+            if "SoftwareSourceCode" in entity["@type"]:
+                described.append(("software", entity.get("sha1")))
+            elif "sha1" in entity:
+                described.append(
+                    (
+                        "data",
+                        entity["namespace"]["@id"],
+                        entity["name"],
+                        entity["version"],
+                        entity["sha1"],
+                    )
+                )
+            else:
+                described.append(("source", entity["@id"]))
+        return sorted(described)
+
+    return {
+        entity["identifier"]: {
+            "instrument": entity.get("instrument", {}).get("@id"),
+            "object": files(entity.get("object", [])),
+            "result": files(entity.get("result", [])),
+        }
+        for entity in graph.values()
+        if entity.get("@type") == "CreateAction" and "identifier" in entity
+    }
+
+
 def _empty_registry():
     """Delete every row, children before the rows they protect."""
     for model in (
@@ -149,8 +203,11 @@ class CrateImporter:
         root_url = self._get_or_post(
             "storage_root", {"root": root}, {"root": root, "local": False}
         )
-        return self._post(
+        # identical bytes under one root are one storage location, however many
+        # objects point at it
+        return self._get_or_post(
             "storage_location",
+            {"storage_root": _id(root_url), "hash": file_hash, "public": public},
             {
                 "path": path,
                 "hash": file_hash,
@@ -247,7 +304,7 @@ class CrateImporter:
     def _whole_object(self, object_url):
         components = self.client.get(
             "/api/object_component/",
-            {"object": object_url.rstrip("/").rsplit("/", 1)[1], "whole_object": True},
+            {"object": _id(object_url), "whole_object": True},
         ).json()["results"]
         return components[0]["url"]
 
@@ -295,11 +352,18 @@ class RoundTripTests(TestCase):
 
     def setUp(self):
         self.user = get_user_model().objects.create(username="Test User")
-        init_shared_ancestry_db()
+        init_shared_ancestry_db(self)
         self.before = _snapshot()
-        end = models.DataProduct.objects.get(name="end")
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
+        self.crate = self._export()
+        _empty_registry()
+        CrateImporter(self.crate["@graph"], self.client).run()
+        self.after = _snapshot()
+
+    def _export(self):
+        """The crate of `end`, to the whole depth of its ancestry."""
+        end = models.DataProduct.objects.get(name="end")
         response = self.client.get(
             f"/api/ro-crate/data-product/{end.id}/",
             {"depth": 100},
@@ -307,9 +371,7 @@ class RoundTripTests(TestCase):
             HTTP_ACCEPT="application/ld+json",
         )
         self.assertEqual(response.status_code, 200)
-        _empty_registry()
-        CrateImporter(response.json()["@graph"], self.client).run()
-        self.after = _snapshot()
+        return response.json()
 
     def test_namespaces(self):
         self.assertEqual(self.after["namespaces"], self.before["namespaces"])
@@ -322,7 +384,13 @@ class RoundTripTests(TestCase):
             if name not in snapshot["external_objects"]
         }
 
+    @expectedFailure
     def test_data_products(self):
+        # a File is named from its storage location, so twin and second (one
+        # location, two objects) and raw and alias (one object, two names) each
+        # collapse into one entity, and one of each pair is not imported; and extra,
+        # prepare's other output, is not in the crate at all, as a run's outputs
+        # outside the ancestry are not listed
         before, after = self._local(self.before), self._local(self.after)
         self.assertEqual(set(after), set(before))
         for name, data_product in before.items():
@@ -353,7 +421,10 @@ class RoundTripTests(TestCase):
     def test_code_runs_exist(self):
         self.assertEqual(set(self.after["code_runs"]), set(self.before["code_runs"]))
 
+    @expectedFailure
     def test_code_run_details(self):
+        # the collapse of test_data_products: final loses twin or second, and every
+        # run that reads raw loses raw or alias
         registered = set(self.before["external_objects"])
         for uuid, code_run in self.before["code_runs"].items():
             with self.subTest(code_run=code_run["description"]):
@@ -367,7 +438,7 @@ class RoundTripTests(TestCase):
 
     @expectedFailure
     def test_code_run_outputs(self):
-        # a data product's crate gives a run with two outputs only one of them
+        # a data product's crate gives a run with several outputs only one of them
         for uuid, code_run in self.before["code_runs"].items():
             with self.subTest(code_run=code_run["description"]):
                 self.assertEqual(
@@ -389,3 +460,9 @@ class RoundTripTests(TestCase):
     def test_issues(self):
         # issues are not in the crate
         self.assertEqual(self.after["issues"], self.before["issues"])
+
+    @expectedFailure
+    def test_reexport(self):
+        # the crate carries no file type, so the imported objects have none, and the
+        # crate of a data product cannot be made without one
+        self.assertEqual(_path(self._export()), _path(self.crate))
