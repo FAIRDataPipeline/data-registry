@@ -28,7 +28,10 @@ RDF_VOCAB_PREFIX = "rdf"
 RDF_VOCAB_NAMESPACE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"  # NOSONAR
 
 
-def _generate_object_meta(obj, vocab_namespaces):
+# The attributes of an object's entity: when it was updated, where it is and its hash
+# (as `hash`, or `commit` for a repo), its description, the name, namespace and version
+# of the data product it is described as, its issues and its file type
+def _generate_object_meta(obj, vocab_namespaces, data_product=None, hash_term="hash"):
     data = []
 
     data.append(
@@ -45,6 +48,13 @@ def _generate_object_meta(obj, vocab_namespaces):
                 str(obj.storage_location),
             )
         )
+        if obj.storage_location.hash:
+            data.append(
+                (
+                    QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], hash_term),
+                    obj.storage_location.hash,
+                )
+            )
 
     if obj.description:
         data.append(
@@ -54,7 +64,8 @@ def _generate_object_meta(obj, vocab_namespaces):
             )
         )
 
-    for data_product in obj.data_products.all():
+    # an object registered under two names is two entities, each with its own name
+    if data_product is not None:
         data.append(
             (
                 QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], "namespace"),
@@ -183,15 +194,10 @@ def _add_code_repo_release(
     except models.Object.code_repo_release.RelatedObjectDoesNotExist:
         code_repo_release = None
 
-    code_repo_meta = _generate_object_meta(code_repo, vocab_namespaces)
-    if code_repo.storage_location:
-        # the hash of a repo's location is the commit that was run
-        code_repo_meta.append(
-            (
-                QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], "commit"),
-                code_repo.storage_location.hash,
-            )
-        )
+    # the hash of a repo's location is the commit that was run
+    code_repo_meta = _generate_object_meta(
+        code_repo, vocab_namespaces, hash_term="commit"
+    )
 
     if code_repo_release is None:
         code_release_entity, first = _add_entity(
@@ -478,7 +484,7 @@ def _add_input_data_products(
                                 vocab_namespaces[DCAT_VOCAB_PREFIX], "Dataset"
                             ),
                         ),
-                        *_generate_object_meta(obj, vocab_namespaces),
+                        *_generate_object_meta(obj, vocab_namespaces, data_product),
                     ),
                 )
 
@@ -580,7 +586,9 @@ def _add_prime_data_product(doc, data_product, reg_uri_prefix, vocab_namespaces)
                 QualifiedName(vocab_namespaces[RDF_VOCAB_PREFIX], "type"),
                 QualifiedName(vocab_namespaces[DCAT_VOCAB_PREFIX], "Dataset"),
             ),
-            *_generate_object_meta(data_product.object, vocab_namespaces),
+            *_generate_object_meta(
+                data_product.object, vocab_namespaces, data_product
+            ),
         ),
     )
 
