@@ -2100,11 +2100,7 @@ class RoCrateSharedAncestryTests(TestCase):
         )
         # and its root lists first's licence once, as a reference
         first = models.Object.objects.get(storage_location__path="first")
-        licence = models.Licence.objects.get(object=first)
-        self.assertEqual(
-            graph["./"]["license"],
-            {"@id": f"http://testserver/api/license/{licence.id}"},
-        )
+        self.assertEqual(graph["./"]["license"], {"@id": f"#licence-{first.uuid}"})
 
         crate, _ = self._get("code_run_ro_crate", final.id, 1)
         graph = {entity["@id"]: entity for entity in crate["@graph"]}
@@ -2340,6 +2336,62 @@ class RoCrateSharedAncestryTests(TestCase):
         self.assertEqual(extra["namespace"], {"@id": "#namespace-shared"})
         self.assertIn("sha1", extra)
 
+    def test_identities(self):
+        # nothing is identified by its row in this registry: an author without an
+        # identifier by uuid, a user by a local id, a licence given as text by the
+        # file it applies to
+        end = models.DataProduct.objects.get(name="end")
+        author = models.Author.objects.get()
+        first = models.Object.objects.get(storage_location__path="first")
+        crate, _ = self._get("data_product_ro_crate", end.id, 100)
+        graph = {entity["@id"]: entity for entity in crate["@graph"]}
+
+        person = graph[f"urn:uuid:{author.uuid}"]
+        self.assertEqual(person["@type"], "Person")
+        self.assertEqual(person["name"], "Ivana Valenti")
+        self.assertEqual(person["identifier"], str(author.uuid))
+        self.assertEqual(
+            graph["submission_script/script"]["author"],
+            [{"@id": f"urn:uuid:{author.uuid}"}],
+        )
+
+        runs = [e for e in graph.values() if "identifier" in e and "agent" in e]
+        self.assertEqual(len(runs), 5)
+        for run in runs:
+            self.assertEqual(run["agent"], {"@id": "#user-Test%20User"})
+        self.assertEqual(graph["#user-Test%20User"]["name"], "User Not Found")
+
+        licence = graph[f"#licence-{first.uuid}"]
+        self.assertEqual(licence["name"], "For project use only")
+        self.assertNotIn("identifier", licence)
+        self.assertEqual(
+            graph["shared/first/1.0.0.txt"]["license"],
+            {"@id": f"#licence-{first.uuid}"},
+        )
+        cc_by = "https://creativecommons.org/licenses/by/4.0/"
+        self.assertEqual(graph[cc_by]["identifier"], cc_by)
+        self.assertEqual(graph[cc_by]["name"], "Creative Commons Attribution 4.0")
+
+        rows = ("api/author/", "api/users/", "api/license/", "api/data_extraction/")
+        for row in rows:
+            self.assertNotIn(row, str(crate))
+
+    def test_supplementary_source(self):
+        # data extracted from a source before it could be used: the extraction is
+        # the step between them, identified by the data product it produced
+        models.ExternalObject.objects.update(primary_not_supplement=False)
+        source = models.ExternalObject.objects.get()
+        end = models.DataProduct.objects.get(name="end")
+        crate, _ = self._get("data_product_ro_crate", end.id, 100)
+        graph = {entity["@id"]: entity for entity in crate["@graph"]}
+
+        extraction = graph["#extraction-shared%2Fsource%401.0.0"]
+        self.assertEqual(extraction["@type"], "CreateAction")
+        self.assertEqual(extraction["name"], "data extraction of shared/source@1.0.0")
+        self.assertEqual(extraction["object"], {"@id": source.identifier})
+        self.assertEqual(extraction["result"], {"@id": "shared/source/1.0.0.txt"})
+        self.assertNotIn("sameAs", graph["shared/source/1.0.0.txt"])
+
     def test_code_run_identity(self):
         final = models.CodeRun.objects.get(description="final")
 
@@ -2353,7 +2405,9 @@ class RoCrateSharedAncestryTests(TestCase):
         self.assertEqual(graph["./"]["name"], f"RO Crate for code run {final.uuid}")
         # and nothing names it by its row in this registry
         self.assertNotIn(f"api/code_run/{final.id}", str(crate))
-        self.assertNotIn(f"code run {final.id}", str(crate))
+        # by name, not by substring: a uuid may begin with the row's digits
+        names = [entity.get("name") for entity in graph.values()]
+        self.assertNotIn(f"code run {final.id}", names)
 
     def test_code_run(self):
         final = models.CodeRun.objects.get(description="final")

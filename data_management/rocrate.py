@@ -20,6 +20,10 @@ registry's data store lays out the files it pulls, whether or not its bytes are 
 crate; the working config and the submission script are under `model_config/` and
 `submission_script/`. Every file carries the SHA-1 of its bytes (`sha1`) and the `uuid`
 of its object in the registry (`identifier`).
+People are identified by their ORCID, GitHub or other identifier where the
+registry has one, else by their `uuid`; a user with no author linked by a local id;
+a licence by its URL, else by the file it applies to. Nothing is named by its row in
+the registry.
 
 What travels with each file is chosen by the request's `level`, each level including the
 one before: 1, the hash and any persistent identifier, with the source's metadata; 2,
@@ -99,52 +103,53 @@ CLI_URL = "https://github.com/FAIRDataPipeline/FAIR-CLI"
 REMOTE_STORAGE_ROOT = "https://data.fairdatapipeline.org/data/"
 
 
-def _add_authors(authors, crate, entity, registry_url):
+def _add_authors(authors, crate, entity):
     """
     Add the authors to the crate and associate them with the entity.
 
     @param authors: a list of authors from the Author table
     @param crate: the RO Crate object
     @param entity: the entity to attach the authors to
-    @param registry_url: a str containing the registry URL
 
     """
-    cr_authors = []
-    for author in authors:
-        if author.identifier is not None:
-            # if present use the identifier as the id
-            author_id = author.identifier
-        else:
-            author_id = f"{registry_url}api/author/{author.id}"
-        cr_author = crate.add(
-            Person(crate, author_id, properties={"name": author.name})
-        )
+    entity["author"] = [_add_person(crate, author) for author in authors]
 
-        cr_authors.append(cr_author)
 
-    entity["author"] = cr_authors
+# The Person for an author, identified by the author's identifier (an ORCID, a GitHub
+# account, a ROR id) where there is one, and otherwise by the author's uuid
+def _add_person(crate, author):
+    if author.identifier is not None:
+        person_id = author.identifier
+        properties = {"name": author.name}
+    else:
+        person_id = f"urn:uuid:{author.uuid}"
+        properties = {"name": author.name, "identifier": str(author.uuid)}
+    return crate.add(Person(crate, person_id, properties=properties))
 
 
 def _add_data_extraction_action(
-    crate, crate_data_product, data_product, external_object, registry_url
+    crate, crate_data_product, data_product, external_object
 ):
     """
     Create an RO Crate context entity to link the data product and external object.
+
+    The extraction is identified by the data product it produced.
 
     @param crate: the RO Crate object
     @param crate_data_product: the RO Crate file entity representing the data product
     @param data_product: a data_product from the DataProduct table
     @param external_object: a external_object from the ExternalObject table
-    @param registry_url: a str containing the registry URL
 
     """
-    data_extraction_id = f"{registry_url}api/data_extraction/{data_product.id}"
+    product = (
+        f"{data_product.namespace.name}/{data_product.name}@{data_product.version}"
+    )
     crate_data_extraction = ContextEntity(
         crate,
-        data_extraction_id,
+        f"#extraction-{quote(product, safe='')}",
         properties={
             RO_TYPE: "CreateAction",
-            "name": f"data extraction {data_product.id}",
+            "name": f"data extraction of {product}",
             "startTime": data_product.last_updated.isoformat(),
             "description": "import/extract data from an external source",
         },
@@ -215,14 +220,16 @@ def _add_external_object(crate, external_object):
     return crate_external_object
 
 
-def _add_licenses(crate, crate_entity, file_object, registry_url):
+def _add_licenses(crate, crate_entity, file_object):
     """
     Add licenses from the file_object to the crate_entity.
+
+    A licence is identified by its URL, or, given as text alone, by the file it
+    applies to.
 
     @param crate: the RO Crate object
     @param crate_entity: an entity to add the license to
     @param file_object: an "object" from the database representing a file
-    @param registry_url: a str containing the registry URL
 
     """
     license_entities = []
@@ -231,22 +238,19 @@ def _add_licenses(crate, crate_entity, file_object, registry_url):
     except AttributeError:
         licenses = []
 
+    unidentified = 0
     for license_ in licenses:
+        properties = {RO_TYPE: "CreativeWork", "name": license_.licence_info}
         if license_.identifier is not None:
             license_id = license_.identifier
+            properties["identifier"] = license_id
         else:
-            license_id = f"{registry_url}api/license/{license_.id}"
+            unidentified += 1
+            license_id = f"#licence-{file_object.uuid}"
+            if unidentified > 1:
+                license_id = f"{license_id}-{unidentified}"
 
-        license_entity = ContextEntity(
-            crate,
-            license_id,
-            properties={
-                RO_TYPE: "CreativeWork",
-                "description": license_.licence_info,
-                "identifier": license_id,
-                "name": f"license {license_.id}",
-            },
-        )
+        license_entity = ContextEntity(crate, license_id, properties=properties)
 
         crate.add(license_entity)
         license_entities.append(license_entity)
@@ -522,7 +526,6 @@ def _get_code_repo_release(crate, code_repo, registry_url):
         code_repo.authors.all(),
         crate,
         crate_code_release,
-        registry_url,
     )
     crate.add(crate_code_release)
 
@@ -560,25 +563,19 @@ def _get_code_run(crate, code_run, registry_url):
     user_authors = models.UserAuthor.objects.filter(user=code_run.updated_by)
 
     if len(user_authors) == 0:
-        agent_id = f"{registry_url}api/users/{code_run.updated_by.id}"
-        crate.add(
+        # a user has no identity beyond one registry: a local id, and the name
+        user = code_run.updated_by
+        agent = crate.add(
             Person(
-                crate, agent_id, properties={"name": code_run.updated_by.full_name()}
+                crate,
+                f"#user-{quote(user.username, safe='')}",
+                properties={"name": user.full_name()},
             )
         )
-
     else:
-        # we have an author linked to the user
-        if user_authors[0].author.identifier is not None:
-            # if present use the identifier as the id
-            agent_id = user_authors[0].author.identifier
-        else:
-            agent_id = f"{registry_url}api/author/{user_authors[0].author.id}"
-        crate.add(
-            Person(crate, agent_id, properties={"name": user_authors[0].author.name})
-        )
+        agent = _add_person(crate, user_authors[0].author)
 
-    crate_code_run["agent"] = {"@id": agent_id}
+    crate_code_run["agent"] = agent
 
     return crate_code_run
 
@@ -612,18 +609,17 @@ def _get_data_product(crate, data_product, registry_url, level):
     if external_object is not None:
         if external_object.primary_not_supplement is False:
             _add_data_extraction_action(
-                crate, crate_data_product, data_product, external_object, registry_url
+                crate, crate_data_product, data_product, external_object
             )
         else:
             crate_data_product["sameAs"] = _add_external_object(crate, external_object)
 
-    _add_licenses(crate, crate_data_product, data_product.object, registry_url)
+    _add_licenses(crate, crate_data_product, data_product.object)
 
     _add_authors(
         data_product.object.authors.all(),
         crate,
         crate_data_product,
-        registry_url,
     )
 
     return crate_data_product
@@ -906,13 +902,12 @@ def _get_software(crate, software_object, registry_url, software_type, level):
     if level >= 2 and storage_location is not None and storage_location.public is True:
         crate_software_object["contentUrl"] = storage_location.full_uri()
 
-    _add_licenses(crate, crate_software_object, software_object, registry_url)
+    _add_licenses(crate, crate_software_object, software_object)
 
     _add_authors(
         software_object.authors.all(),
         crate,
         crate_software_object,
-        registry_url,
     )
 
     return crate_software_object
@@ -948,7 +943,7 @@ def generate_ro_crate_from_cr(code_run, depth, request, level):
 
     # add the licenses from each of the data products to the ROCrate
     for output in code_run.outputs.all():
-        _add_licenses(crate, crate, output.object, registry_url)
+        _add_licenses(crate, crate, output.object)
     if crate.license is None:
         crate_license = _get_default_license(crate)
         crate.add(crate_license)
@@ -1010,7 +1005,7 @@ def generate_ro_crate_from_dp(data_product, depth, request, level):
     crate.datePublished = datetime.now().isoformat()
     crate.name = f"RO Crate for {data_product.name}"
 
-    _add_licenses(crate, crate, data_product.object, registry_url)
+    _add_licenses(crate, crate, data_product.object)
     if crate.license is None:
         crate_license = _get_default_license(crate)
         crate.add(crate_license)

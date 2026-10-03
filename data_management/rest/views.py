@@ -261,6 +261,10 @@ class CodeRunROCrateView(views.APIView):
     crate; the working config and the submission script are under `model_config/` and
     `submission_script/`. Every file carries the SHA-1 of its bytes (`sha1`) and the `uuid`
     of its object in the registry (`identifier`).
+    People are identified by their ORCID, GitHub or other identifier where the
+    registry has one, else by their `uuid`; a user with no author linked by a local id;
+    a licence by its URL, else by the file it applies to. Nothing is named by its row in
+    the registry.
 
     What travels with each file is chosen by the request's `level`, each level including the
     one before: 1, the hash and any persistent identifier, with the source's metadata; 2,
@@ -363,6 +367,10 @@ class DataProductROCrateView(views.APIView):
     crate; the working config and the submission script are under `model_config/` and
     `submission_script/`. Every file carries the SHA-1 of its bytes (`sha1`) and the `uuid`
     of its object in the registry (`identifier`).
+    People are identified by their ORCID, GitHub or other identifier where the
+    registry has one, else by their `uuid`; a user with no author linked by a local id;
+    a licence by its URL, else by the file it applies to. Nothing is named by its row in
+    the registry.
 
     What travels with each file is chosen by the request's `level`, each level including the
     one before: 1, the hash and any persistent identifier, with the source's metadata; 2,

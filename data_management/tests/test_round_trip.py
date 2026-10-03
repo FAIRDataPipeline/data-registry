@@ -16,9 +16,7 @@ A test marked expectedFailure is a pending issue: something the crate does not y
 carry, or carries in a form the import cannot use; when the crate gains it the test
 passes, the runner reports an unexpected success, and the mark comes off. The import
 is deliberately simple - a crate holds either enough or not - and it records nothing
-the crate does not say, with one exception: an author or licence that the crate
-identifies by the exporting registry's own URL is recognised by the shape of that
-URL and imported without an identifier.
+the crate does not say.
 
 Not compared, and not pending: which component of a data product a run read (the
 whole file stands for it); file types; and who ran a code run, which the registry
@@ -241,12 +239,11 @@ class CrateImporter:
         return self._post("namespace", data)
 
     def _author(self, entity):
+        """An author: by identifier, or, without one, by uuid."""
         data = {"name": entity.get("name")}
-        # an author with no identifier is identified by the exporting registry's URL,
-        # which an importer can only recognise by its shape
-        if urlparse(entity["@id"]).scheme in ("http", "https") and not (
-            "/api/author/" in entity["@id"] or "/api/users/" in entity["@id"]
-        ):
+        if entity["@id"].startswith("urn:uuid:"):
+            data["uuid"] = entity["@id"].removeprefix("urn:uuid:")
+        else:
             data["identifier"] = entity["@id"]
         return self._post("author", data)
 
@@ -298,17 +295,14 @@ class CrateImporter:
             )
         object_url = self.objects[uuid] = self._post("object", data)
         for licence in self._referenced(entity, "license"):
-            # a licence with no identifier is identified by the exporting registry's
-            # URL, recognisable only by its shape
+            # a licence given as text alone has a local id
             identifier = licence["@id"]
-            if not identifier.startswith("http") or "/api/license/" in identifier:
-                identifier = None
             self._post(
                 "licence",
                 {
                     "object": object_url,
-                    "licence_info": licence.get("description", ""),
-                    "identifier": identifier,
+                    "licence_info": licence["name"],
+                    "identifier": None if identifier.startswith("#") else identifier,
                 },
             )
         return object_url
@@ -458,9 +452,7 @@ class RoundTripTests(TestCase):
                 self.after["code_runs"][uuid]["inputs"], code_run["inputs"]
             )
 
-    @expectedFailure
     def test_authors(self):
-        # an author with no identifier is still identified by this registry's URL
         self.assertEqual(self.after["authors"], self.before["authors"])
 
     def test_code_runs_exist(self):
