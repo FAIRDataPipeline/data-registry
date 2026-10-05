@@ -7,20 +7,19 @@ curl -i -X POST -H "Authorization: token <token>" https://data.fairdatapipeline.
 ```
 where `<token>` should be replaced with a valid access token and `<checksum>` should be replaced by the SHA-1 checksum of the file you want to upload. The Linux command `sha1sum` can be used to calculate the SHA-1 checksum.
 
-If there are no
-existing registered files with the specified checksum you will get a 200 OK response with a JSON body containing a `url`, e.g.
+If the object store does not yet hold a file with that checksum you will get a 200 OK response with a JSON body containing a `url`, e.g.
 ```
 {
   "url":"https://..."
 }
 ```
-If there is an existing file with the same checksum you will get a 409 CONFLICT response.
+If the object store already holds a file with that checksum you will get a 409 CONFLICT response, and there is nothing to upload.
 
-The URL can be used to upload the file with a HTTP PUT, e.g.:
+The URL can be used to upload the file with a HTTP PUT; it is valid for a limited time, set by the registry's deployment (a day in the settings template), so request it just before uploading. For example:
 ```
 curl -i --upload-file <filename> "<url>"
 ```
-where `<filename>` should be replaced with the name of the file you want to upload and `<url>` should be replaced with the URL obtained in the previous step. The status code will be 201 if the file was uploaded successfully.
+where `<filename>` should be replaced with the name of the file you want to upload and `<url>` should be replaced with the URL obtained in the previous step. The status code will be 200 or 201 if the file was uploaded successfully, as the store decides.
      
 The `StorageLocation` should be created in the usual way, using https://data.fairdatapipeline.org/api/storage_root/1/ as the `StorageRoot`, e.g. POST the following JSON to https://data.fairdatapipeline.org/api/storage_location/:
 ```
@@ -56,6 +55,5 @@ and for external objects use:
 https://data.fairdatapipeline.org/external_object/<alternate_identifier>:<title>@<version>
 ```
 For external objects query parameters can be used to return different URLs:
-* **source**: returns the `Source` associated with the external object
 * **original**: returns the original store associated with the external object
 * **root**: returns the `StorageRoot` only

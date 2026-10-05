@@ -11,3 +11,5 @@ programmatically.
 [Data Product Naming](data_product_naming.md)
 
 [CLI Tools](component_checker.md)
+
+[Vocabulary](/vocab/) - the registry's own terms in its provenance reports and RO Crates

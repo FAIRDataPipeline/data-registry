@@ -432,9 +432,9 @@ def init_db(test=True):
         version="0.1.0",
     )
 
-    ExternalObject.objects.create(
+    dp_boy_mort_csv.external_object = ExternalObject.objects.create(
         updated_by=user,
-        data_product=dp_boy_mort_csv,
+        version=dp_boy_mort_csv.version,
         alternate_identifier="scottish deaths-involving-coronavirus-covid-19",
         alternate_identifier_type="Scottish Health and Social Care Open Data id",
         release_date=parser.isoparse("2010-07-09T12:00Z"),
@@ -442,6 +442,7 @@ def init_db(test=True):
         description="scottish deaths-involving-coronavirus-covid-19 dataset",
         original_store=sl_scot,
     )
+    dp_boy_mort_csv.save()
 
     dp_boy_cases_csv = DataProduct.objects.create(
         updated_by=user,
@@ -451,9 +452,9 @@ def init_db(test=True):
         version="0.1.0",
     )
 
-    ExternalObject.objects.create(
+    dp_boy_cases_csv.external_object = ExternalObject.objects.create(
         updated_by=user,
-        data_product=dp_boy_cases_csv,
+        version=dp_boy_cases_csv.version,
         alternate_identifier="scottish coronavirus-covid-19-management-information",
         alternate_identifier_type="Scottish Health and Social Care Open Data id",
         release_date=parser.isoparse("2010-07-10T18:38:00Z"),
@@ -461,6 +462,7 @@ def init_db(test=True):
         description="scottish coronavirus-covid-19-management-information dataset",
         original_store=sl_scot,
     )
+    dp_boy_cases_csv.save()
 
     DataProduct.objects.create(
         updated_by=user,

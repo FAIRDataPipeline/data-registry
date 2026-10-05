@@ -103,8 +103,70 @@ class DataProductSerializer(BaseSerializer):
         return obj.ro_crate()
 
 
+class ExternalObjectSerializer(BaseSerializer):
+    """
+    One ExternalObject per source, shared by the DataProducts registered from it.
+
+    A POST of an identity that exists returns the existing row, filling an empty
+    original_store or description from the request. `data_product`, written, links
+    that DataProduct to the row; read, it is the first linked DataProduct - both for
+    clients written when an ExternalObject belonged to one DataProduct.
+    """
+
+    data_product = serializers.HyperlinkedRelatedField(
+        view_name="dataproduct-detail",
+        queryset=models.DataProduct.objects.all(),
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+
+    class Meta(BaseSerializer.Meta):
+        model = models.ExternalObject
+        read_only_fields = model.EXTRA_DISPLAY_FIELDS
+        # the uniqueness validators DRF derives from the model's constraints would
+        # refuse an existing identity before create() can return it
+        validators = []
+
+    IDENTITY = (
+        "identifier",
+        "alternate_identifier",
+        "alternate_identifier_type",
+        "title",
+        "version",
+    )
+    MERGED = ("original_store", "description")
+
+    def create(self, validated_data):
+        data_product = validated_data.pop("data_product", None)
+        identity = {field: validated_data.get(field) for field in self.IDENTITY}
+        if not identity["version"]:
+            field = models.ExternalObject._meta.get_field("version")
+            identity["version"] = field.default
+        external_object = models.ExternalObject.objects.filter(**identity).first()
+        if external_object is None:
+            external_object = super().create(validated_data)
+        else:
+            # the first registration's values stand; a later one fills what it left
+            # empty
+            for field in self.MERGED:
+                if not getattr(external_object, field) and validated_data.get(field):
+                    setattr(external_object, field, validated_data[field])
+            external_object.save()
+        if data_product is not None:
+            data_product.external_object = external_object
+            data_product.save()
+        return external_object
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        linked = data["data_products"]
+        data["data_product"] = linked[0] if linked else None
+        return data
+
+
 for name, cls in models.all_models.items():
-    if name in ("Issue", "DataProduct", "CodeRun"):
+    if name in ("Issue", "DataProduct", "CodeRun", "ExternalObject"):
         continue
 
     if name in ("Author", "Organisation", "Object"):

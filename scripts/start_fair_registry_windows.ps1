@@ -77,15 +77,15 @@ if ($REG_ADDRESS -eq "0.0.0.0") {
 	$FULL_ADDRESS = "127.0.0.1:${REG_PORT}"
 }
 
-for ($count =0; $count -le 4) {
+# Wait for the server to answer, up to a minute: a loaded machine takes longer than
+# the few seconds a quick one does.
+$Response = $null
+for ($count = 0; $count -lt 60 -and $Response -eq $null; $count++) {
 	Start-Sleep -Seconds 1
 	try { 
 		$Response = Invoke-WebRequest -URI "http://${FULL_ADDRESS}/api"
 	} catch [System.Net.WebException] {
 	
-	}
-	if ($Response -ne $null) {
-		break
 	}
 }
 

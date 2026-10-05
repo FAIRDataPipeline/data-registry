@@ -41,6 +41,7 @@ cd $FAIR_HOME
 
 echo "Attempting to start Registry on ${FULL_ADDRESS}"
 nohup "$FAIR_HOME"/venv/bin/python "$FAIR_HOME"/manage.py runserver ${FULL_ADDRESS} > $FAIR_HOME/output.log 2>&1 &
+SERVER_PID=$!
 echo $PORT > $FAIR_HOME/session_port.log
 echo $ADDRESS > $FAIR_HOME/session_address.log
 
@@ -51,21 +52,23 @@ fi
 
 FULL_ADDRESS="${ADDRESS}:${PORT}"
 
+# Wait for the server to answer, up to a minute: a loaded machine takes longer than
+# the few seconds a quick one does. Give up at once if the server has exited.
 count=0
-until [ $count -gt 6 ] || curl http://${FULL_ADDRESS} > /dev/null 2>&1
+until curl -s -m 5 -o /dev/null http://${FULL_ADDRESS}/api/
 do
+    if ! kill -0 $SERVER_PID 2> /dev/null; then
+        echo "Error starting local registry at ${FULL_ADDRESS}: the server exited, see $FAIR_HOME/output.log" >&2
+        exit 1
+    fi
+    if [ $count -ge 60 ]; then
+        echo "Error starting local registry at ${FULL_ADDRESS}: no response after 60 s, see $FAIR_HOME/output.log" >&2
+        exit 1
+    fi
     sleep 1
-    ((count++))
+    count=$((count + 1))
 done
-
-curl http://${FULL_ADDRESS} > /dev/null 2>&1
-retVal=$?
-retVal=$(($retVal + 0))
-if [ $retVal -ne 0 ]; then
-    echo Error starting local registry at ${FULL_ADDRESS} error: $retVal
-else
-    echo Local registry now accepting connections on http://${FULL_ADDRESS}
-fi
+echo Local registry now accepting connections on http://${FULL_ADDRESS}
 
 "$FAIR_HOME"/venv/bin/python "$FAIR_HOME"/manage.py get_token > "$FAIR_HOME"/token
 chmod 600 "$FAIR_HOME"/token

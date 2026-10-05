@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth import logout as auth_logout
 from django.db.models import Q
 from django.contrib.sites.models import Site
+from django.views.decorators.http import require_safe
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 
@@ -18,6 +19,7 @@ from . import models
 from . import object_storage
 from . import settings
 from . import version
+from . import vocab
 
 
 def index(request):
@@ -199,11 +201,24 @@ def doc_index(request):
     return render(request, os.path.join("data_management", "docs.html"), ctx)
 
 
+@require_safe
+def vocab_page(request):
+    """
+    The registry's own vocabulary: the terms its provenance reports and RO Crates use,
+    each anchored by its name, so that the central registry's vocab/#<term> addresses
+    resolve to their definitions.
+    """
+    ctx = {
+        "classes": [term for term in vocab.TERMS if term.kind == vocab.CLASS],
+        "properties": [term for term in vocab.TERMS if term.kind == vocab.PROPERTY],
+    }
+    return render(request, os.path.join("data_management", "vocab.html"), ctx)
+
+
 def get_data(request, name):
     """
     Redirect to a temporary URL for accessing a file from object storage
     """
-    check = True
     try:
         storage_root = models.StorageRoot.objects.get(
             Q(root__contains=Site.objects.get_current().domain)
@@ -211,27 +226,25 @@ def get_data(request, name):
         location = models.StorageLocation.objects.get(
             Q(storage_root=storage_root) & Q(path=name)
         )
-        object = models.Object.objects.get(storage_location=location)
-    except:
-        check = None
-    else:
-        if object.metadata:
-            try:
-                key_value = object.metadata.get(Q(key="accessibility"))
-            except:
-                pass
-            else:
-                if not request.user.is_authenticated and key_value.value == "private":
-                    check = False
-
-    if check is None:
+    except (models.StorageRoot.DoesNotExist, models.StorageLocation.DoesNotExist):
         return HttpResponseNotFound()
-    elif not check:
-        return HttpResponse(status=403)
+
+    # identical bytes under several objects are one location; the file is served if
+    # any object holds it, and withheld if any marks it private
+    objects = list(models.Object.objects.filter(storage_location=location))
+    if not objects:
+        return HttpResponseNotFound()
+    if not request.user.is_authenticated:
+        for obj in objects:
+            private = obj.metadata.filter(key="accessibility", value="private")
+            if private.exists():
+                return HttpResponse(status=403)
 
     filename = None
-    if object.file_type:
-        filename = "%s.%s" % (name, object.file_type.extension)
+    for obj in objects:
+        if obj.file_type:
+            filename = "%s.%s" % (name, obj.file_type.extension)
+            break
 
     return redirect(object_storage.create_url(name, "GET", filename))
 
@@ -298,16 +311,19 @@ def external_object(request, alternate_identifier, title, version):
     except:
         return HttpResponseNotFound()
 
-    # Use storage location if it exists and user has not requested the original_store
+    # Use the storage location of the first data product registered from it, if there
+    # is one and the user has not requested the original_store
+    data_product = external_object.data_products.first()
     if (
-        external_object.data_product.object.storage_location
+        data_product is not None
+        and data_product.object.storage_location
         and "original" not in request.GET
     ):
         if "root" in request.GET:
             return HttpResponse(
-                external_object.data_product.object.storage_location.storage_root.root
+                data_product.object.storage_location.storage_root.root
             )
-        return get_data_product(external_object.data_product)
+        return get_data_product(data_product)
 
     # Use original_store if it exists
     if external_object.original_store:

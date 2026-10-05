@@ -28,7 +28,10 @@ RDF_VOCAB_PREFIX = "rdf"
 RDF_VOCAB_NAMESPACE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"  # NOSONAR
 
 
-def _generate_object_meta(obj, vocab_namespaces):
+# The attributes of an object's entity: when it was updated, where it is and its hash
+# (as `hash`, or `commit` for a repo), its description, the name, namespace and version
+# of the data product it is described as, its issues and its file type
+def _generate_object_meta(obj, vocab_namespaces, data_product=None, hash_term="hash"):
     data = []
 
     data.append(
@@ -45,6 +48,13 @@ def _generate_object_meta(obj, vocab_namespaces):
                 str(obj.storage_location),
             )
         )
+        if obj.storage_location.hash:
+            data.append(
+                (
+                    QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], hash_term),
+                    obj.storage_location.hash,
+                )
+            )
 
     if obj.description:
         data.append(
@@ -54,7 +64,8 @@ def _generate_object_meta(obj, vocab_namespaces):
             )
         )
 
-    for data_product in obj.data_products.all():
+    # an object registered under two names is two entities, each with its own name
+    if data_product is not None:
         data.append(
             (
                 QualifiedName(vocab_namespaces[FAIR_VOCAB_PREFIX], "namespace"),
@@ -94,6 +105,31 @@ def _generate_object_meta(obj, vocab_namespaces):
     return data
 
 
+def _add_entity(doc, identifier, attributes):
+    """
+    Add an entity to the document, unless the document already has an identical one.
+
+    The identifier alone does not say whether it has: an object is described
+    differently as a submission script and as a model config.
+
+    @param doc: a ProvDocument that the entity will belong to
+    @param identifier: a str containing the identifier of the entity
+    @param attributes: a tuple containing the attributes of the entity
+
+    @return the prov.entity, and whether it is the first with that identifier
+
+    """
+    existing = doc.get_record(identifier)
+    entity = prov.model.ProvEntity(
+        doc, doc.valid_qualified_name(identifier), attributes
+    )
+    for record in existing:
+        if record == entity:
+            return record, False
+
+    return doc.add_record(entity), len(existing) == 0
+
+
 def _add_author_agents(authors, doc, entity, reg_uri_prefix, vocab_namespaces):
     """
     Add the authors to the entity as agents.
@@ -119,7 +155,9 @@ def _add_author_agents(authors, doc, entity, reg_uri_prefix, vocab_namespaces):
                 {
                     QualifiedName(
                         vocab_namespaces[RDF_VOCAB_PREFIX], "type"
-                    ): QualifiedName(PROV, "Person"),
+                    ): QualifiedName(
+                        PROV, "Organization" if author.is_organisation() else "Person"
+                    ),
                     QualifiedName(
                         vocab_namespaces[FOAF_VOCAB_PREFIX], "name"
                     ): author.name,
@@ -158,20 +196,27 @@ def _add_code_repo_release(
     except models.Object.code_repo_release.RelatedObjectDoesNotExist:
         code_repo_release = None
 
+    # the hash of a repo's location is the commit that was run
+    code_repo_meta = _generate_object_meta(
+        code_repo, vocab_namespaces, hash_term="commit"
+    )
+
     if code_repo_release is None:
-        code_release_entity = doc.entity(
+        code_release_entity, first = _add_entity(
+            doc,
             f"{reg_uri_prefix}:api/object/{code_repo.id}",
-            (*_generate_object_meta(code_repo, vocab_namespaces),),
+            (*code_repo_meta,),
         )
     else:
-        code_release_entity = doc.entity(
+        code_release_entity, first = _add_entity(
+            doc,
             f"{reg_uri_prefix}:api/code_repo_release/{code_repo_release.id}",
             (
                 (
                     QualifiedName(vocab_namespaces[RDF_VOCAB_PREFIX], "type"),
                     QualifiedName(vocab_namespaces[DCMITYPE_VOCAB_PREFIX], "Software"),
                 ),
-                *_generate_object_meta(code_repo, vocab_namespaces),
+                *code_repo_meta,
                 (
                     QualifiedName(vocab_namespaces[DCTERMS_VOCAB_PREFIX], "title"),
                     code_repo_release.name,
@@ -187,13 +232,14 @@ def _add_code_repo_release(
             ),
         )
 
-    _add_author_agents(
-        code_repo.authors.all(),
-        doc,
-        code_release_entity,
-        reg_uri_prefix,
-        vocab_namespaces,
-    )
+    if first:
+        _add_author_agents(
+            code_repo.authors.all(),
+            doc,
+            code_release_entity,
+            reg_uri_prefix,
+            vocab_namespaces,
+        )
     doc.used(
         cr_activity,
         code_release_entity,
@@ -234,17 +280,23 @@ def _add_code_run(dp_entity, doc, code_run, reg_uri_prefix, vocab_namespaces):
 
     user_authors = models.UserAuthor.objects.filter(user=code_run.updated_by)
     if len(user_authors) == 0:
-        run_agent = doc.agent(
-            f"{reg_uri_prefix}:api/users/{code_run.updated_by.id}",
-            {
-                QualifiedName(
-                    vocab_namespaces[RDF_VOCAB_PREFIX], "type"
-                ): QualifiedName(PROV, "Person"),
-                QualifiedName(
-                    vocab_namespaces[FOAF_VOCAB_PREFIX], "name"
-                ): code_run.updated_by.full_name(),
-            },
-        )
+        agent_id = f"{reg_uri_prefix}:api/users/{code_run.updated_by.id}"
+        agent = doc.get_record(agent_id)
+        # check to see if we have already created an agent for this user
+        if len(agent) > 0:
+            run_agent = agent[0]
+        else:
+            run_agent = doc.agent(
+                agent_id,
+                {
+                    QualifiedName(
+                        vocab_namespaces[RDF_VOCAB_PREFIX], "type"
+                    ): QualifiedName(PROV, "Person"),
+                    QualifiedName(
+                        vocab_namespaces[FOAF_VOCAB_PREFIX], "name"
+                    ): code_run.updated_by.full_name(),
+                },
+            )
     else:
         # we have an author linked to the user
         agent_id = f"{reg_uri_prefix}:api/author/{user_authors[0].author.id}"
@@ -295,10 +347,8 @@ def _add_external_object(
     @param vocab_namespaces: a dict containing the Namespaces for the vocab
 
     """
-    # check for external object linked to the data product
-    try:
-        external_object = data_product.external_object
-    except (models.DataProduct.external_object.RelatedObjectDoesNotExist,):
+    external_object = data_product.external_object
+    if external_object is None:
         return
 
     data = []
@@ -372,10 +422,18 @@ def _add_external_object(
             )
         )
 
-    external_object_entity = doc.entity(
-        f"{reg_uri_prefix}:api/external_object/{external_object.id}", (*data,)
-    )
-    doc.specializationOf(external_object_entity, data_product_entity)
+    # one source may have been registered as several data products; describe it once
+    external_object_id = f"{reg_uri_prefix}:api/external_object/{external_object.id}"
+    existing = doc.get_record(external_object_id)
+    if existing:
+        external_object_entity = existing[0]
+    else:
+        external_object_entity = doc.entity(external_object_id, (*data,))
+    # the registered bytes are the identified item, or were requested or derived from it
+    if external_object.primary_not_supplement:
+        doc.specializationOf(data_product_entity, external_object_entity)
+    else:
+        doc.wasDerivedFrom(data_product_entity, external_object_entity)
 
 
 def _add_input_data_products(
@@ -385,6 +443,7 @@ def _add_input_data_products(
     object_components,
     reg_uri_prefix,
     vocab_namespaces,
+    new_code_run=True,
 ):
     """
     Add input data products to the code run activity.
@@ -395,16 +454,26 @@ def _add_input_data_products(
     @param object_components: a list of object_components from the ObjectComponent table
     @param reg_uri_prefix: a str containing the name of the prefix
     @param vocab_namespaces: a dict containing the Namespaces for the vocab
+    @param new_code_run: a bool, False if the code run's use of its inputs is already
+        in the document, leaving only their links to the data product to add
 
     @return a list of data products that were added
 
     """
     all_data_products = []
+    data_product_ids = set()
     for component in object_components:
         obj = component.object
         data_products = obj.data_products.all()
 
         for data_product in data_products:
+            # a code run that reads several components of an object uses its data
+            # products once
+            if data_product.id in data_product_ids:
+                continue
+            data_product_ids.add(data_product.id)
+            all_data_products.append(data_product)
+
             file_id = f"{reg_uri_prefix}:api/data_product/{data_product.id}"
 
             entity = doc.get_record(file_id)
@@ -423,7 +492,7 @@ def _add_input_data_products(
                                 vocab_namespaces[DCAT_VOCAB_PREFIX], "Dataset"
                             ),
                         ),
-                        *_generate_object_meta(obj, vocab_namespaces),
+                        *_generate_object_meta(obj, vocab_namespaces, data_product),
                     ),
                 )
 
@@ -441,21 +510,20 @@ def _add_input_data_products(
                 )
 
             # add link to the code run
-            doc.used(
-                cr_activity,
-                file_entity,
-                None,
-                None,
-                {
-                    PROV_ROLE: QualifiedName(
-                        vocab_namespaces[FAIR_VOCAB_PREFIX], "input_data"
-                    )
-                },
-            )
+            if new_code_run:
+                doc.used(
+                    cr_activity,
+                    file_entity,
+                    None,
+                    None,
+                    {
+                        PROV_ROLE: QualifiedName(
+                            vocab_namespaces[FAIR_VOCAB_PREFIX], "input_data"
+                        )
+                    },
+                )
             # add the link to the data product
             doc.wasDerivedFrom(dp_entity, file_entity)
-
-        all_data_products.extend(data_products)
 
     return all_data_products
 
@@ -471,18 +539,20 @@ def _add_model_config(cr_activity, doc, model_config, reg_uri_prefix, vocab_name
     @param vocab_namespaces: a dict containing the Namespaces for the vocab
 
     """
-    model_config_entity = doc.entity(
+    model_config_entity, first = _add_entity(
+        doc,
         f"{reg_uri_prefix}:api/object/{model_config.id}",
         (*_generate_object_meta(model_config, vocab_namespaces),),
     )
 
-    _add_author_agents(
-        model_config.authors.all(),
-        doc,
-        model_config_entity,
-        reg_uri_prefix,
-        vocab_namespaces,
-    )
+    if first:
+        _add_author_agents(
+            model_config.authors.all(),
+            doc,
+            model_config_entity,
+            reg_uri_prefix,
+            vocab_namespaces,
+        )
     doc.used(
         cr_activity,
         model_config_entity,
@@ -524,7 +594,9 @@ def _add_prime_data_product(doc, data_product, reg_uri_prefix, vocab_namespaces)
                 QualifiedName(vocab_namespaces[RDF_VOCAB_PREFIX], "type"),
                 QualifiedName(vocab_namespaces[DCAT_VOCAB_PREFIX], "Dataset"),
             ),
-            *_generate_object_meta(data_product.object, vocab_namespaces),
+            *_generate_object_meta(
+                data_product.object, vocab_namespaces, data_product
+            ),
         ),
     )
 
@@ -554,7 +626,8 @@ def _add_submission_script(
     @param vocab_namespaces: a dict containing the Namespaces for the vocab
 
     """
-    submission_script_entity = doc.entity(
+    submission_script_entity, first = _add_entity(
+        doc,
         f"{reg_uri_prefix}:api/object/{submission_script.id}",
         (
             (
@@ -565,13 +638,14 @@ def _add_submission_script(
         ),
     )
 
-    _add_author_agents(
-        submission_script.authors.all(),
-        doc,
-        submission_script_entity,
-        reg_uri_prefix,
-        vocab_namespaces,
-    )
+    if first:
+        _add_author_agents(
+            submission_script.authors.all(),
+            doc,
+            submission_script_entity,
+            reg_uri_prefix,
+            vocab_namespaces,
+        )
     doc.used(
         cr_activity,
         submission_script_entity,
@@ -609,6 +683,7 @@ def _generate_prov_document(doc, data_product, reg_uri_prefix, vocab_namespaces)
     # add the activity, i.e. the code run
     components = data_product.object.components.all()
     all_input_files = []
+    code_run_ids = set()
 
     for component in components:
         try:
@@ -618,35 +693,53 @@ def _generate_prov_document(doc, data_product, reg_uri_prefix, vocab_namespaces)
             # provenance data
             continue
 
-        # add the code run, this is the central activity
-        cr_activity = _add_code_run(
-            dp_entity, doc, code_run, reg_uri_prefix, vocab_namespaces
-        )
+        # the components of a data product are usually outputs of the same code run
+        if code_run.id in code_run_ids:
+            continue
+        code_run_ids.add(code_run.id)
 
-        # add the code repo release
-        if code_run.code_repo is not None:
-            _add_code_repo_release(
-                cr_activity, doc, code_run.code_repo, reg_uri_prefix, vocab_namespaces
+        activity = doc.get_record(f"{reg_uri_prefix}:api/code_run/{code_run.id}")
+        new_code_run = len(activity) == 0
+
+        if new_code_run:
+            # add the code run, this is the central activity
+            cr_activity = _add_code_run(
+                dp_entity, doc, code_run, reg_uri_prefix, vocab_namespaces
             )
 
-        # add the model config
-        if code_run.model_config is not None:
-            _add_model_config(
+            # add the code repo release
+            if code_run.code_repo is not None:
+                _add_code_repo_release(
+                    cr_activity,
+                    doc,
+                    code_run.code_repo,
+                    reg_uri_prefix,
+                    vocab_namespaces,
+                )
+
+            # add the model config
+            if code_run.model_config is not None:
+                _add_model_config(
+                    cr_activity,
+                    doc,
+                    code_run.model_config,
+                    reg_uri_prefix,
+                    vocab_namespaces,
+                )
+
+            # add the submission script
+            _add_submission_script(
                 cr_activity,
                 doc,
-                code_run.model_config,
+                code_run.submission_script,
                 reg_uri_prefix,
                 vocab_namespaces,
             )
-
-        # add the submission script
-        _add_submission_script(
-            cr_activity,
-            doc,
-            code_run.submission_script,
-            reg_uri_prefix,
-            vocab_namespaces,
-        )
+        else:
+            # the code run is already in the document, as the source of another of
+            # its outputs
+            cr_activity = activity[0]
+            doc.wasGeneratedBy(dp_entity, cr_activity)
 
         # add input files
         input_files = _add_input_data_products(
@@ -656,6 +749,7 @@ def _generate_prov_document(doc, data_product, reg_uri_prefix, vocab_namespaces)
             code_run.inputs.all(),
             reg_uri_prefix,
             vocab_namespaces,
+            new_code_run,
         )
 
         all_input_files.extend(input_files)
@@ -693,7 +787,7 @@ def generate_prov_document(data_product, depth, request):
         reg_uri_prefix = "lreg"
         doc.add_namespace(reg_uri_prefix, url)
 
-    # the vocab namespace is always the main registry
+    # the vocab namespace is always the main registry; its vocab/ page defines the terms
     doc.add_namespace(FAIR_VOCAB_PREFIX, f"{central_registry_url}vocab/#")
 
     doc.add_namespace(DCAT_VOCAB_PREFIX, DCAT_VOCAB_NAMESPACE)
@@ -714,11 +808,19 @@ def generate_prov_document(data_product, depth, request):
     if depth == 1:
         return doc
 
+    # a data product reached by several routes has its provenance added once, at
+    # the first level it is reached
+    data_product_ids = {data_product.id}
+
     # add extra layers to the report if requested by the user
     while depth > 1:
         next_level_input_files = []
 
         for input_file in input_files:
+            if input_file.id in data_product_ids:
+                continue
+            data_product_ids.add(input_file.id)
+
             next_input_files = _generate_prov_document(
                 doc, input_file, reg_uri_prefix, vocab_namespaces
             )

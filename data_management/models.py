@@ -1,5 +1,6 @@
 import os
 import hashlib
+from urllib.parse import urlparse
 from uuid import uuid4, UUID
 
 from django.core.exceptions import ValidationError
@@ -229,6 +230,12 @@ class Author(BaseModel):
                 hashlib.sha256(self.identifier.encode("utf-8")).hexdigest()[::2]
             )
         super().save(*args, **kwargs)
+
+    def is_organisation(self):
+        """Return whether the author is an organisation, which a ROR id identifies."""
+        if self.identifier is None:
+            return False
+        return urlparse(self.identifier).netloc == "ror.org"
 
     def __str__(self):
         if self.identifier:
@@ -509,7 +516,7 @@ class StorageRoot(BaseModel):
     * https://somewebsite.com/
     * ftp://host/ (ftp://username:password@host:port/)
     * ssh://host/
-    * file:///someroot/ (file://C:\)
+    * file:///someroot/ (file://C:\\)
     * github://org:repo@sha/ (github://org:repo/ (master))
 
     `local` (*optional*): Boolean indicating whether the `StorageRoot` is local or not (by default this is `False`)
@@ -626,6 +633,8 @@ class DataProduct(BaseModel):
 
     `version`: Version identifier of the `DataProduct`, must conform to semantic versioning syntax
 
+    `external_object` (*optional*): API URL of the `ExternalObject` this `DataProduct` was registered from
+
     `object`: API URL of the associated `Object`
 
     `namespace`: API URL of the `Namespace` of the `DataProduct`
@@ -648,7 +657,6 @@ class DataProduct(BaseModel):
     ADMIN_LIST_FIELDS = ("namespace", "name", "version")
 
     EXTRA_DISPLAY_FIELDS = (
-        "external_object",
         "prov_report",
         "ro_crate",
     )
@@ -661,6 +669,13 @@ class DataProduct(BaseModel):
     )
     name = NameField(null=False, blank=False)
     version = VersionField()
+    external_object = models.ForeignKey(
+        "ExternalObject",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="data_products",
+    )
 
     class Meta:
         constraints = [
@@ -704,6 +719,8 @@ class ExternalObject(BaseModel):
     `data_product`: API URL of the associated `DataProduct`
 
     `original_store` (*optional*): `StorageLocation` that references the original location of this `ExternalObject`.
+
+    `version` (*optional*): release version of the external source, in semantic versioning syntax, `1.0.0` when not given; a new release of a source is a new `ExternalObject`. Part of the identity: one `ExternalObject` exists per `identifier` (or `alternate_identifier` and `alternate_identifier_type`), `title` and `version`, and a POST of an existing identity returns it, filling an empty `original_store` or `description` from the request
     For example, if the original data location could be transient and so the data has been copied to a more robust
     location, this would be the reference to the original data location.
 
@@ -714,7 +731,9 @@ class ExternalObject(BaseModel):
 
     `updated_by`: Reference to the user that updated this record
 
-    `version`: Version identifier of the `DataProduct` associated with this `ExternalObject`
+    `data_products`: the `DataProduct`s registered from this `ExternalObject`
+
+    `data_product`: the first of those, kept for clients written when an `ExternalObject` belonged to one `DataProduct`; on create, a `DataProduct` URL links that `DataProduct` to this `ExternalObject`, whether the `ExternalObject` was created or already existed
     """
 
     ADMIN_LIST_FIELDS = (
@@ -725,9 +744,8 @@ class ExternalObject(BaseModel):
         "version",
     )
 
-    data_product = models.OneToOneField(
-        DataProduct, on_delete=models.PROTECT, related_name="external_object"
-    )
+    EXTRA_DISPLAY_FIELDS = ("data_products",)
+
     identifier = models.URLField(max_length=TEXT_FIELD_LENGTH, null=True, blank=True)
     alternate_identifier = models.CharField(
         max_length=CHAR_FIELD_LENGTH, null=True, blank=True
@@ -739,7 +757,7 @@ class ExternalObject(BaseModel):
     release_date = models.DateTimeField()
     title = models.CharField(max_length=CHAR_FIELD_LENGTH)
     description = models.TextField(max_length=TEXT_FIELD_LENGTH, null=True, blank=True)
-    version = VersionField(editable=False)
+    version = VersionField(default="1.0.0")
     original_store = models.ForeignKey(
         StorageLocation,
         on_delete=models.PROTECT,
@@ -750,15 +768,22 @@ class ExternalObject(BaseModel):
 
     class Meta:
         constraints = [
+            # one row per source: a null is distinct from every other null in a
+            # unique constraint, so each kind of identifier has its own
+            models.UniqueConstraint(
+                fields=("identifier", "title", "version"),
+                condition=models.Q(identifier__isnull=False),
+                name="unique_external_object_identifier",
+            ),
             models.UniqueConstraint(
                 fields=(
-                    "identifier",
                     "alternate_identifier",
                     "alternate_identifier_type",
                     "title",
                     "version",
                 ),
-                name="unique_external_object",
+                condition=models.Q(alternate_identifier__isnull=False),
+                name="unique_external_object_alternate_identifier",
             ),
             models.CheckConstraint(
                 name="%(app_label)s_%(class)s_identifier_or_alternate_identifier",
@@ -782,12 +807,6 @@ class ExternalObject(BaseModel):
                 ),
             ),
         ]
-
-    def save(self, *args, **kwargs):
-        # If version is not defined or is empty, use the version from the associated data product
-        if not self.version or self.version == "":
-            self.version = self.data_product.version
-        super().save(*args, **kwargs)
 
     def __str__(self):
         if self.alternate_identifier:
@@ -833,7 +852,7 @@ class Keyword(BaseModel):
 
     `keyphrase`: Free text field for the key phrase to associate with the `Object`
 
-    `identifier` (*optional*): URL of ontology annotation to associate with this `Keyword`
+    `identifier` (*optional*): URL of ontology annotation to associate with this `Keyword`, unique in the context of the `Object`
 
     ### Read-only Fields:
     `url`: Reference to the instance of the `Keyword`, final integer is the `Keyword` id
@@ -849,14 +868,15 @@ class Keyword(BaseModel):
         Object, on_delete=models.PROTECT, related_name="keywords"
     )
     keyphrase = NameField(null=False, blank=False)
-    identifier = models.URLField(
-        max_length=TEXT_FIELD_LENGTH, null=True, blank=False, unique=True
-    )
+    identifier = models.URLField(max_length=TEXT_FIELD_LENGTH, null=True, blank=False)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
                 fields=("object", "keyphrase"), name="unique_keyword"
+            ),
+            models.UniqueConstraint(
+                fields=("object", "identifier"), name="unique_keyword_identifier"
             ),
         ]
 
@@ -874,7 +894,7 @@ class Licence(BaseModel):
 
     `licence_info`: Free text field to store the information about the `Licence`
 
-    `identifier` (*optional*): URL of the `Licence`
+    `identifier` (*optional*): URL of the `Licence`, unique in the context of the `Object`: one `Object` carries a licence once, and many `Object`s may carry the same licence
 
     ### Read-only Fields:
     `url`: Reference to the instance of the `Licence`, final integer is the `Licence` id
@@ -890,9 +910,14 @@ class Licence(BaseModel):
         Object, on_delete=models.PROTECT, related_name="licences"
     )
     licence_info = models.TextField()
-    identifier = models.URLField(
-        max_length=TEXT_FIELD_LENGTH, null=True, blank=False, unique=True
-    )
+    identifier = models.URLField(max_length=TEXT_FIELD_LENGTH, null=True, blank=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("object", "identifier"), name="unique_licence_identifier"
+            ),
+        ]
 
 
 class CodeRepoRelease(BaseModel):

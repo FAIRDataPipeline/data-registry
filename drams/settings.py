@@ -26,7 +26,11 @@ BUCKETS = {
         "bucket_name": "#",
         "access_key": "#",
         "secret_key": "#",
-        "duration": "600",
+        # lifetime of a presigned address, in seconds (SigV4 allows up to 7 days): an
+        # upload address must outlive the slowest upload of the largest file, since the
+        # store refuses the PUT once it has expired, and a 10 GB file from a home
+        # connection takes hours
+        "duration": "86400",
     }
 }
 CACHE_DURATION = 0

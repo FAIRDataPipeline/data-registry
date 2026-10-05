@@ -31,6 +31,11 @@ urlpatterns = [
         name="prov_report",
     ),
     path(
+        "api/ro-crate/",
+        cache_page(cache_duration)(api_views.ROCrateView.as_view()),
+        name="ro_crate",
+    ),
+    path(
         "api/ro-crate/data-product/<int:pk>/",
         cache_page(cache_duration)(api_views.DataProductROCrateView.as_view()),
         name="data_product_ro_crate",
@@ -49,6 +54,7 @@ urlpatterns = [
     path("revoke-token", views.revoke_token, name="revoke_token"),
     path("docs/", cache_page(cache_duration)(views.doc_index), name="docs_index"),
     path("docs/<str:name>", cache_page(cache_duration)(views.docs)),
+    path("vocab/", views.vocab_page, name="vocab"),
     path(
         "tables/dataproducts",
         cache_page(cache_duration)(tables.data_product_table_data),

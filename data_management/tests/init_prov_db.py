@@ -301,9 +301,9 @@ def init_db():
         identifier="https://example.org/licence",
     )
 
-    ExternalObject.objects.create(
+    dp_cr_input_1.external_object = ExternalObject.objects.create(
         updated_by=user,
-        data_product=dp_cr_input_1,
+        version=dp_cr_input_1.version,
         alternate_identifier="this_is_cr_test_input_1",
         alternate_identifier_type="text",
         release_date=parser.isoparse("2020-07-10T18:38:00Z"),
@@ -311,6 +311,7 @@ def init_db():
         description="this is code run test input 1",
         original_store=sl_file_1,
     )
+    dp_cr_input_1.save()
 
     dp_cr_output_1 = DataProduct.objects.create(
         updated_by=user,
@@ -332,9 +333,9 @@ def init_db():
         licence_info="licence info 2",
     )
 
-    ExternalObject.objects.create(
+    dp_cr_output_1.external_object = ExternalObject.objects.create(
         updated_by=user,
-        data_product=dp_cr_output_1,
+        version=dp_cr_output_1.version,
         identifier="this_is_cr_test_output_1_id",
         alternate_identifier="this_is_cr_test_output_1",
         alternate_identifier_type="text",
@@ -343,6 +344,7 @@ def init_db():
         description="this is code run test output 1",
         original_store=sl_file_2,
     )
+    dp_cr_output_1.save()
 
     dp_cr_output_2 = DataProduct.objects.create(
         updated_by=user,
@@ -352,13 +354,14 @@ def init_db():
         version="0.2.0",
     )
 
-    ExternalObject.objects.create(
+    dp_cr_output_2.external_object = ExternalObject.objects.create(
         updated_by=user,
-        data_product=dp_cr_output_2,
+        version=dp_cr_output_2.version,
         identifier="this_is_cr_test_output_2",
         release_date=parser.isoparse("2021-07-10T18:38:00Z"),
         title="this is cr test output 2",
     )
+    dp_cr_output_2.save()
 
     DataProduct.objects.create(
         updated_by=user,
@@ -491,9 +494,9 @@ def init_db():
         version="0.2.0",
     )
 
-    ExternalObject.objects.create(
+    dp_cr_input_5.external_object = ExternalObject.objects.create(
         updated_by=user,
-        data_product=dp_cr_input_5,
+        version=dp_cr_input_5.version,
         alternate_identifier="this_is_cr_test_input_5",
         alternate_identifier_type="text",
         release_date=parser.isoparse("2020-07-10T18:38:00Z"),
@@ -502,6 +505,7 @@ def init_db():
         original_store=sl_file_3,
         primary_not_supplement=False,
     )
+    dp_cr_input_5.save()
 
     DataProduct.objects.create(
         updated_by=user,

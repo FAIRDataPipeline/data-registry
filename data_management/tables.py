@@ -69,10 +69,10 @@ def external_objects_table_data(request):
                 {
                     "identifier": obj.identifier,
                     "alternate_identifier": '<a href="/external_object/%d">%s</a>'
-                    % (obj.data_product.id, obj.alternate_identifier),
+                    % (obj.id, obj.alternate_identifier),
                     "release_date": str(obj.release_date),
                     "title": obj.title,
-                    "version": obj.data_product.version,
+                    "version": obj.version,
                 }
                 for obj in page_objects
             ],
