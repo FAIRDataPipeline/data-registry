@@ -424,6 +424,11 @@ def _generate_ro_crate_from_dp(data_product, crate, registry_url, level):
             continue
         code_run_ids.add(code_run.id)
 
+        # a run reached before, through another of its outputs, is complete already:
+        # its first visit listed every output
+        if f"urn:uuid:{code_run.uuid}" in crate:
+            continue
+
         crate_code_run = _get_code_run(crate, code_run, registry_url)
         _add_code_run_files(crate, crate_code_run, code_run, registry_url, level)
 

@@ -2508,6 +2508,18 @@ class RoCrateSharedAncestryTests(TestCase):
             software[0]["issue"], [f"{dirty.uuid} severity 1: run from a dirty tree"]
         )
 
+    def test_run_built_once(self):
+        # a run reached through several of its outputs has its files added once: the
+        # first visit lists every output, and a walked output's own entity is rebuilt
+        # before the run is reached
+        end = models.DataProduct.objects.get(name="end")
+        with mock.patch.object(
+            rocrate, "_add_code_run_files", wraps=rocrate._add_code_run_files
+        ) as files:
+            self._get("data_product_ro_crate", end.id, 100)
+        runs = sorted(call.args[2].description for call in files.call_args_list)
+        self.assertEqual(runs, ["final", "left", "pair", "prepare", "right"])
+
     def test_code_run_identity(self):
         final = models.CodeRun.objects.get(description="final")
 
