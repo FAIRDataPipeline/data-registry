@@ -7,8 +7,7 @@ curl -i -X POST -H "Authorization: token <token>" https://data.fairdatapipeline.
 ```
 where `<token>` should be replaced with a valid access token and `<checksum>` should be replaced by the SHA-1 checksum of the file you want to upload. The Linux command `sha1sum` can be used to calculate the SHA-1 checksum.
 
-If there are no
-existing registered files with the specified checksum you will get a 200 OK response with a JSON body containing a `url`, e.g.
+If the object store does not yet hold a file with that checksum you will get a 200 OK response with a JSON body containing a `url`, e.g.
 ```
 {
   "url":"https://..."
@@ -16,7 +15,7 @@ existing registered files with the specified checksum you will get a 200 OK resp
 ```
 If the object store already holds a file with that checksum you will get a 409 CONFLICT response, and there is nothing to upload.
 
-The URL can be used to upload the file with a HTTP PUT, e.g.:
+The URL can be used to upload the file with a HTTP PUT; it is valid for a limited time, set by the registry's deployment (a day in the settings template), so request it just before uploading. For example:
 ```
 curl -i --upload-file <filename> "<url>"
 ```
