@@ -36,9 +36,13 @@ from data_management import object_storage
 from data_management.rest import serializers
 from data_management.prov import generate_prov_document, serialize_prov_document
 from data_management.rocrate import (
-    generate_ro_crate_from_dp,
+    generate_ro_crate,
     generate_ro_crate_from_cr,
     serialize_ro_crate,
+    code_run_roots,
+    Choice,
+    PACKS,
+    PACK_ROOTS,
 )
 
 
@@ -231,16 +235,31 @@ class ProvReportView(views.APIView):
 
 # The level of an RO Crate request, 1 to 4: what travels with each file, as the
 # rocrate module explains. A zip defaults to 3, every other format to 1.
-def _crate_level(request):
-    default = 3 if request.accepted_renderer.format == "zip" else 1
+# What the request chose for a crate whose roots are the given data product ids
+def _crate_choice(request, roots):
+    default = 2 if request.accepted_renderer.format == "zip" else 1
     level = request.query_params.get("level", default)
     try:
         level = int(level)
     except ValueError:
         level = 0
-    if not 1 <= level <= 4:
-        raise BadQuery(detail="level must be an integer from 1 to 4")
-    return level
+    if level not in (1, 2):
+        raise BadQuery(detail="level must be 1 or 2")
+    pack = request.query_params.get("pack", PACK_ROOTS)
+    if pack not in PACKS:
+        raise BadQuery(detail=f"pack must be one of {', '.join(PACKS)}")
+    return Choice(level=level, pack=pack, roots=frozenset(roots))
+
+
+# The depth a crate request asks for, 1 when it does not say or says nonsense
+def _crate_depth(request):
+    default_depth = 1
+    depth = request.query_params.get("depth", default_depth)
+    try:
+        depth = int(depth)
+    except ValueError:
+        depth = default_depth
+    return max(depth, 1)
 
 
 class CodeRunROCrateView(views.APIView):
@@ -267,23 +286,29 @@ class CodeRunROCrateView(views.APIView):
     An issue raised against a file is a line on the file's entity, under the registry's
     own term `issue`: the issue's uuid, its severity and its description, in that order.
 
-    What travels with each file is chosen by the request's `level`, each level including the
-    one before: 1, the hash and any persistent identifier, with the source's metadata; 2,
-    the address the registry's copy can be downloaded from (`contentUrl`); 3, the bytes of
-    every public file that no primary source stands for; 4, the bytes of every public file.
-    A zip defaults to level 3 and the JSON-LD to level 1. The JSON-LD never holds a file, so
-    the working config and the submission script, which every zip packs, are metadata alone
-    there. A run's outputs outside the crate's provenance are described at level 1 whatever
-    was asked, and a file that is not public is named by its storage location, as before.
+    What travels with each file is chosen by the request. Its `level` is what every file
+    carries: 1, the hash and any persistent identifier, with the source's metadata; 2, that
+    and the address the registry's copy can be downloaded from (`contentUrl`). A zip
+    defaults to level 2 and the JSON-LD to level 1. Its `pack` is whose bytes a zip holds,
+    of the public files in the crate's provenance: `roots`, the data products the crate is
+    for (a code run's outputs, for its crate), the default; `supplements`, those and every
+    file whose source is a supplement, which no identifier yields again; `all`, every one;
+    `none`. The JSON-LD never holds a file, so the working config and the submission
+    script, which every zip packs, are metadata alone there. A run's outputs outside the
+    crate's provenance are described at level 1 and never packed, whatever was asked, and a
+    file that is not public is named by its storage location.
 
     A data product registered from an external source is in the crate as itself, and the
-    source is a `File` named by its identifier (a DOI, or else its alternate identifier),
-    linked but not packaged. Where the registered bytes are the identified item, or one of
+    source is a `Dataset` entity, one per source the registry knows, with the source's
+    persistent identifier (a DOI) as its `identifier`, its title as `name`, and its
+    version, date, description, alternate identifier and, where known, the address the
+    file was fetched from. Where the registered bytes are the identified item, or one of
     its files (a primary source), the data product's `sameAs` points at the source; where
-    the data was extracted from the source before it could be used (a supplementary source,
-    e.g. a journal article), the extraction is modelled as a RO Crate `ContextEntity` of
-    type `CreateAction` with the source as its `object` and the data product as its
-    `result`.
+    the data was requested or derived from the source (a supplementary source, e.g. an
+    extract a data service made for a request), its `isBasedOn` does, and the source's
+    description holds the request where the registry was given it. A deposit registered
+    as a whole is a source of its own, and the sources of the files under its identifier
+    are `isPartOf` it.
 
     The `CodeRun` has been modelled as a RO Crate `ContextEntity` of type `CreateAction`,
     see
@@ -320,8 +345,11 @@ class CodeRunROCrateView(views.APIView):
     `depth` (optional): An integer used to determine how many code runs to include,
     the default is 1.
 
-    `level` (optional): An integer from 1 to 4 choosing what travels with each file (see
-    above); the default is 3 for a zip and 1 otherwise.
+    `level` (optional): 1 or 2, what travels with each file (see above); the default is 2
+    for a zip and 1 otherwise.
+
+    `pack` (optional): `none`, `roots`, `supplements` or `all`, whose bytes a zip holds
+    (see above); the default is `roots`.
 
     """
 
@@ -334,19 +362,8 @@ class CodeRunROCrateView(views.APIView):
 
     def get(self, request, pk):
         code_run = get_object_or_404(models.CodeRun, pk=pk)
-
-        default_depth = 1
-        depth = request.query_params.get("depth", default_depth)
-        try:
-            depth = int(depth)
-        except ValueError:
-            depth = default_depth
-        if depth < 1:
-            depth = 1
-
-        crate = generate_ro_crate_from_cr(
-            code_run, depth, request, _crate_level(request)
-        )
+        choice = _crate_choice(request, code_run_roots(code_run))
+        crate = generate_ro_crate_from_cr(code_run, _crate_depth(request), request, choice)
 
         return Response(serialize_ro_crate(crate, request.accepted_renderer.format))
 
@@ -375,23 +392,29 @@ class DataProductROCrateView(views.APIView):
     An issue raised against a file is a line on the file's entity, under the registry's
     own term `issue`: the issue's uuid, its severity and its description, in that order.
 
-    What travels with each file is chosen by the request's `level`, each level including the
-    one before: 1, the hash and any persistent identifier, with the source's metadata; 2,
-    the address the registry's copy can be downloaded from (`contentUrl`); 3, the bytes of
-    every public file that no primary source stands for; 4, the bytes of every public file.
-    A zip defaults to level 3 and the JSON-LD to level 1. The JSON-LD never holds a file, so
-    the working config and the submission script, which every zip packs, are metadata alone
-    there. A run's outputs outside the crate's provenance are described at level 1 whatever
-    was asked, and a file that is not public is named by its storage location, as before.
+    What travels with each file is chosen by the request. Its `level` is what every file
+    carries: 1, the hash and any persistent identifier, with the source's metadata; 2, that
+    and the address the registry's copy can be downloaded from (`contentUrl`). A zip
+    defaults to level 2 and the JSON-LD to level 1. Its `pack` is whose bytes a zip holds,
+    of the public files in the crate's provenance: `roots`, the data products the crate is
+    for (a code run's outputs, for its crate), the default; `supplements`, those and every
+    file whose source is a supplement, which no identifier yields again; `all`, every one;
+    `none`. The JSON-LD never holds a file, so the working config and the submission
+    script, which every zip packs, are metadata alone there. A run's outputs outside the
+    crate's provenance are described at level 1 and never packed, whatever was asked, and a
+    file that is not public is named by its storage location.
 
     A data product registered from an external source is in the crate as itself, and the
-    source is a `File` named by its identifier (a DOI, or else its alternate identifier),
-    linked but not packaged. Where the registered bytes are the identified item, or one of
+    source is a `Dataset` entity, one per source the registry knows, with the source's
+    persistent identifier (a DOI) as its `identifier`, its title as `name`, and its
+    version, date, description, alternate identifier and, where known, the address the
+    file was fetched from. Where the registered bytes are the identified item, or one of
     its files (a primary source), the data product's `sameAs` points at the source; where
-    the data was extracted from the source before it could be used (a supplementary source,
-    e.g. a journal article), the extraction is modelled as a RO Crate `ContextEntity` of
-    type `CreateAction` with the source as its `object` and the data product as its
-    `result`.
+    the data was requested or derived from the source (a supplementary source, e.g. an
+    extract a data service made for a request), its `isBasedOn` does, and the source's
+    description holds the request where the registry was given it. A deposit registered
+    as a whole is a source of its own, and the sources of the files under its identifier
+    are `isPartOf` it.
 
     The `CodeRun` has been modelled as a RO Crate `ContextEntity` of type `CreateAction`,
     see
@@ -428,8 +451,11 @@ class DataProductROCrateView(views.APIView):
     `depth` (optional): An integer used to determine how many code runs to include,
     the default is 1.
 
-    `level` (optional): An integer from 1 to 4 choosing what travels with each file (see
-    above); the default is 3 for a zip and 1 otherwise.
+    `level` (optional): 1 or 2, what travels with each file (see above); the default is 2
+    for a zip and 1 otherwise.
+
+    `pack` (optional): `none`, `roots`, `supplements` or `all`, whose bytes a zip holds
+    (see above); the default is `roots`.
 
     """
 
@@ -442,21 +468,50 @@ class DataProductROCrateView(views.APIView):
 
     def get(self, request, pk):
         data_product = get_object_or_404(models.DataProduct, pk=pk)
+        return _ro_crate_response(request, [data_product])
 
-        default_depth = 1
-        depth = request.query_params.get("depth", default_depth)
-        try:
-            depth = int(depth)
-        except ValueError:
-            depth = default_depth
-        if depth < 1:
-            depth = 1
 
-        crate = generate_ro_crate_from_dp(
-            data_product, depth, request, _crate_level(request)
-        )
+# The crate for the given data products, as the request's format and choices ask
+def _ro_crate_response(request, data_products):
+    choice = _crate_choice(request, (dp.id for dp in data_products))
+    crate = generate_ro_crate(data_products, _crate_depth(request), request, choice)
+    return Response(serialize_ro_crate(crate, request.accepted_renderer.format))
 
-        return Response(serialize_ro_crate(crate, request.accepted_renderer.format))
+
+class ROCrateView(views.APIView):
+    """
+    ***The RO Crate for one or more `DataProduct`s.***
+
+    The same crate as a `DataProduct`'s (`/api/ro-crate/data-product/<id>/`, which
+    describes it), centred on every data product the request names, so that files made
+    by different code runs travel together with the provenance of each.
+
+    ### Query parameters:
+
+    `data_product` (required, repeatable): the id of a data product the crate is for.
+
+    `depth`, `level`, `pack` (optional): as for a `DataProduct`'s crate.
+
+    """
+
+    renderer_classes = [
+        renderers.BrowsableAPIRenderer,
+        renderers.JSONRenderer,
+        JSONLDRenderer,
+        ZipRenderer,
+    ]
+
+    def get(self, request):
+        ids = request.query_params.getlist("data_product")
+        if not ids:
+            raise BadQuery(detail="data_product is required: the id of a data product")
+        data_products = []
+        for pk in ids:
+            try:
+                data_products.append(models.DataProduct.objects.get(pk=int(pk)))
+            except (ValueError, models.DataProduct.DoesNotExist):
+                raise Http404(f"no data product {pk}")
+        return _ro_crate_response(request, data_products)
 
 
 class DataExtractionView(views.APIView):

@@ -31,6 +31,11 @@ urlpatterns = [
         name="prov_report",
     ),
     path(
+        "api/ro-crate/",
+        cache_page(cache_duration)(api_views.ROCrateView.as_view()),
+        name="ro_crate",
+    ),
+    path(
         "api/ro-crate/data-product/<int:pk>/",
         cache_page(cache_duration)(api_views.DataProductROCrateView.as_view()),
         name="data_product_ro_crate",

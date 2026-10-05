@@ -2428,13 +2428,17 @@ class RoCrateSharedAncestryTests(TestCase):
         self.assertIn("shared/alias/1.0.0", graph)
 
     def test_zip(self):
-        # the zip holds each public file at its path, identical bytes twice over
+        # a zip packing every public file holds each at its path, identical bytes
+        # twice over
         end = models.DataProduct.objects.get(name="end")
         client = APIClient()
         client.force_authenticate(user=self.user)
         url = reverse("data_product_ro_crate", kwargs={"pk": end.id})
         response = client.get(
-            url, data={"depth": 100}, format="zip", HTTP_ACCEPT="application/zip"
+            url,
+            data={"depth": 100, "pack": "all"},
+            format="zip",
+            HTTP_ACCEPT="application/zip",
         )
         self.assertEqual(response.status_code, 200)
 
@@ -2450,20 +2454,20 @@ class RoCrateSharedAncestryTests(TestCase):
         products = ["alias", "end", "first", "left", "raw", "right", "second", "twin"]
         expected = {f"shared/{name}/1.0.0.txt" for name in products}
         self.assertTrue(expected <= names, names)
-        # extra is outside end's provenance: described, not packaged; and at level
-        # 3, a zip's default, source's primary source stands for its bytes
+        # extra is outside end's provenance: described, not packaged
         self.assertNotIn("shared/extra/1.0.0.txt", names)
-        self.assertNotIn("shared/source/1.0.0.txt", names)
+        self.assertIn("shared/source/1.0.0.txt", names)
 
-    def _zip_names(self, level):
-        """The paths a zip of end's crate holds at a level."""
-        end = models.DataProduct.objects.get(name="end")
+    def _zip_names(self, view="data_product_ro_crate", pk=None, **params):
+        """The paths a zip of a crate holds, end's unless told otherwise."""
+        if pk is None:
+            pk = models.DataProduct.objects.get(name="end").id
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("data_product_ro_crate", kwargs={"pk": end.id})
+        url = reverse(view, kwargs={"pk": pk})
         response = client.get(
             url,
-            data={"depth": 100, "level": level},
+            data={"depth": 100, **params},
             format="zip",
             HTTP_ACCEPT="application/zip",
         )
@@ -2471,25 +2475,81 @@ class RoCrateSharedAncestryTests(TestCase):
         with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
             return set(archive.namelist())
 
-    def test_zip_levels(self):
-        # every level packs the config and script; level 3 adds the public files
-        # that no primary source stands for, and level 4 those too
-        level_1 = self._zip_names(1)
-        self.assertTrue(
-            {"model_config/model_config", "submission_script/script"} <= level_1
-        )
-        self.assertFalse([name for name in level_1 if name.startswith("shared/")])
-        self.assertEqual(self._zip_names(2), level_1)
+    def test_zip_packing(self):
+        # every zip packs the config and script; whose bytes it holds besides is the
+        # request's choice: the crate's own files by default, those and every
+        # supplement, every public file in the provenance, or none; a level says
+        # nothing about bytes
+        metadata = {"model_config/model_config", "submission_script/script"}
+        none = self._zip_names(pack="none")
+        self.assertTrue(metadata <= none)
+        self.assertFalse([name for name in none if "/1.0.0." in name])
+        self.assertEqual(self._zip_names(pack="none", level=1), none)
 
-        level_3 = self._zip_names(3)
-        self.assertIn("shared/raw/1.0.0.txt", level_3)
-        self.assertNotIn("shared/source/1.0.0.txt", level_3)
-        self.assertNotIn("shared/extra/1.0.0.txt", level_3)
+        roots = self._zip_names()
+        self.assertEqual(roots - none, {"shared/end/1.0.0.txt"})
+        self.assertEqual(self._zip_names(pack="roots", level=1), roots)
+
+        # source, and its copy, become supplements: packed with the roots
+        models.ExternalObject.objects.filter(title="The source data").update(
+            primary_not_supplement=False
+        )
+        supplements = self._zip_names(pack="supplements")
         self.assertEqual(
-            self._zip_names(4) - level_3,
+            supplements - roots,
             {"shared/source/1.0.0.txt", "other/source-copy/1.0.0.txt"},
         )
-        self.assertNotIn("shared/deposit/1.0.0.txt", self._zip_names(4))
+        # extra, a supplement outside the provenance, is never packed
+        self.assertNotIn("shared/extra/1.0.0.txt", supplements)
+
+        everything = self._zip_names(pack="all")
+        products = ["alias", "end", "first", "left", "raw", "right", "second", "twin"]
+        self.assertEqual(
+            everything - supplements, {f"shared/{name}/1.0.0.txt" for name in products} - roots
+        )
+        self.assertNotIn("shared/deposit/1.0.0.txt", everything)
+        self.assertNotIn("shared/extra/1.0.0.txt", everything)
+
+    def test_zip_of_a_code_run_packs_its_outputs(self):
+        pair = models.CodeRun.objects.get(description="pair")
+        names = self._zip_names("code_run_ro_crate", pair.id)
+        packed = {name for name in names if "/1.0.0." in name}
+        self.assertEqual(
+            packed, {f"shared/{name}/1.0.0.txt" for name in ("first", "second", "twin")}
+        )
+
+    def test_crate_for_several_data_products(self):
+        # files made by different runs travel together, each with its provenance
+        end = models.DataProduct.objects.get(name="end")
+        extra = models.DataProduct.objects.get(name="extra")
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse("ro_crate")
+        params = {"data_product": [end.id, extra.id], "depth": 100}
+        response = client.get(url, data=params, format="zip", HTTP_ACCEPT="application/zip")
+        self.assertEqual(response.status_code, 200)
+        with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+            names = set(archive.namelist())
+            self.assertEqual(archive.read("shared/extra/1.0.0.txt"), b"extra\n")
+            self.assertEqual(archive.read("shared/end/1.0.0.txt"), b"end\n")
+        self.assertEqual(
+            {name for name in names if "/1.0.0." in name},
+            {"shared/end/1.0.0.txt", "shared/extra/1.0.0.txt"},
+        )
+        response = client.get(
+            url, data=params, format="json-ld", HTTP_ACCEPT=self.APPLICATION_JSON_LD
+        )
+        graph = {entity["@id"]: entity for entity in response.json()["@graph"]}
+        self.assertEqual(graph["./"]["name"], "RO Crate for end, extra")
+        self.assertIn("isBasedOn", graph["shared/extra/1.0.0.txt"])
+        prepare = models.CodeRun.objects.get(description="prepare")
+        self.assertIn(f"urn:uuid:{prepare.uuid}", graph)
+
+        for params in ({}, {"data_product": 0}, {"data_product": "end"}):
+            response = client.get(
+                url, data=params, format="json-ld", HTTP_ACCEPT=self.APPLICATION_JSON_LD
+            )
+            self.assertEqual(response.status_code, 400 if not params else 404, params)
 
     def test_levels(self):
         # level 1, the JSON-LD default, gives no address; level 2 gives every public
@@ -2527,14 +2587,14 @@ class RoCrateSharedAncestryTests(TestCase):
         client = APIClient()
         client.force_authenticate(user=self.user)
         url = reverse("data_product_ro_crate", kwargs={"pk": end.id})
-        for level in (0, 5, "three"):
+        for params in ({"level": 0}, {"level": 3}, {"level": "three"}, {"pack": "some"}):
             response = client.get(
                 url,
-                data={"level": level},
+                data=params,
                 format="json-ld",
                 HTTP_ACCEPT=self.APPLICATION_JSON_LD,
             )
-            self.assertEqual(response.status_code, 400, level)
+            self.assertEqual(response.status_code, 400, params)
 
     def test_conformance(self):
         # the crate declares Process Run Crate, and every run has an instrument

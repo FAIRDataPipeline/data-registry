@@ -27,14 +27,20 @@ the registry.
 An issue raised against a file is a line on the file's entity, under the registry's
 own term `issue`: the issue's uuid, its severity and its description, in that order.
 
-What travels with each file is chosen by the request's `level`, each level including the
-one before: 1, the hash and any persistent identifier, with the source's metadata; 2,
-the address the registry's copy can be downloaded from (`contentUrl`); 3, the bytes of
-every public file that no primary source stands for; 4, the bytes of every public file.
-A zip defaults to level 3 and the JSON-LD to level 1. The JSON-LD never holds a file, so
-the working config and the submission script, which every zip packs, are metadata alone
-there. A run's outputs outside the crate's provenance are described at level 1 whatever
-was asked, and a file that is not public is named by its storage location, as before.
+What travels with each file is chosen by the request. Its `level` is what every file
+carries: 1, the hash and any persistent identifier, with the source's metadata; 2, that
+and the address the registry's copy can be downloaded from (`contentUrl`). A zip defaults
+to level 2 and the JSON-LD to level 1. Its `pack` is whose bytes a zip holds, of the
+public files in the crate's provenance: `roots`, the data products the crate is for (a
+code run's outputs, for its crate), the default; `supplements`, those and every file
+whose source is a supplement, which no identifier yields again; `all`, every one;
+`none`. A supplement made by a request (an extract a data service generated) is
+reproducible from its source entity's description, where the registry holds the request,
+so a crate that leaves its bytes out still stands alone. The JSON-LD never holds a file,
+so the working config and the submission script, which every zip packs, are metadata
+alone there. A run's outputs outside the crate's provenance are described at level 1 and
+never packed, whatever was asked, and a file that is not public is named by its storage
+location.
 
 A data product registered from an external source is in the crate as itself, and the
 source is a `Dataset` entity, one per source the registry knows: its `identifier` is
@@ -82,6 +88,7 @@ The contents of the ro-crate-metadata file can be viewed as `JSON` or `JSON-LD`.
 
 """
 
+from collections import namedtuple
 from datetime import datetime
 import json
 import mimetypes
@@ -103,6 +110,20 @@ from . import settings
 
 
 RO_TYPE = "@type"
+
+# What the request chose for the crate: `level`, 1 or 2, what travels with every file;
+# `pack`, one of PACKS, whose bytes a zip holds; `roots`, the ids of the data products
+# the crate is for
+Choice = namedtuple("Choice", "level pack roots")
+
+PACK_NONE = "none"
+PACK_ROOTS = "roots"
+PACK_SUPPLEMENTS = "supplements"
+PACK_ALL = "all"
+PACKS = (PACK_NONE, PACK_ROOTS, PACK_SUPPLEMENTS, PACK_ALL)
+
+# What a run's outputs outside the crate's provenance get: described, never packed
+DESCRIBED = Choice(level=1, pack=PACK_NONE, roots=frozenset())
 FILE = "file:"
 SHA1 = {"sha1": "https://w3id.org/ro/terms/workflow-run#sha1"}
 PROCESS_RUN_CRATE = "https://w3id.org/ro/wfrun/process/0.6"
@@ -388,17 +409,17 @@ def _get_default_license(crate):
     return default_license
 
 
-def _generate_ro_crate_from_dp(data_product, crate, registry_url, level):
+def _generate_ro_crate_from_dp(data_product, crate, registry_url, choice):
     """
     Update an RO Crate based around the data product.
 
     @param data_product: a data_product from the DataProduct table
     @param crate: the RO Crate object
     @param registry_url: a str containing the registry URL
-    @param level: an int, what travels with each file (see the module docstring)
+    @param choice: a Choice, what travels with each file (see the module docstring)
 
     """
-    _get_data_product(crate, data_product, registry_url, level)
+    _get_data_product(crate, data_product, registry_url, choice)
 
     # add the activity, i.e. the code run
     components = data_product.object.components.all()
@@ -423,35 +444,35 @@ def _generate_ro_crate_from_dp(data_product, crate, registry_url, level):
             continue
 
         crate_code_run = _get_code_run(crate, code_run, registry_url)
-        _add_code_run_files(crate, crate_code_run, code_run, registry_url, level)
+        _add_code_run_files(crate, crate_code_run, code_run, registry_url, choice)
 
         # every output of the run; those outside this crate's provenance are
-        # described at level 1, with neither bytes nor address, whatever was asked
+        # described, with neither bytes nor address, whatever was asked
         crate_code_run["result"] = _get_data_products(
-            crate, code_run.outputs.all(), registry_url, 1
+            crate, code_run.outputs.all(), registry_url, DESCRIBED
         )
 
 
-def _generate_ro_crate_from_cr(code_run, crate, registry_url, level):
+def _generate_ro_crate_from_cr(code_run, crate, registry_url, choice):
     """
     Crate an RO Crate based around the code run.
 
     @param code_run: a code_run from the CodeRun table
     @param crate: the RO Crate object
     @param registry_url: a str containing the registry URL
-    @param level: an int, what travels with each file (see the module docstring)
+    @param choice: a Choice, what travels with each file (see the module docstring)
 
     """
     crate_code_run = _get_code_run(crate, code_run, registry_url)
-    _add_code_run_files(crate, crate_code_run, code_run, registry_url, level)
+    _add_code_run_files(crate, crate_code_run, code_run, registry_url, choice)
 
     # add output files
     crate_code_run["result"] = _get_data_products(
-        crate, code_run.outputs.all(), registry_url, level
+        crate, code_run.outputs.all(), registry_url, choice
     )
 
 
-def _add_code_run_files(crate, crate_code_run, code_run, registry_url, level):
+def _add_code_run_files(crate, crate_code_run, code_run, registry_url, choice):
     """
     Add a code run's software and inputs to its CreateAction.
 
@@ -463,20 +484,20 @@ def _add_code_run_files(crate, crate_code_run, code_run, registry_url, level):
     @param crate_code_run: the RO Crate ContextEntity representing the code run
     @param code_run: a code_run from the CodeRun table
     @param registry_url: a str containing the registry URL
-    @param level: an int, what travels with each file (see the module docstring)
+    @param choice: a Choice, what travels with each file (see the module docstring)
 
     """
     input_files = []
 
     if code_run.model_config is not None:
         model_config = _get_software(
-            crate, code_run.model_config, registry_url, "model_config", level
+            crate, code_run.model_config, registry_url, "model_config", choice
         )
         crate_code_run[_fair_term(crate, "model_configuration")] = model_config
         input_files.append(model_config)
 
     submission_script = _get_software(
-        crate, code_run.submission_script, registry_url, "submission_script", level
+        crate, code_run.submission_script, registry_url, "submission_script", choice
     )
     crate_code_run[_fair_term(crate, "submission_script")] = submission_script
     input_files.append(submission_script)
@@ -489,7 +510,7 @@ def _add_code_run_files(crate, crate_code_run, code_run, registry_url, level):
         crate_code_run["instrument"] = submission_script
 
     input_files.extend(
-        _get_data_products(crate, code_run.inputs.all(), registry_url, level)
+        _get_data_products(crate, code_run.inputs.all(), registry_url, choice)
     )
     crate_code_run["object"] = input_files
 
@@ -605,7 +626,7 @@ def _get_code_run(crate, code_run, registry_url):
     return crate_code_run
 
 
-def _get_data_product(crate, data_product, registry_url, level):
+def _get_data_product(crate, data_product, registry_url, choice):
     """
     Create an RO Crate file entity representing the data product.
 
@@ -616,13 +637,13 @@ def _get_data_product(crate, data_product, registry_url, level):
     @param crate: RO Crate entity
     @param data_product: a data_product from the DataProduct table
     @param registry_url: a str containing the registry URL
-    @param level: an int, what travels with the file (see the module docstring)
+    @param choice: a Choice, what travels with the file (see the module docstring)
 
     @return an RO Crate file entity representing the data product
 
     """
     crate_data_product = _get_local_data_product(
-        crate, data_product, registry_url, level
+        crate, data_product, registry_url, choice
     )
 
     external_object = data_product.external_object
@@ -641,14 +662,14 @@ def _get_data_product(crate, data_product, registry_url, level):
     return crate_data_product
 
 
-def _get_data_products(crate, object_components, registry_url, level):
+def _get_data_products(crate, object_components, registry_url, choice):
     """
     Add the data products of a code run's components to the RO Crate.
 
     @param crate: the RO Crate object
     @param object_components: a list of object_components from the ObjectComponent table
     @param registry_url: a str containing the registry URL
-    @param level: an int, what travels with each file (see the module docstring)
+    @param choice: a Choice, what travels with each file (see the module docstring)
 
     @return a list of RO Crate file entities representing the data products
 
@@ -663,7 +684,7 @@ def _get_data_products(crate, object_components, registry_url, level):
                 continue
             data_product_ids.add(data_product.id)
             all_data_products.append(
-                _get_data_product(crate, data_product, registry_url, level)
+                _get_data_product(crate, data_product, registry_url, choice)
             )
 
     return all_data_products
@@ -714,7 +735,7 @@ def _get_input_files_for_data_product(data_product):
     return all_input_files
 
 
-def _get_local_data_product(crate, data_product, registry_url, level):
+def _get_local_data_product(crate, data_product, registry_url, choice):
     """
     Create an RO Crate file entity representing the data product.
 
@@ -726,7 +747,7 @@ def _get_local_data_product(crate, data_product, registry_url, level):
     @param crate: the RO Crate object
     @param data_product: a data_product from the DataProduct table
     @param registry_url: a str containing the registry URL
-    @param level: an int, what travels with the file (see the module docstring); at
+    @param choice: a Choice, what travels with the file (see the module docstring); at
         level 1 a file the crate already holds is left as it is
 
     @return an RO Crate file entity representing the data product
@@ -735,11 +756,10 @@ def _get_local_data_product(crate, data_product, registry_url, level):
     obj = data_product.object
     storage_location = obj.storage_location
     dest_path = _data_product_path(data_product)
-    if level == 1 and dest_path in crate:
+    if choice.level == 1 and dest_path in crate:
         return crate.dereference(dest_path)
 
-    # bytes travel from level 3, unless a primary source stands for them until level 4
-    pack = level >= 4 or (level == 3 and not _has_primary_source(data_product))
+    pack = _packs(choice, data_product)
     _fetch_remote = False
     if storage_location is None:
         # an object with no file: the data product is recorded, with nothing to pack
@@ -781,7 +801,7 @@ def _get_local_data_product(crate, data_product, registry_url, level):
         properties["sha1"] = storage_location.hash
         crate.metadata.extra_terms.update(SHA1)
 
-    if level >= 2 and storage_location is not None and storage_location.public is True:
+    if choice.level >= 2 and storage_location is not None and storage_location.public is True:
         properties["contentUrl"] = storage_location.full_uri()
 
     if obj.description is not None:
@@ -845,7 +865,7 @@ def _get_namespace(crate, namespace):
     )
 
 
-def _get_software(crate, software_object, registry_url, software_type, level):
+def _get_software(crate, software_object, registry_url, software_type, choice):
     """
     Create a file entity for the working config or the submission script.
 
@@ -855,7 +875,7 @@ def _get_software(crate, software_object, registry_url, software_type, level):
     @param software_object: an "object" representing the software
     @param registry_url: a str containing the registry URL
     @param software_type: a str containing the name of the type of software
-    @param level: an int, what travels with the file (see the module docstring)
+    @param choice: a Choice, what travels with the file (see the module docstring)
 
     @return an RO Crate file entity representing the software
 
@@ -916,7 +936,7 @@ def _get_software(crate, software_object, registry_url, software_type, level):
         crate_software_object["sha1"] = storage_location.hash
         crate.metadata.extra_terms.update(SHA1)
 
-    if level >= 2 and storage_location is not None and storage_location.public is True:
+    if choice.level >= 2 and storage_location is not None and storage_location.public is True:
         crate_software_object["contentUrl"] = storage_location.full_uri()
 
     _add_licenses(crate, crate_software_object, software_object)
@@ -931,20 +951,45 @@ def _get_software(crate, software_object, registry_url, software_type, level):
     return crate_software_object
 
 
-# Whether a data product was registered from a source whose identifier it is a copy of
-def _has_primary_source(data_product):
+# Whether the request's choice packs a data product's bytes: the crate's own files, or
+# those and the files no identifier yields again, or every file, or none
+def _packs(choice, data_product):
+    if choice.pack == PACK_ALL:
+        return True
+    if choice.pack == PACK_NONE:
+        return False
+    if data_product.id in choice.roots:
+        return True
     external_object = data_product.external_object
-    return external_object is not None and external_object.primary_not_supplement
+    return (
+        choice.pack == PACK_SUPPLEMENTS
+        and external_object is not None
+        and not external_object.primary_not_supplement
+    )
 
 
-def generate_ro_crate_from_cr(code_run, depth, request, level):
+def code_run_roots(code_run):
+    """
+    Return the ids of the data products a code run's crate is for: its outputs.
+
+    @param code_run: a code_run from the CodeRun table
+
+    """
+    return frozenset(
+        models.DataProduct.objects.filter(
+            object__components__in=code_run.outputs.all()
+        ).values_list("id", flat=True)
+    )
+
+
+def generate_ro_crate_from_cr(code_run, depth, request, choice):
     """
     Crate an RO Crate based around the code run.
 
     @param code_run: a code_run from the CodeRun table
     @param depth: The depth for the crate. How many levels of code runs to include.
     @param request: A request object
-    @param level: an int, what travels with each file (see the module docstring)
+    @param choice: a Choice, what travels with each file (see the module docstring)
 
     @return the RO Crate object
 
@@ -968,7 +1013,7 @@ def generate_ro_crate_from_cr(code_run, depth, request, level):
     _add_metadata_license(crate)
     _declare_profile(crate)
 
-    _generate_ro_crate_from_cr(code_run, crate, registry_url, level)
+    _generate_ro_crate_from_cr(code_run, crate, registry_url, choice)
 
     if depth == 1:
         return crate
@@ -988,7 +1033,7 @@ def generate_ro_crate_from_cr(code_run, depth, request, level):
                 continue
             data_product_ids.add(data_product.id)
 
-            _generate_ro_crate_from_dp(data_product, crate, registry_url, level)
+            _generate_ro_crate_from_dp(data_product, crate, registry_url, choice)
 
             next_level_input_data_products.extend(
                 _get_input_files_for_data_product(data_product)
@@ -1001,14 +1046,14 @@ def generate_ro_crate_from_cr(code_run, depth, request, level):
     return crate
 
 
-def generate_ro_crate_from_dp(data_product, depth, request, level):
+def generate_ro_crate(data_products, depth, request, choice):
     """
-    Crate an RO Crate based around the data product.
+    Crate an RO Crate based around one or more data products.
 
-    @param data_product: a data_product from the DataProduct table
+    @param data_products: the data_products from the DataProduct table the crate is for
     @param depth: The depth for the crate. How many levels of code runs to include.
     @param request: A request object
-    @param level: an int, what travels with each file (see the module docstring)
+    @param choice: a Choice, what travels with each file (see the module docstring)
 
     @return the RO Crate object
 
@@ -1019,9 +1064,12 @@ def generate_ro_crate_from_dp(data_product, depth, request, level):
     crate = ROCrate()
     crate.publisher = "FAIR Data Pipeline"
     crate.datePublished = datetime.now().isoformat()
-    crate.name = f"RO Crate for {data_product.name}"
+    crate.name = "RO Crate for " + ", ".join(
+        data_product.name for data_product in data_products
+    )
 
-    _add_licenses(crate, crate, data_product.object)
+    for data_product in data_products:
+        _add_licenses(crate, crate, data_product.object)
     if crate.license is None:
         crate_license = _get_default_license(crate)
         crate.add(crate_license)
@@ -1030,17 +1078,20 @@ def generate_ro_crate_from_dp(data_product, depth, request, level):
     _add_metadata_license(crate)
     _declare_profile(crate)
 
-    # add the the main data product
-    _generate_ro_crate_from_dp(data_product, crate, registry_url, level)
+    # add the main data products
+    for data_product in data_products:
+        _generate_ro_crate_from_dp(data_product, crate, registry_url, choice)
 
     if depth == 1:
         return crate
 
-    input_data_products = _get_input_files_for_data_product(data_product)
+    input_data_products = []
+    for data_product in data_products:
+        input_data_products.extend(_get_input_files_for_data_product(data_product))
 
     # a data product reached by several routes is added once, at the first level it
     # is reached
-    data_product_ids = {data_product.id}
+    data_product_ids = {data_product.id for data_product in data_products}
 
     # add extra layers to the report if requested by the user
     while depth > 1:
@@ -1051,7 +1102,7 @@ def generate_ro_crate_from_dp(data_product, depth, request, level):
                 continue
             data_product_ids.add(data_product.id)
 
-            _generate_ro_crate_from_dp(data_product, crate, registry_url, level)
+            _generate_ro_crate_from_dp(data_product, crate, registry_url, choice)
 
             next_level_input_data_products.extend(
                 _get_input_files_for_data_product(data_product)
