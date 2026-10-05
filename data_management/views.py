@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth import logout as auth_logout
 from django.db.models import Q
 from django.contrib.sites.models import Site
+from django.views.decorators.http import require_safe
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 
@@ -200,6 +201,7 @@ def doc_index(request):
     return render(request, os.path.join("data_management", "docs.html"), ctx)
 
 
+@require_safe
 def vocab_page(request):
     """
     The registry's own vocabulary: the terms its provenance reports and RO Crates use,

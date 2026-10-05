@@ -35,6 +35,9 @@ class VocabTests(TestCase):
     def test_every_term_used_is_defined_and_no_other(self):
         self.assertEqual({term.name for term in vocab.TERMS}, _terms_used())
 
+    def test_page_is_read_only(self):
+        self.assertEqual(self.client.post(reverse("vocab")).status_code, 405)
+
     def test_page_defines_every_term(self):
         response = self.client.get(reverse("vocab"))
         self.assertEqual(response.status_code, 200)
