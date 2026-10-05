@@ -217,7 +217,6 @@ def get_data(request, name):
     """
     Redirect to a temporary URL for accessing a file from object storage
     """
-    check = True
     try:
         storage_root = models.StorageRoot.objects.get(
             Q(root__contains=Site.objects.get_current().domain)
@@ -225,27 +224,25 @@ def get_data(request, name):
         location = models.StorageLocation.objects.get(
             Q(storage_root=storage_root) & Q(path=name)
         )
-        object = models.Object.objects.get(storage_location=location)
-    except:
-        check = None
-    else:
-        if object.metadata:
-            try:
-                key_value = object.metadata.get(Q(key="accessibility"))
-            except:
-                pass
-            else:
-                if not request.user.is_authenticated and key_value.value == "private":
-                    check = False
-
-    if check is None:
+    except (models.StorageRoot.DoesNotExist, models.StorageLocation.DoesNotExist):
         return HttpResponseNotFound()
-    elif not check:
-        return HttpResponse(status=403)
+
+    # identical bytes under several objects are one location; the file is served if
+    # any object holds it, and withheld if any marks it private
+    objects = list(models.Object.objects.filter(storage_location=location))
+    if not objects:
+        return HttpResponseNotFound()
+    if not request.user.is_authenticated:
+        for obj in objects:
+            private = obj.metadata.filter(key="accessibility", value="private")
+            if private.exists():
+                return HttpResponse(status=403)
 
     filename = None
-    if object.file_type:
-        filename = "%s.%s" % (name, object.file_type.extension)
+    for obj in objects:
+        if obj.file_type:
+            filename = "%s.%s" % (name, obj.file_type.extension)
+            break
 
     return redirect(object_storage.create_url(name, "GET", filename))
 

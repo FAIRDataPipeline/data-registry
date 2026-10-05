@@ -236,6 +236,29 @@ class StorageAPITests(TestCase):
         self.user = get_user_model().objects.create(username="Test User")
         init_db()
 
+    def test_get_data_for_a_shared_file(self):
+        # identical bytes under two objects are one storage location; the download
+        # view must serve it, not report it as not found
+        from django.contrib.sites.models import Site
+
+        domain = Site.objects.get_current().domain
+        root = models.StorageRoot.objects.create(
+            updated_by=self.user, root=f"https://{domain}/data/"
+        )
+        location = models.StorageLocation.objects.create(
+            updated_by=self.user, path="abc123", hash="abc123", storage_root=root
+        )
+        for description in ("first copy", "second copy"):
+            models.Object.objects.create(
+                updated_by=self.user, storage_location=location, description=description
+            )
+        with mock.patch.object(
+            views.object_storage, "create_url", return_value="https://store/abc123"
+        ):
+            response = self.client.get("/data/abc123")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "https://store/abc123")
+
     def test_get_data(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
