@@ -2409,6 +2409,8 @@ class RoCrateSharedAncestryTests(TestCase):
         self.assertEqual(product["sameAs"], {"@id": source.identifier})
         described = graph[source.identifier]
         self.assertEqual(described["name"], "The source data")
+        # every date in the crate is ISO 8601, with a T
+        self.assertEqual(described["datePublished"], "2020-07-10T18:38:00+00:00")
         self.assertEqual(described["alternate_identifier"], "source-2020")
         self.assertEqual(described["alternate_identifier_type"], "project name")
         vocab = "https://data.fairdatapipeline.org/vocab/#"

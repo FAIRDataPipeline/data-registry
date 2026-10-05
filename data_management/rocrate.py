@@ -194,7 +194,7 @@ def _add_external_object(crate, external_object):
     """
     properties = {}
     properties["name"] = external_object.title
-    properties["datePublished"] = str(external_object.release_date)
+    properties["datePublished"] = external_object.release_date.isoformat()
 
     if external_object.identifier:
         source_loc = external_object.identifier
