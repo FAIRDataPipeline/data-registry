@@ -1426,12 +1426,12 @@ class ProvAPITests(TestCase):
 
         expected_result = {
             "_:id2": {
-                self.PROV_SPECIFIC_ENTITY: "lreg:api/external_object/2",
-                self.PROV_GENERAL_ENTITY: f"{self.LREG_DATA_PRODUCT}2",
+                self.PROV_SPECIFIC_ENTITY: f"{self.LREG_DATA_PRODUCT}2",
+                self.PROV_GENERAL_ENTITY: "lreg:api/external_object/2",
             },
             "_:id8": {
-                self.PROV_SPECIFIC_ENTITY: "lreg:api/external_object/1",
-                self.PROV_GENERAL_ENTITY: f"{self.LREG_DATA_PRODUCT}1",
+                self.PROV_SPECIFIC_ENTITY: f"{self.LREG_DATA_PRODUCT}1",
+                self.PROV_GENERAL_ENTITY: "lreg:api/external_object/1",
             },
         }
         self.assertEqual(results["specializationOf"], expected_result)
@@ -1592,7 +1592,7 @@ class ProvAPITests(TestCase):
   agent(lreg:api/author/1, [rdf:type='prov:Person', foaf:name="Ivana Valenti"])
   wasAttributedTo(lreg:api/data_product/1, lreg:api/author/1, [prov:role='dcterms:creator'])
   entity(lreg:api/external_object/1, [rdf:type='dcat:Dataset', dcterms:title="this is cr test input 1", dcterms:issued="2020-07-10T18:38:00+00:00" %% xsd:dateTime, dcat:hasVersion="0.2.0", fair:alternate_identifier="this_is_cr_test_input_1", fair:alternate_identifier_type="text", dcterms:description="this is code run test input 1", prov:atLocation="https://example.org/file_strore/1.txt"])
-  specializationOf(lreg:api/external_object/1, lreg:api/data_product/1)
+  specializationOf(lreg:api/data_product/1, lreg:api/external_object/1)
 endDocument"""
         self.assertEqual(result, expected_result)
 
@@ -1808,6 +1808,40 @@ class ProvSharedAncestryTests(TestCase):
         # sorted lists, not sets, so that a repeated relation fails the comparison
         return sorted((r[first], r[second]) for r in results[relation].values())
 
+    def test_supplementary_source(self):
+        # a data product requested or derived from its source was derived from it,
+        # where one that is the identified item is a specialisation of it
+        extra = models.DataProduct.objects.get(name="extra")
+        deposit_row = models.ExternalObject.objects.get(title="The deposit")
+        extract = models.ExternalObject.objects.create(
+            updated_by=self.user,
+            identifier=deposit_row.identifier,
+            title="An extract of the deposit",
+            release_date=deposit_row.release_date,
+            primary_not_supplement=False,
+        )
+        extra.external_object = extract
+        extra.save()
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        url = reverse("prov_report", kwargs={"pk": extra.id})
+        response = client.get(url, format="json", HTTP_ACCEPT=self.APPLICATION_JSON)
+        self.assertEqual(response.status_code, 200)
+        results = response.json()
+
+        source = f"lreg:api/external_object/{extract.id}"
+        dp = self._data_product
+        self.assertEqual(results["entity"][source]["dcterms:title"], "An extract of the deposit")
+        # derived from its source as well as from what the run that wrote it read
+        self.assertEqual(
+            self._pairs(results, "wasDerivedFrom", "prov:generatedEntity", "prov:usedEntity"),
+            sorted([(dp("extra"), source), (dp("extra"), dp("source")), (dp("extra"), dp("deposit"))]),
+        )
+        specialised = self._pairs(
+            results, "specializationOf", "prov:specificEntity", "prov:generalEntity"
+        )
+        self.assertNotIn(dp("extra"), [specific for specific, _ in specialised])
+
     def test_whole_ancestry(self):
         results = self._get(100)
         dp = self._data_product
@@ -1839,9 +1873,9 @@ class ProvSharedAncestryTests(TestCase):
             self._pairs(results, "specializationOf", "prov:specificEntity", "prov:generalEntity"),
             sorted(
                 [
-                    (f"lreg:api/external_object/{source_row.id}", dp("source")),
-                    (f"lreg:api/external_object/{source_row.id}", dp("source-copy")),
-                    (f"lreg:api/external_object/{deposit_row.id}", dp("deposit")),
+                    (dp("source"), f"lreg:api/external_object/{source_row.id}"),
+                    (dp("source-copy"), f"lreg:api/external_object/{source_row.id}"),
+                    (dp("deposit"), f"lreg:api/external_object/{deposit_row.id}"),
                 ]
             ),
         )
@@ -2457,9 +2491,9 @@ class RoCrateSharedAncestryTests(TestCase):
         addressed = [i for i, e in graph.items() if "contentUrl" in e]
         # the source's own address, where the registry fetched it from, is metadata
         # about the source and travels at every level
-        self.assertEqual(addressed, [source.identifier])
+        self.assertEqual(addressed, ["#source-https%3A%2F%2Fdoi.org%2F10.5281%2Fzenodo.1234567%3AThe%20source%20data%401.0.0"])
         self.assertEqual(
-            graph[source.identifier]["contentUrl"],
+            graph["#source-https%3A%2F%2Fdoi.org%2F10.5281%2Fzenodo.1234567%3AThe%20source%20data%401.0.0"]["contentUrl"],
             "https://example.org/downloads/source.txt",
         )
 
@@ -2556,9 +2590,16 @@ class RoCrateSharedAncestryTests(TestCase):
 
         product = graph["shared/source/1.0.0.txt"]
         self.assertIn("sha1", product)
-        self.assertEqual(product["sameAs"], {"@id": source.identifier})
-        described = graph[source.identifier]
+        # the source is named by its identity in the registry, since one identifier
+        # may have several files under it, each with its own title; the DOI is a
+        # property of it
+        self.assertEqual(product["sameAs"], {"@id": "#source-https%3A%2F%2Fdoi.org%2F10.5281%2Fzenodo.1234567%3AThe%20source%20data%401.0.0"})
+        described = graph["#source-https%3A%2F%2Fdoi.org%2F10.5281%2Fzenodo.1234567%3AThe%20source%20data%401.0.0"]
+        self.assertEqual(described["@type"], "Dataset")
+        self.assertEqual(described["identifier"], source.identifier)
         self.assertEqual(described["name"], "The source data")
+        self.assertEqual(described["version"], "1.0.0")
+        self.assertNotIn("isPartOf", described)
         # every date in the crate is ISO 8601, with a T
         self.assertEqual(described["datePublished"], "2020-07-10T18:38:00+00:00")
         self.assertEqual(described["alternate_identifier"], "source-2020")
@@ -2626,7 +2667,7 @@ class RoCrateSharedAncestryTests(TestCase):
         self.assertEqual(graph[cc_by]["identifier"], cc_by)
         self.assertEqual(graph[cc_by]["name"], "Creative Commons Attribution 4.0")
 
-        rows = ("api/author/", "api/users/", "api/license/", "api/data_extraction/")
+        rows = ("api/author/", "api/users/", "api/license/", "api/external_object/")
         for row in rows:
             self.assertNotIn(row, str(crate))
 
@@ -2646,20 +2687,44 @@ class RoCrateSharedAncestryTests(TestCase):
         self.assertEqual(graph[f"urn:uuid:{person.uuid}"]["@type"], "Person")
 
     def test_supplementary_source(self):
-        # data extracted from a source before it could be used: the extraction is
-        # the step between them, identified by the data product it produced
-        models.ExternalObject.objects.update(primary_not_supplement=False)
-        source = models.ExternalObject.objects.get(title="The source data")
+        # a file requested or derived from a source, which no identifier yields again,
+        # is based on it; the run that wrote it is the step between them, and the
+        # source of a file under a deposit's identifier is part of the deposit
+        extra = models.DataProduct.objects.get(name="extra")
+        deposit_row = models.ExternalObject.objects.get(title="The deposit")
+        extract = models.ExternalObject.objects.create(
+            updated_by=self.user,
+            identifier=deposit_row.identifier,
+            title="An extract of the deposit",
+            description="Requested from the deposit",
+            release_date=deposit_row.release_date,
+            primary_not_supplement=False,
+        )
+        extra.external_object = extract
+        extra.save()
         end = models.DataProduct.objects.get(name="end")
         crate, _ = self._get("data_product_ro_crate", end.id, 100)
         graph = {entity["@id"]: entity for entity in crate["@graph"]}
 
-        extraction = graph["#extraction-shared%2Fsource%401.0.0"]
-        self.assertEqual(extraction["@type"], "CreateAction")
-        self.assertEqual(extraction["name"], "data extraction of shared/source@1.0.0")
-        self.assertEqual(extraction["object"], {"@id": source.identifier})
-        self.assertEqual(extraction["result"], {"@id": "shared/source/1.0.0.txt"})
-        self.assertNotIn("sameAs", graph["shared/source/1.0.0.txt"])
+        extract_id = (
+            "#source-https%3A%2F%2Fdoi.org%2F10.5281%2Fzenodo.7654321"
+            "%3AAn%20extract%20of%20the%20deposit%401.0.0"
+        )
+        extra = graph["shared/extra/1.0.0.txt"]
+        self.assertEqual(extra["isBasedOn"], {"@id": extract_id})
+        self.assertNotIn("sameAs", extra)
+        described = graph[extract_id]
+        self.assertEqual(described["@type"], "Dataset")
+        self.assertEqual(described["name"], "An extract of the deposit")
+        self.assertEqual(described["identifier"], deposit_row.identifier)
+        self.assertEqual(described["description"], "Requested from the deposit")
+        self.assertEqual(described["isPartOf"], {"@id": "#source-https%3A%2F%2Fdoi.org%2F10.5281%2Fzenodo.7654321%3AThe%20deposit%401.0.0"})
+        deposit = graph["#source-https%3A%2F%2Fdoi.org%2F10.5281%2Fzenodo.7654321%3AThe%20deposit%401.0.0"]
+        self.assertEqual(deposit["name"], "The deposit")
+        self.assertNotIn("isPartOf", deposit)
+        self.assertEqual(graph["shared/deposit/1.0.0.txt"]["sameAs"], {"@id": "#source-https%3A%2F%2Fdoi.org%2F10.5281%2Fzenodo.7654321%3AThe%20deposit%401.0.0"})
+        self.assertNotIn("extraction", str(crate))
+        self.assertNotIn("FAIR-CLI", str(crate))
 
     def test_issues(self):
         # an issue is a line on each file it was raised against: its uuid, then its

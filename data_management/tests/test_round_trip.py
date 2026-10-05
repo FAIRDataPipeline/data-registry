@@ -356,15 +356,15 @@ class CrateImporter:
 
     def _external_object(self, data_product_url, source):
         """The source a data product is a copy of: a primary external object."""
-        identifier = source["@id"]
         self._post(
             "external_object",
             {
                 "data_product": data_product_url,
-                "identifier": identifier if identifier.startswith("http") else None,
+                "identifier": source.get("identifier"),
                 "alternate_identifier": source.get("alternate_identifier"),
                 "alternate_identifier_type": source.get("alternate_identifier_type"),
                 "title": source["name"],
+                "version": source["version"],
                 "release_date": source["datePublished"],
                 "description": source.get("description"),
                 "primary_not_supplement": True,

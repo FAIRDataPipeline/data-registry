@@ -37,13 +37,19 @@ there. A run's outputs outside the crate's provenance are described at level 1 w
 was asked, and a file that is not public is named by its storage location, as before.
 
 A data product registered from an external source is in the crate as itself, and the
-source is a `File` named by its identifier (a DOI, or else its alternate identifier),
-linked but not packaged. Where the registered bytes are the identified item, or one of
-its files (a primary source), the data product's `sameAs` points at the source; where
-the data was extracted from the source before it could be used (a supplementary source,
-e.g. a journal article), the extraction is modelled as a RO Crate `ContextEntity` of
-type `CreateAction` with the source as its `object` and the data product as its
-`result`.
+source is a `Dataset` entity, one per source the registry knows: its `identifier` is
+the source's persistent identifier (a DOI) where it has one, its `name` the title that
+tells the files registered under one identifier apart, with the source's own `version`,
+`datePublished`, `description`, alternate identifier and, where the registry recorded
+where the file was fetched from, `contentUrl`. Where the registered bytes are the
+identified item, or one of its files (a primary source), the data product's `sameAs`
+points at the source; where the data was requested or derived from the source, so that
+no identifier yields the same bytes again (a supplementary source, e.g. an extract made
+for a request), its `isBasedOn` does. A deposit registered as a whole, as the data
+product with no file that a fetch run reads, is a source of its own, and the sources of
+the files under its identifier are `isPartOf` it. The run that produced a sourced file
+is the step between source and file; a file registered without one has a source and no
+action.
 
 The `CodeRun` has been modelled as a RO Crate `ContextEntity` of type `CreateAction`,
 see
@@ -87,7 +93,6 @@ from django.conf import settings as django_settings
 from rocrate.model.person import Person
 from rocrate.rocrate import ContextEntity
 from rocrate.rocrate import ROCrate
-from rocrate.utils import is_url
 
 from data_management.views import external_object
 
@@ -101,7 +106,6 @@ RO_TYPE = "@type"
 FILE = "file:"
 SHA1 = {"sha1": "https://w3id.org/ro/terms/workflow-run#sha1"}
 PROCESS_RUN_CRATE = "https://w3id.org/ro/wfrun/process/0.6"
-CLI_URL = "https://github.com/FAIRDataPipeline/FAIR-CLI"
 REMOTE_STORAGE_ROOT = "https://data.fairdatapipeline.org/data/"
 
 
@@ -133,73 +137,57 @@ def _add_author(crate, author):
     return crate.add(Person(crate, author_id, properties=properties))
 
 
-def _add_data_extraction_action(
-    crate, crate_data_product, data_product, external_object
-):
-    """
-    Create an RO Crate context entity to link the data product and external object.
-
-    The extraction is identified by the data product it produced.
-
-    @param crate: the RO Crate object
-    @param crate_data_product: the RO Crate file entity representing the data product
-    @param data_product: a data_product from the DataProduct table
-    @param external_object: a external_object from the ExternalObject table
-
-    """
-    product = (
-        f"{data_product.namespace.name}/{data_product.name}@{data_product.version}"
-    )
-    crate_data_extraction = ContextEntity(
-        crate,
-        f"#extraction-{quote(product, safe='')}",
-        properties={
-            RO_TYPE: "CreateAction",
-            "name": f"data extraction of {product}",
-            "startTime": data_product.last_updated.isoformat(),
-            "description": "import/extract data from an external source",
-        },
+# A source's entity id: its identity in the registry, which is not a row of it
+def _source_id(external_object):
+    identifier = external_object.identifier or external_object.alternate_identifier
+    return "#source-" + quote(
+        f"{identifier}:{external_object.title}@{external_object.version}", safe=""
     )
 
-    crate_data_extraction["result"] = crate_data_product
-    crate_data_extraction["object"] = _add_external_object(crate, external_object)
 
-    # add the instrument
-    properties = {
-        RO_TYPE: "SoftwareApplication",
-        "url": CLI_URL,
-    }
-
-    crate_instrument = ContextEntity(
-        crate,
-        CLI_URL,
-        properties=properties,
+# The deposit a source belongs to: the primary source under the same identifier that
+# is registered as a data product with no file, as a fetch run reads one
+def _deposit_of(external_object):
+    if not external_object.identifier:
+        return None
+    if external_object.data_products.filter(object__storage_location=None).exists():
+        return None
+    return (
+        models.ExternalObject.objects.filter(
+            identifier=external_object.identifier,
+            primary_not_supplement=True,
+            data_products__object__storage_location=None,
+        )
+        .exclude(pk=external_object.pk)
+        .first()
     )
-
-    crate_data_extraction["instrument"] = crate_instrument
-
-    crate.add(crate_instrument)
-    crate.add(crate_data_extraction)
 
 
 def _add_external_object(crate, external_object):
     """
-    Create an RO Crate file entity representing the external object.
+    Create an RO Crate entity representing the external object, or return it.
 
-    @param crate_code_run: RO Crate entity representing the code run
+    A source is described once however many data products were registered from it.
+
+    @param crate: the RO Crate object
     @param external_object: a external_object from the ExternalObject table
 
-    @return an RO Crate file entity representing the external object
+    @return an RO Crate entity representing the external object
 
     """
-    properties = {}
-    properties["name"] = external_object.title
-    properties["datePublished"] = external_object.release_date.isoformat()
+    source_id = _source_id(external_object)
+    if source_id in crate:
+        return crate.get(source_id)
+
+    properties = {
+        RO_TYPE: "Dataset",
+        "name": external_object.title,
+        "version": str(external_object.version),
+        "datePublished": external_object.release_date.isoformat(),
+    }
 
     if external_object.identifier:
-        source_loc = external_object.identifier
-    else:
-        source_loc = external_object.alternate_identifier
+        properties["identifier"] = external_object.identifier
 
     if external_object.alternate_identifier:
         properties[_fair_term(crate, "alternate_identifier")] = (
@@ -216,12 +204,13 @@ def _add_external_object(crate, external_object):
         # where the registry fetched the file from, which outlives the registry
         properties["contentUrl"] = external_object.original_store.full_uri()
 
-    if is_url(source_loc):
-        crate_external_object = crate.add_file(source_loc, properties=properties)
-    else:
-        crate_external_object = crate.add_file(
-            dest_path=source_loc, properties=properties
-        )
+    crate_external_object = crate.add(
+        ContextEntity(crate, source_id, properties=properties)
+    )
+
+    deposit = _deposit_of(external_object)
+    if deposit is not None:
+        crate_external_object["isPartOf"] = _add_external_object(crate, deposit)
 
     return crate_external_object
 
@@ -622,8 +611,7 @@ def _get_data_product(crate, data_product, registry_url, level):
 
     A data product registered from an external source is linked to that source: by
     `sameAs` where the registered bytes are the identified item or one of its files,
-    and by a data extraction action where the data was extracted from the source
-    before it could be used.
+    and by `isBasedOn` where the data was requested or derived from the source.
 
     @param crate: RO Crate entity
     @param data_product: a data_product from the DataProduct table
@@ -639,12 +627,8 @@ def _get_data_product(crate, data_product, registry_url, level):
 
     external_object = data_product.external_object
     if external_object is not None:
-        if external_object.primary_not_supplement is False:
-            _add_data_extraction_action(
-                crate, crate_data_product, data_product, external_object
-            )
-        else:
-            crate_data_product["sameAs"] = _add_external_object(crate, external_object)
+        relation = "sameAs" if external_object.primary_not_supplement else "isBasedOn"
+        crate_data_product[relation] = _add_external_object(crate, external_object)
 
     _add_licenses(crate, crate_data_product, data_product.object)
 

@@ -429,7 +429,11 @@ def _add_external_object(
         external_object_entity = existing[0]
     else:
         external_object_entity = doc.entity(external_object_id, (*data,))
-    doc.specializationOf(external_object_entity, data_product_entity)
+    # the registered bytes are the identified item, or were requested or derived from it
+    if external_object.primary_not_supplement:
+        doc.specializationOf(data_product_entity, external_object_entity)
+    else:
+        doc.wasDerivedFrom(data_product_entity, external_object_entity)
 
 
 def _add_input_data_products(
