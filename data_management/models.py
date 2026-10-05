@@ -516,7 +516,7 @@ class StorageRoot(BaseModel):
     * https://somewebsite.com/
     * ftp://host/ (ftp://username:password@host:port/)
     * ssh://host/
-    * file:///someroot/ (file://C:\)
+    * file:///someroot/ (file://C:\\)
     * github://org:repo@sha/ (github://org:repo/ (master))
 
     `local` (*optional*): Boolean indicating whether the `StorageRoot` is local or not (by default this is `False`)

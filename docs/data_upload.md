@@ -20,7 +20,7 @@ The URL can be used to upload the file with a HTTP PUT, e.g.:
 ```
 curl -i --upload-file <filename> "<url>"
 ```
-where `<filename>` should be replaced with the name of the file you want to upload and `<url>` should be replaced with the URL obtained in the previous step. The status code will be 201 if the file was uploaded successfully.
+where `<filename>` should be replaced with the name of the file you want to upload and `<url>` should be replaced with the URL obtained in the previous step. The status code will be 200 or 201 if the file was uploaded successfully, as the store decides.
      
 The `StorageLocation` should be created in the usual way, using https://data.fairdatapipeline.org/api/storage_root/1/ as the `StorageRoot`, e.g. POST the following JSON to https://data.fairdatapipeline.org/api/storage_location/:
 ```
@@ -56,6 +56,5 @@ and for external objects use:
 https://data.fairdatapipeline.org/external_object/<alternate_identifier>:<title>@<version>
 ```
 For external objects query parameters can be used to return different URLs:
-* **source**: returns the `Source` associated with the external object
 * **original**: returns the original store associated with the external object
 * **root**: returns the `StorageRoot` only
