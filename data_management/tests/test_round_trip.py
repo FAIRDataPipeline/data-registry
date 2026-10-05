@@ -348,15 +348,24 @@ class CrateImporter:
                     "version": entity["version"],
                 },
             )
-            if "sameAs" in entity:
-                self._external_object(
-                    data_product_url, self.entities[entity["sameAs"]["@id"]]
-                )
+            # the source it is a copy of (primary), or was requested or derived from
+            for relation, primary in (("sameAs", True), ("isBasedOn", False)):
+                if relation in entity:
+                    self._external_object(
+                        self.entities[entity[relation]["@id"]], primary, data_product_url
+                    )
         return object_url
 
-    def _external_object(self, data_product_url, source):
-        """The source a data product is a copy of: a primary external object."""
-        self._post(
+    def _external_object(self, source, primary, data_product_url=None):
+        """A source: an external object, linked to the data product registered from it."""
+        if "isPartOf" in source:
+            # the deposit it belongs to is a source of its own, with or without a data
+            # product in the crate
+            self._ensure(
+                source["isPartOf"]["@id"],
+                lambda deposit: self._external_object(deposit, True),
+            )
+        return self._post(
             "external_object",
             {
                 "data_product": data_product_url,
@@ -367,7 +376,7 @@ class CrateImporter:
                 "version": source["version"],
                 "release_date": source["datePublished"],
                 "description": source.get("description"),
-                "primary_not_supplement": True,
+                "primary_not_supplement": primary,
             },
         )
 

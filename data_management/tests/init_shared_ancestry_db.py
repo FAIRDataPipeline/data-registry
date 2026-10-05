@@ -42,7 +42,8 @@ def init_db(test_case):
     address it was fetched from, and has an organisation (a ROR id) as its author;
     `source-copy`, in namespace `other`, is the same bytes registered from the same
     source row; `deposit` is a data product with no file whose source is a deposit
-    itself, as a fetch run reads one; `end` and `second` have the same licence, with an
+    itself, as a fetch run reads one, and `extra` is an extract the fetch run made from
+    it, a supplementary source under the deposit's identifier; `end` and `second` have the same licence, with an
     identifier, and `first` one without; one issue is raised against `raw` and
     another against both `left` and `right`.
 
@@ -192,19 +193,32 @@ def init_db(test_case):
     o_deposit = Object.objects.create(
         updated_by=user, description="deposit", file_type=text_file
     )
-    deposit = DataProduct.objects.create(
+    deposit_row = ExternalObject.objects.create(
+        updated_by=user,
+        identifier="https://doi.org/10.5281/zenodo.7654321",
+        title="The deposit",
+        release_date=parser.isoparse("2019-01-01T00:00:00Z"),
+    )
+    DataProduct.objects.create(
         updated_by=user,
         object=o_deposit,
         namespace=namespace,
         name="deposit",
         version="1.0.0",
-        external_object=ExternalObject.objects.create(
-            updated_by=user,
-            identifier="https://doi.org/10.5281/zenodo.7654321",
-            title="The deposit",
-            release_date=parser.isoparse("2019-01-01T00:00:00Z"),
-        ),
+        external_object=deposit_row,
     )
+    # what the fetch run made from the deposit: a file under the deposit's identifier
+    # that no identifier yields again
+    extra = DataProduct.objects.get(object=o_extra)
+    extra.external_object = ExternalObject.objects.create(
+        updated_by=user,
+        identifier=deposit_row.identifier,
+        title="An extract of the deposit",
+        description="Requested from the deposit",
+        release_date=deposit_row.release_date,
+        primary_not_supplement=False,
+    )
+    extra.save()
     for obj in (o_end, o_second):
         Licence.objects.create(
             updated_by=user,

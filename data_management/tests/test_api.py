@@ -1812,16 +1812,7 @@ class ProvSharedAncestryTests(TestCase):
         # a data product requested or derived from its source was derived from it,
         # where one that is the identified item is a specialisation of it
         extra = models.DataProduct.objects.get(name="extra")
-        deposit_row = models.ExternalObject.objects.get(title="The deposit")
-        extract = models.ExternalObject.objects.create(
-            updated_by=self.user,
-            identifier=deposit_row.identifier,
-            title="An extract of the deposit",
-            release_date=deposit_row.release_date,
-            primary_not_supplement=False,
-        )
-        extra.external_object = extract
-        extra.save()
+        extract = models.ExternalObject.objects.get(title="An extract of the deposit")
         client = APIClient()
         client.force_authenticate(user=self.user)
         url = reverse("prov_report", kwargs={"pk": extra.id})
@@ -2690,18 +2681,7 @@ class RoCrateSharedAncestryTests(TestCase):
         # a file requested or derived from a source, which no identifier yields again,
         # is based on it; the run that wrote it is the step between them, and the
         # source of a file under a deposit's identifier is part of the deposit
-        extra = models.DataProduct.objects.get(name="extra")
         deposit_row = models.ExternalObject.objects.get(title="The deposit")
-        extract = models.ExternalObject.objects.create(
-            updated_by=self.user,
-            identifier=deposit_row.identifier,
-            title="An extract of the deposit",
-            description="Requested from the deposit",
-            release_date=deposit_row.release_date,
-            primary_not_supplement=False,
-        )
-        extra.external_object = extract
-        extra.save()
         end = models.DataProduct.objects.get(name="end")
         crate, _ = self._get("data_product_ro_crate", end.id, 100)
         graph = {entity["@id"]: entity for entity in crate["@graph"]}
