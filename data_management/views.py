@@ -312,16 +312,19 @@ def external_object(request, alternate_identifier, title, version):
     except:
         return HttpResponseNotFound()
 
-    # Use storage location if it exists and user has not requested the original_store
+    # Use the storage location of the first data product registered from it, if there
+    # is one and the user has not requested the original_store
+    data_product = external_object.data_products.first()
     if (
-        external_object.data_product.object.storage_location
+        data_product is not None
+        and data_product.object.storage_location
         and "original" not in request.GET
     ):
         if "root" in request.GET:
             return HttpResponse(
-                external_object.data_product.object.storage_location.storage_root.root
+                data_product.object.storage_location.storage_root.root
             )
-        return get_data_product(external_object.data_product)
+        return get_data_product(data_product)
 
     # Use original_store if it exists
     if external_object.original_store:

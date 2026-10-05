@@ -731,8 +731,35 @@ class CodeRunViewSet(BaseViewSet, mixins.UpdateModelMixin, mixins.DestroyModelMi
     __doc__ = models.CodeRun.__doc__
 
 
+class ExternalObjectViewSet(BaseViewSet):
+    model = models.ExternalObject
+    serializer_class = serializers.ExternalObjectSerializer
+    filterset_fields = models.ExternalObject.filter_field_names()
+    __doc__ = models.ExternalObject.__doc__
+
+    def list(self, request, *args, **kwargs):
+        """
+        Lists take `data_product=<id>` as "linked to this DataProduct", and with it
+        `version=<v>` as that DataProduct's version rather than the source's: the
+        lookup clients made when an ExternalObject belonged to one DataProduct.
+        """
+        params = request.query_params
+        if "data_product" in params:
+            params = params.copy()
+            data_product_id = params.pop("data_product")[-1]
+            if "version" in params:
+                version = params.pop("version")[-1]
+                if not models.DataProduct.objects.filter(
+                    pk=data_product_id, version=version
+                ).exists():
+                    data_product_id = "0"
+            params.setlist("data_products", [data_product_id])
+            request._request.GET = params
+        return super().list(request, *args, **kwargs)
+
+
 for name, cls in models.all_models.items():
-    if name in ("Issue", "DataProduct", "CodeRun"):
+    if name in ("Issue", "DataProduct", "CodeRun", "ExternalObject"):
         continue
     data = {
         "model": cls,

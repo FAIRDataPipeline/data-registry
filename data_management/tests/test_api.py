@@ -634,6 +634,108 @@ class ExternalObjectAPITests(TestCase):
             "scottish deaths-involving-coronavirus-covid-19",
         )
 
+    def _url(self, view, pk):
+        return f"http://testserver{reverse(view, kwargs={'pk': pk})}"
+
+    def _register(self, client, data_product_pk, **extra):
+        """Register a source for a data product as a released CLI does: one POST."""
+        data = {
+            "data_product": self._url("dataproduct-detail", data_product_pk),
+            "identifier": "https://doi.org/10.5281/zenodo.99",
+            "title": "A deposit",
+            "release_date": "2020-07-10T18:38:00Z",
+            "primary_not_supplement": True,
+        }
+        data.update(extra)
+        return client.post(reverse("externalobject-list"), data, format="json")
+
+    def test_one_source_shared_by_two_registrations(self):
+        # two data products registered from one source share one row; the second
+        # registration fills what the first left empty, and both are 201
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        before = models.ExternalObject.objects.count()
+        first = self._register(client, 1)
+        self.assertEqual(first.status_code, 201, first.content)
+        store = self._url("storagelocation-detail", 1)
+        second = self._register(client, 2, original_store=store, description="found")
+        self.assertEqual(second.status_code, 201, second.content)
+        self.assertEqual(first.json()["url"], second.json()["url"])
+        self.assertEqual(models.ExternalObject.objects.count(), before + 1)
+
+        row = second.json()
+        self.assertEqual(row["original_store"], store)
+        self.assertEqual(row["description"], "found")
+        # read, data_product is the first linked data product; data_products all of them
+        self.assertEqual(row["data_product"], self._url("dataproduct-detail", 1))
+        self.assertEqual(
+            set(row["data_products"]),
+            {self._url("dataproduct-detail", 1), self._url("dataproduct-detail", 2)},
+        )
+        for pk in (1, 2):
+            product = client.get(reverse("dataproduct-detail", kwargs={"pk": pk}))
+            self.assertEqual(product.json()["external_object"], row["url"])
+
+    def test_first_registration_wins(self):
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        store = self._url("storagelocation-detail", 1)
+        self._register(client, 1, original_store=store, description="first")
+        other = self._url("storagelocation-detail", 2)
+        second = self._register(client, 2, original_store=other, description="second")
+        row = second.json()
+        self.assertEqual(row["original_store"], store)
+        self.assertEqual(row["description"], "first")
+
+    def test_titles_tell_sources_apart(self):
+        # the same identifier with another title is another source; the same title
+        # with another version too; and a direct duplicate is merged, not refused
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        before = models.ExternalObject.objects.count()
+        self._register(client, 1)
+        self._register(client, 2, title="One file of the deposit")
+        self._register(client, 2, version="2.0.0")
+        self.assertEqual(models.ExternalObject.objects.count(), before + 3)
+        plain = {k: v for k, v in self._register(client, 1).json().items()}
+        self.assertEqual(models.ExternalObject.objects.count(), before + 3)
+        self.assertEqual(plain["version"], "1.0.0")
+
+    def test_lookup_by_data_product(self):
+        # a released CLI looks a registration up by the data product and its version
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        self._register(client, 1)
+        product = models.DataProduct.objects.get(pk=1)
+        url = reverse("externalobject-list")
+        found = client.get(url, {"data_product": 1, "version": product.version}).json()
+        self.assertEqual(len(found["results"]), 1)
+        self.assertEqual(
+            found["results"][0]["data_product"], self._url("dataproduct-detail", 1)
+        )
+        wrong = client.get(url, {"data_product": 1, "version": "9.9.9"}).json()
+        self.assertEqual(len(wrong["results"]), 0)
+        self.assertEqual(len(client.get(url, {"data_product": 1}).json()["results"]), 1)
+        unlinked = models.DataProduct.objects.filter(external_object=None).first()
+        self.assertEqual(
+            len(client.get(url, {"data_product": unlinked.pk}).json()["results"]), 0
+        )
+
+    def test_identity_is_unique_in_the_database(self):
+        # the constraints hold for each kind of identifier, nulls notwithstanding
+        from django.db import IntegrityError, transaction
+
+        common = {"updated_by": self.user, "title": "t", "release_date": "2020-07-10T18:38:00Z"}
+        models.ExternalObject.objects.create(identifier="https://doi.org/10.5281/zenodo.1", **common)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            models.ExternalObject.objects.create(identifier="https://doi.org/10.5281/zenodo.1", **common)
+        models.ExternalObject.objects.create(
+            alternate_identifier="local", alternate_identifier_type="name", **common
+        )
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            models.ExternalObject.objects.create(
+                alternate_identifier="local", alternate_identifier_type="name", **common
+            )
 
 class QualityControlledAPITests(TestCase):
 
@@ -1700,13 +1802,25 @@ class ProvSharedAncestryTests(TestCase):
             for identifier, description in results[kind].items():
                 self.assertIsInstance(description, dict, identifier)
 
-        names = [
-            "end", "first", "second", "twin", "raw", "alias", "left", "right", "source"
-        ]
-        source = f"lreg:api/external_object/{models.ExternalObject.objects.get().id}"
+        names = ["end", "first", "second", "twin", "raw", "alias", "left", "right"]
+        names += ["source", "source-copy", "deposit"]
+        source_row = models.ExternalObject.objects.get(title="The source data")
+        deposit_row = models.ExternalObject.objects.get(title="The deposit")
+        sources = {f"lreg:api/external_object/{row.id}" for row in (source_row, deposit_row)}
         self.assertEqual(
             set(results["entity"]),
-            {script, repo, model_config, source, *(dp(name) for name in names)},
+            {script, repo, model_config, *sources, *(dp(name) for name in names)},
+        )
+        # source and source-copy were registered from one source row, described once
+        self.assertEqual(
+            self._pairs(results, "specializationOf", "prov:specificEntity", "prov:generalEntity"),
+            sorted(
+                [
+                    (f"lreg:api/external_object/{source_row.id}", dp("source")),
+                    (f"lreg:api/external_object/{source_row.id}", dp("source-copy")),
+                    (f"lreg:api/external_object/{deposit_row.id}", dp("deposit")),
+                ]
+            ),
         )
         self.assertEqual(set(results["activity"]), {cr(run) for run in self.RUNS})
         self.assertEqual(set(results["agent"]), {user, author, organisation})
@@ -1726,7 +1840,8 @@ class ProvSharedAncestryTests(TestCase):
                 ]
             ),
         )
-        # a run that reads raw's object reads both of its names, raw and alias
+        # a run that reads raw's object reads both of its names, raw and alias; the
+        # fetch run prepare reads the deposit, which has no file
         self.assertEqual(
             self._pairs(results, "used", "prov:activity", "prov:entity"),
             sorted(
@@ -1736,9 +1851,11 @@ class ProvSharedAncestryTests(TestCase):
                     (cr("final"), dp("twin")),
                     (cr("final"), dp("raw")),
                     (cr("final"), dp("alias")),
+                    (cr("final"), dp("source-copy")),
                     (cr("pair"), dp("left")),
                     (cr("pair"), dp("right")),
                     (cr("prepare"), dp("source")),
+                    (cr("prepare"), dp("deposit")),
                     (cr("left"), dp("raw")),
                     (cr("left"), dp("alias")),
                     (cr("right"), dp("raw")),
@@ -1760,6 +1877,7 @@ class ProvSharedAncestryTests(TestCase):
                     (dp("end"), dp("twin")),
                     (dp("end"), dp("raw")),
                     (dp("end"), dp("alias")),
+                    (dp("end"), dp("source-copy")),
                     (dp("first"), dp("left")),
                     (dp("first"), dp("right")),
                     (dp("second"), dp("left")),
@@ -1767,7 +1885,9 @@ class ProvSharedAncestryTests(TestCase):
                     (dp("twin"), dp("left")),
                     (dp("twin"), dp("right")),
                     (dp("raw"), dp("source")),
+                    (dp("raw"), dp("deposit")),
                     (dp("alias"), dp("source")),
+                    (dp("alias"), dp("deposit")),
                     (dp("left"), dp("raw")),
                     (dp("left"), dp("alias")),
                     (dp("right"), dp("raw")),
@@ -2030,9 +2150,8 @@ class RoCrateSharedAncestryTests(TestCase):
     def test_data_product(self):
         end = models.DataProduct.objects.get(name="end")
         # extra, prepare's other output, is in nobody's ancestry and is never walked
-        names = [
-            "alias", "end", "first", "left", "raw", "right", "second", "source", "twin"
-        ]
+        names = ["alias", "deposit", "end", "first", "left", "raw", "right", "second"]
+        names += ["source", "source-copy", "twin"]
 
         crate, walked = self._get("data_product_ro_crate", end.id, 100)
         self.assertEqual(walked, names)
@@ -2042,7 +2161,9 @@ class RoCrateSharedAncestryTests(TestCase):
         )
 
         crate, walked = self._get("data_product_ro_crate", end.id, 2)
-        self.assertEqual(walked, ["alias", "end", "first", "raw", "second", "twin"])
+        self.assertEqual(
+            walked, ["alias", "end", "first", "raw", "second", "source-copy", "twin"]
+        )
         self.assertEqual(self._code_runs(crate), self._ids("final", "pair", "prepare"))
 
     def test_commit(self):
@@ -2128,6 +2249,7 @@ class RoCrateSharedAncestryTests(TestCase):
         names = ("end", "first", "second", "twin", "left", "right", "alias", "source")
         expected = {name: ("1.0.0", shared_id) for name in (*names, "extra")}
         expected["raw"] = ("2.3.4", other_id)
+        expected["source-copy"] = ("1.0.0", "#namespace-other")
         self.assertEqual(identities, expected)
 
         # the config and the script are files, but not data products
@@ -2155,9 +2277,10 @@ class RoCrateSharedAncestryTests(TestCase):
             if entity["@type"] == "File" and identifier.startswith("shared/")
         }
 
-        names = ["alias", "end", "extra", "first", "left", "raw", "right", "second"]
-        names += ["source", "twin"]
+        names = ["alias", "deposit", "end", "extra", "first", "left", "raw", "right"]
+        names += ["second", "source", "twin"]
         self.assertEqual(set(files), {f"shared/{name}/1.0.0.txt" for name in names})
+        self.assertNotIn("sha1", files["shared/deposit/1.0.0.txt"])
         second, twin = files["shared/second/1.0.0.txt"], files["shared/twin/1.0.0.txt"]
         self.assertEqual(twin["sha1"], second["sha1"])
         self.assertNotEqual(twin["identifier"], second["identifier"])
@@ -2293,14 +2416,18 @@ class RoCrateSharedAncestryTests(TestCase):
         self.assertIn("shared/raw/1.0.0.txt", level_3)
         self.assertNotIn("shared/source/1.0.0.txt", level_3)
         self.assertNotIn("shared/extra/1.0.0.txt", level_3)
-        self.assertEqual(self._zip_names(4) - level_3, {"shared/source/1.0.0.txt"})
+        self.assertEqual(
+            self._zip_names(4) - level_3,
+            {"shared/source/1.0.0.txt", "other/source-copy/1.0.0.txt"},
+        )
+        self.assertNotIn("shared/deposit/1.0.0.txt", self._zip_names(4))
 
     def test_levels(self):
         # level 1, the JSON-LD default, gives no address; level 2 gives every public
         # file in the crate's provenance the address of the registry's copy
         end = models.DataProduct.objects.get(name="end")
         raw = models.DataProduct.objects.get(name="raw")
-        source = models.ExternalObject.objects.get()
+        source = models.ExternalObject.objects.get(title="The source data")
 
         crate, _ = self._get("data_product_ro_crate", end.id, 100)
         graph = {entity["@id"]: entity for entity in crate["@graph"]}
@@ -2400,7 +2527,7 @@ class RoCrateSharedAncestryTests(TestCase):
         # not read directly
         end = models.DataProduct.objects.get(name="end")
         prepare = models.CodeRun.objects.get(description="prepare")
-        source = models.ExternalObject.objects.get()
+        source = models.ExternalObject.objects.get(title="The source data")
         crate, _ = self._get("data_product_ro_crate", end.id, 100)
         graph = {entity["@id"]: entity for entity in crate["@graph"]}
 
@@ -2499,7 +2626,7 @@ class RoCrateSharedAncestryTests(TestCase):
         # data extracted from a source before it could be used: the extraction is
         # the step between them, identified by the data product it produced
         models.ExternalObject.objects.update(primary_not_supplement=False)
-        source = models.ExternalObject.objects.get()
+        source = models.ExternalObject.objects.get(title="The source data")
         end = models.DataProduct.objects.get(name="end")
         crate, _ = self._get("data_product_ro_crate", end.id, 100)
         graph = {entity["@id"]: entity for entity in crate["@graph"]}
@@ -2578,7 +2705,8 @@ class RoCrateSharedAncestryTests(TestCase):
 
     def test_code_run(self):
         final = models.CodeRun.objects.get(description="final")
-        names = ["alias", "first", "left", "raw", "right", "second", "source", "twin"]
+        names = ["alias", "deposit", "first", "left", "raw", "right", "second", "source"]
+        names += ["source-copy", "twin"]
 
         crate, walked = self._get("code_run_ro_crate", final.id, 100)
         self.assertEqual(walked, names)
@@ -2588,5 +2716,5 @@ class RoCrateSharedAncestryTests(TestCase):
         )
 
         crate, walked = self._get("code_run_ro_crate", final.id, 2)
-        self.assertEqual(walked, ["alias", "first", "raw", "second", "twin"])
+        self.assertEqual(walked, ["alias", "first", "raw", "second", "source-copy", "twin"])
         self.assertEqual(self._code_runs(crate), self._ids("final", "pair", "prepare"))

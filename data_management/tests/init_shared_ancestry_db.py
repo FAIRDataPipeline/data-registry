@@ -25,10 +25,10 @@ def init_db(test_case):
     """
     Create code runs whose provenance reaches the same things by several routes.
 
-        source -> [prepare] -> raw, extra
+        source, deposit -> [prepare] -> raw, extra
         raw -> [left] -> left             raw -> [right] -> right
         left, right -> [pair] -> first, second, twin
-        first, second, twin, raw -> [final] -> end
+        first, second, twin, raw, source-copy -> [final] -> end
 
     `raw` is reached from `end` directly and through both `left` and `right`;
     `alias` is a second name for `raw`'s object, so every run that reads `raw` reads
@@ -39,7 +39,10 @@ def init_db(test_case):
     `final`; and the code runs share a user, a repo, a submission script and (the
     first three) a model config, each of which has the same author. `source` was
     registered from an external source with a DOI, an alternate identifier and the
-    address it was fetched from, and has an organisation (a ROR id) as its author; `end` and `second` have the same licence, with an
+    address it was fetched from, and has an organisation (a ROR id) as its author;
+    `source-copy`, in namespace `other`, is the same bytes registered from the same
+    source row; `deposit` is a data product with no file whose source is a deposit
+    itself, as a fetch run reads one; `end` and `second` have the same licence, with an
     identifier, and `first` one without; one issue is raised against `raw` and
     another against both `left` and `right`.
 
@@ -130,6 +133,20 @@ def init_db(test_case):
 
     o_source = create_data_product("source")
     o_source.authors.add(organisation)
+    other = Namespace.objects.create(updated_by=user, name="other")
+    o_source_copy = Object.objects.create(
+        updated_by=user,
+        storage_location=o_source.storage_location,
+        description="source-copy",
+        file_type=text_file,
+    )
+    DataProduct.objects.create(
+        updated_by=user,
+        object=o_source_copy,
+        namespace=other,
+        name="source-copy",
+        version="1.0.0",
+    )
     o_raw = create_data_product("raw")
     create_data_product("alias", o_raw)
     o_extra = create_data_product("extra")
@@ -150,9 +167,8 @@ def init_db(test_case):
     )
     o_end = create_data_product("end")
 
-    ExternalObject.objects.create(
+    source = ExternalObject.objects.create(
         updated_by=user,
-        data_product=DataProduct.objects.get(object=o_source),
         identifier="https://doi.org/10.5281/zenodo.1234567",
         alternate_identifier="source-2020",
         alternate_identifier_type="project name",
@@ -164,6 +180,29 @@ def init_db(test_case):
             path="downloads/source.txt",
             hash=o_source.storage_location.hash,
             storage_root=sr_web,
+        ),
+    )
+    # source and its copy in another namespace were registered from one source row
+    registered = DataProduct.objects.filter(object__in=(o_source, o_source_copy))
+    for data_product in registered:
+        data_product.external_object = source
+        data_product.save()
+    # the deposit a fetch run reads: a data product with no file, its source the
+    # deposit itself
+    o_deposit = Object.objects.create(
+        updated_by=user, description="deposit", file_type=text_file
+    )
+    deposit = DataProduct.objects.create(
+        updated_by=user,
+        object=o_deposit,
+        namespace=namespace,
+        name="deposit",
+        version="1.0.0",
+        external_object=ExternalObject.objects.create(
+            updated_by=user,
+            identifier="https://doi.org/10.5281/zenodo.7654321",
+            title="The deposit",
+            release_date=parser.isoparse("2019-01-01T00:00:00Z"),
         ),
     )
     for obj in (o_end, o_second):
@@ -184,7 +223,10 @@ def init_db(test_case):
     ).component_issues.set([whole(o_left), whole(o_right)])
 
     create_code_run(
-        "prepare", [whole(o_source)], [whole(o_raw), whole(o_extra)], o_model_config
+        "prepare",
+        [whole(o_source), whole(o_deposit)],
+        [whole(o_raw), whole(o_extra)],
+        o_model_config,
     )
     create_code_run("left", [whole(o_raw)], [whole(o_left)], o_model_config)
     create_code_run("right", [whole(o_raw)], [whole(o_right)], o_model_config)
@@ -200,6 +242,7 @@ def init_db(test_case):
             whole(o_second),
             whole(o_twin),
             whole(o_raw),
+            whole(o_source_copy),
         ],
         [whole(o_end)],
     )

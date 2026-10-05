@@ -347,10 +347,8 @@ def _add_external_object(
     @param vocab_namespaces: a dict containing the Namespaces for the vocab
 
     """
-    # check for external object linked to the data product
-    try:
-        external_object = data_product.external_object
-    except (models.DataProduct.external_object.RelatedObjectDoesNotExist,):
+    external_object = data_product.external_object
+    if external_object is None:
         return
 
     data = []
@@ -424,9 +422,13 @@ def _add_external_object(
             )
         )
 
-    external_object_entity = doc.entity(
-        f"{reg_uri_prefix}:api/external_object/{external_object.id}", (*data,)
-    )
+    # one source may have been registered as several data products; describe it once
+    external_object_id = f"{reg_uri_prefix}:api/external_object/{external_object.id}"
+    existing = doc.get_record(external_object_id)
+    if existing:
+        external_object_entity = existing[0]
+    else:
+        external_object_entity = doc.entity(external_object_id, (*data,))
     doc.specializationOf(external_object_entity, data_product_entity)
 
 

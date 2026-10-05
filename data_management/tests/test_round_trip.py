@@ -87,8 +87,9 @@ def _snapshot():
             for issue in models.Issue.objects.all()
         },
     }
-    for external_object in models.ExternalObject.objects.all():
-        snapshot["external_objects"][data_product_id(external_object.data_product)] = {
+    for data_product in models.DataProduct.objects.exclude(external_object=None):
+        external_object = data_product.external_object
+        snapshot["external_objects"][data_product_id(data_product)] = {
             "identifier": external_object.identifier,
             "alternate_identifier": external_object.alternate_identifier,
             "title": external_object.title,
@@ -96,6 +97,8 @@ def _snapshot():
             "release_date": external_object.release_date,
             "primary": external_object.primary_not_supplement,
         }
+    # one row per source, however many data products were registered from it
+    snapshot["source_rows"] = models.ExternalObject.objects.count()
     for data_product in models.DataProduct.objects.all():
         obj = data_product.object
         snapshot["data_products"][data_product_id(data_product)] = {
@@ -167,8 +170,8 @@ def _empty_registry():
     for model in (
         models.CodeRun,
         models.Issue,
-        models.ExternalObject,
         models.DataProduct,
+        models.ExternalObject,
         models.Licence,
         models.CodeRepoRelease,
         models.ObjectComponent,
@@ -284,8 +287,10 @@ class CrateImporter:
             return self.objects[uuid]
         data = {
             "uuid": uuid,
-            "storage_location": self._storage_location(
-                IMPORT_ROOT, entity["sha1"], entity["sha1"]
+            "storage_location": (
+                self._storage_location(IMPORT_ROOT, entity["sha1"], entity["sha1"])
+                if "sha1" in entity
+                else None
             ),
             "description": entity.get("description"),
             "authors": [
@@ -322,9 +327,13 @@ class CrateImporter:
         return object_url
 
     def _file(self, entity):
-        """A file in the data store: its object, and a data product if it is one."""
-        if "sha1" not in entity:
-            # a source outside the registry, with nothing to register
+        """
+        A file in the data store: its object, and a data product if it is one.
+
+        A data product may have no file (a deposit a fetch run reads); a source outside
+        the registry has neither a hash nor a namespace, and nothing to register.
+        """
+        if "sha1" not in entity and "namespace" not in entity:
             return None
         object_url = self._object(entity)
         if "namespace" in entity:
@@ -468,6 +477,7 @@ class RoundTripTests(TestCase):
         self.assertEqual(
             self.after["external_objects"], self.before["external_objects"]
         )
+        self.assertEqual(self.after["source_rows"], self.before["source_rows"])
         for name in self.before["external_objects"]:
             self.assertEqual(
                 self.after["data_products"][name], self.before["data_products"][name]

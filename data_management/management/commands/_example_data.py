@@ -889,7 +889,7 @@ def init_db():
         namespace=namespace_2,
     )
 
-    ExternalObject.objects.get_or_create(
+    source_1, _ = ExternalObject.objects.get_or_create(
         identifier="https://doi.org/10.1038/s41592-020-0856-2",
         alternate_identifier="SEIRS model parameters - Static parameters of the model",
         alternate_identifier_type="SEIRS_model_params",
@@ -898,5 +898,6 @@ def init_db():
         title="Static parameters of the model",
         version="1.0.0",
         updated_by=user,
-        data_product=data_product_1,
     )
+    data_product_1.external_object = source_1
+    data_product_1.save()

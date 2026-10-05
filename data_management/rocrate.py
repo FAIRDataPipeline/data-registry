@@ -637,11 +637,7 @@ def _get_data_product(crate, data_product, registry_url, level):
         crate, data_product, registry_url, level
     )
 
-    try:
-        external_object = data_product.external_object
-    except models.DataProduct.external_object.RelatedObjectDoesNotExist:
-        external_object = None
-
+    external_object = data_product.external_object
     if external_object is not None:
         if external_object.primary_not_supplement is False:
             _add_data_extraction_action(
@@ -953,10 +949,8 @@ def _get_software(crate, software_object, registry_url, software_type, level):
 
 # Whether a data product was registered from a source whose identifier it is a copy of
 def _has_primary_source(data_product):
-    try:
-        return data_product.external_object.primary_not_supplement is True
-    except models.DataProduct.external_object.RelatedObjectDoesNotExist:
-        return False
+    external_object = data_product.external_object
+    return external_object is not None and external_object.primary_not_supplement
 
 
 def generate_ro_crate_from_cr(code_run, depth, request, level):
