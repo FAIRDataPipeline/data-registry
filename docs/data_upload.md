@@ -14,7 +14,7 @@ existing registered files with the specified checksum you will get a 200 OK resp
   "url":"https://..."
 }
 ```
-If there is an existing file with the same checksum you will get a 409 CONFLICT response.
+If the object store already holds a file with that checksum you will get a 409 CONFLICT response, and there is nothing to upload.
 
 The URL can be used to upload the file with a HTTP PUT, e.g.:
 ```

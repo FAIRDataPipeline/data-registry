@@ -259,6 +259,27 @@ class StorageAPITests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, "https://store/abc123")
 
+    def test_upload_address(self):
+        # a client asks for an address to upload a file to; when the store already
+        # holds the file it is told so instead, by a 409 it takes as "uploaded"
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        with mock.patch.object(views.object_storage, "holds", return_value=False), \
+             mock.patch.object(
+                 views.object_storage, "create_url", return_value="https://store/abc123"
+             ) as create_url:
+            response = client.post("/api/data/abc123")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"url": "https://store/abc123"})
+        create_url.assert_called_once_with("abc123", "PUT")
+
+        with mock.patch.object(views.object_storage, "holds", return_value=True) as holds, \
+             mock.patch.object(views.object_storage, "create_url") as create_url:
+            response = client.post("/api/data/abc123")
+        self.assertEqual(response.status_code, 409)
+        holds.assert_called_once_with("abc123")
+        create_url.assert_not_called()
+
     def test_get_data(self):
         client = APIClient()
         client.force_authenticate(user=self.user)

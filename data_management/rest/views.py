@@ -29,10 +29,9 @@ from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404
-from django.db.models import Q
 from django.conf import settings as conf_settings
 
-from data_management import models, object_storage, settings
+from data_management import models, object_storage
 from data_management import object_storage
 from data_management.rest import serializers
 from data_management.prov import generate_prov_document, serialize_prov_document
@@ -675,27 +674,12 @@ class ObjectStorageView(views.APIView):
         if not checksum:
             checksum = request.data["checksum"]
 
-        if self.check_hash(checksum):
+        # the store already holds the file: a client takes the 409 as "uploaded"
+        if object_storage.holds(checksum):
             return Response(status=status.HTTP_409_CONFLICT)
 
         data = {"url": object_storage.create_url(checksum, "PUT")}
         return Response(data)
-
-    def check_hash(self, checksum):
-        try:
-            storage_root = models.StorageRoot.objects.get(
-                Q(name=settings.CONFIG.get("storage", "storage_root"))
-            )
-            locations = models.StorageLocation.objects.filter(
-                Q(storage_root=storage_root) & Q(hash=checksum)
-            )
-        except:
-            return False
-        else:
-            if not locations:
-                return False
-
-        return True
 
 
 class IssueViewSet(BaseViewSet, mixins.UpdateModelMixin):
