@@ -39,7 +39,7 @@ def init_db(test_case):
     `final`; and the code runs share a user, a repo, a submission script and (the
     first three) a model config, each of which has the same author. `source` was
     registered from an external source with a DOI, an alternate identifier and the
-    address it was fetched from; `end` and `second` have the same licence, with an
+    address it was fetched from, and has an organisation (a ROR id) as its author; `end` and `second` have the same licence, with an
     identifier, and `first` one without; one issue is raised against `raw` and
     another against both `left` and `right`.
 
@@ -67,6 +67,11 @@ def init_db(test_case):
         website="https://example.org/shared",
     )
     author = Author.objects.create(updated_by=user, name="Ivana Valenti")
+    organisation = Author.objects.create(
+        updated_by=user,
+        name="University of Glasgow",
+        identifier="https://ror.org/00vtgdb53",
+    )
     commits = iter(range(1, 100))
 
     def create_object(storage_root, path):
@@ -124,6 +129,7 @@ def init_db(test_case):
         obj.authors.add(author)
 
     o_source = create_data_product("source")
+    o_source.authors.add(organisation)
     o_raw = create_data_product("raw")
     create_data_product("alias", o_raw)
     o_extra = create_data_product("extra")

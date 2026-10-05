@@ -1,5 +1,6 @@
 import os
 import hashlib
+from urllib.parse import urlparse
 from uuid import uuid4, UUID
 
 from django.core.exceptions import ValidationError
@@ -229,6 +230,12 @@ class Author(BaseModel):
                 hashlib.sha256(self.identifier.encode("utf-8")).hexdigest()[::2]
             )
         super().save(*args, **kwargs)
+
+    def is_organisation(self):
+        """Return whether the author is an organisation, which a ROR id identifies."""
+        if self.identifier is None:
+            return False
+        return urlparse(self.identifier).netloc == "ror.org"
 
     def __str__(self):
         if self.identifier:

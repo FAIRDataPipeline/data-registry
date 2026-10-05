@@ -261,8 +261,8 @@ class CodeRunROCrateView(views.APIView):
     crate; the working config and the submission script are under `model_config/` and
     `submission_script/`. Every file carries the SHA-1 of its bytes (`sha1`) and the `uuid`
     of its object in the registry (`identifier`).
-    People are identified by their ORCID, GitHub or other identifier where the
-    registry has one, else by their `uuid`; a user with no author linked by a local id;
+    Authors are identified by their ORCID, GitHub or other identifier where the
+    registry has one, else by their `uuid`, and an author with a ROR id is an `Organization`; a user with no author linked by a local id;
     a licence by its URL, else by the file it applies to. Nothing is named by its row in
     the registry.
     An issue raised against a file is a line on the file's entity, under the registry's
@@ -369,8 +369,8 @@ class DataProductROCrateView(views.APIView):
     crate; the working config and the submission script are under `model_config/` and
     `submission_script/`. Every file carries the SHA-1 of its bytes (`sha1`) and the `uuid`
     of its object in the registry (`identifier`).
-    People are identified by their ORCID, GitHub or other identifier where the
-    registry has one, else by their `uuid`; a user with no author linked by a local id;
+    Authors are identified by their ORCID, GitHub or other identifier where the
+    registry has one, else by their `uuid`, and an author with a ROR id is an `Organization`; a user with no author linked by a local id;
     a licence by its URL, else by the file it applies to. Nothing is named by its row in
     the registry.
     An issue raised against a file is a line on the file's entity, under the registry's

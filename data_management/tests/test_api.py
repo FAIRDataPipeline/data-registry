@@ -1688,7 +1688,9 @@ class ProvSharedAncestryTests(TestCase):
         dp = self._data_product
         cr = self._code_run
         user = f"lreg:api/users/{self.user.id}"
-        author = f"lreg:api/author/{models.Author.objects.get().id}"
+        author = f"lreg:api/author/{models.Author.objects.get(name='Ivana Valenti').id}"
+        organisation = models.Author.objects.get(identifier__contains="ror.org")
+        organisation = f"lreg:api/author/{organisation.id}"
         script = self._object("script")
         repo = self._object("FAIRDataPipeline/shared")
         model_config = self._object("model_config")
@@ -1707,7 +1709,7 @@ class ProvSharedAncestryTests(TestCase):
             {script, repo, model_config, source, *(dp(name) for name in names)},
         )
         self.assertEqual(set(results["activity"]), {cr(run) for run in self.RUNS})
-        self.assertEqual(set(results["agent"]), {user, author})
+        self.assertEqual(set(results["agent"]), {user, author, organisation})
 
         self.assertEqual(
             self._pairs(results, "wasGeneratedBy", "prov:entity", "prov:activity"),
@@ -1779,7 +1781,27 @@ class ProvSharedAncestryTests(TestCase):
         )
         self.assertEqual(
             self._pairs(results, "wasAttributedTo", "prov:entity", "prov:agent"),
-            sorted((entity, author) for entity in (script, repo, model_config)),
+            sorted(
+                [
+                    *((entity, author) for entity in (script, repo, model_config)),
+                    (dp("source"), organisation),
+                ]
+            ),
+        )
+
+    def test_organisation_author(self):
+        # an author identified by a ROR id is an organisation, the others people
+        results = self._get(100)
+        organisation = models.Author.objects.get(identifier__contains="ror.org")
+        person = models.Author.objects.get(name="Ivana Valenti")
+        qname = {"type": "xsd:QName"}
+        self.assertEqual(
+            results["agent"][f"lreg:api/author/{organisation.id}"]["rdf:type"],
+            {"$": "prov:Organization", **qname},
+        )
+        self.assertEqual(
+            results["agent"][f"lreg:api/author/{person.id}"]["rdf:type"],
+            {"$": "prov:Person", **qname},
         )
 
     def test_depth(self):
@@ -2421,7 +2443,7 @@ class RoCrateSharedAncestryTests(TestCase):
         # identifier by uuid, a user by a local id, a licence given as text by the
         # file it applies to
         end = models.DataProduct.objects.get(name="end")
-        author = models.Author.objects.get()
+        author = models.Author.objects.get(name="Ivana Valenti")
         first = models.Object.objects.get(storage_location__path="first")
         crate, _ = self._get("data_product_ro_crate", end.id, 100)
         graph = {entity["@id"]: entity for entity in crate["@graph"]}
@@ -2455,6 +2477,21 @@ class RoCrateSharedAncestryTests(TestCase):
         rows = ("api/author/", "api/users/", "api/license/", "api/data_extraction/")
         for row in rows:
             self.assertNotIn(row, str(crate))
+
+    def test_organisation_author(self):
+        # an author identified by a ROR id is an organisation, the others people
+        end = models.DataProduct.objects.get(name="end")
+        crate, _ = self._get("data_product_ro_crate", end.id, 100)
+        graph = {entity["@id"]: entity for entity in crate["@graph"]}
+        organisation = graph["https://ror.org/00vtgdb53"]
+        self.assertEqual(organisation["@type"], "Organization")
+        self.assertEqual(organisation["name"], "University of Glasgow")
+        self.assertEqual(
+            graph["shared/source/1.0.0.txt"]["author"],
+            [{"@id": "https://ror.org/00vtgdb53"}],
+        )
+        person = models.Author.objects.get(name="Ivana Valenti")
+        self.assertEqual(graph[f"urn:uuid:{person.uuid}"]["@type"], "Person")
 
     def test_supplementary_source(self):
         # data extracted from a source before it could be used: the extraction is

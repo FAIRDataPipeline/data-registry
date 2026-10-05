@@ -20,8 +20,8 @@ registry's data store lays out the files it pulls, whether or not its bytes are 
 crate; the working config and the submission script are under `model_config/` and
 `submission_script/`. Every file carries the SHA-1 of its bytes (`sha1`) and the `uuid`
 of its object in the registry (`identifier`).
-People are identified by their ORCID, GitHub or other identifier where the
-registry has one, else by their `uuid`; a user with no author linked by a local id;
+Authors are identified by their ORCID, GitHub or other identifier where the
+registry has one, else by their `uuid`, and an author with a ROR id is an `Organization`; a user with no author linked by a local id;
 a licence by its URL, else by the file it applies to. Nothing is named by its row in
 the registry.
 An issue raised against a file is a line on the file's entity, under the registry's
@@ -114,19 +114,23 @@ def _add_authors(authors, crate, entity):
     @param entity: the entity to attach the authors to
 
     """
-    entity["author"] = [_add_person(crate, author) for author in authors]
+    entity["author"] = [_add_author(crate, author) for author in authors]
 
 
-# The Person for an author, identified by the author's identifier (an ORCID, a GitHub
-# account, a ROR id) where there is one, and otherwise by the author's uuid
-def _add_person(crate, author):
+# The agent for an author: an Organization when a ROR id identifies it, else a Person;
+# identified by the author's identifier (an ORCID, a GitHub account, a ROR id) where
+# there is one, and otherwise by the author's uuid
+def _add_author(crate, author):
     if author.identifier is not None:
-        person_id = author.identifier
+        author_id = author.identifier
         properties = {"name": author.name}
     else:
-        person_id = f"urn:uuid:{author.uuid}"
+        author_id = f"urn:uuid:{author.uuid}"
         properties = {"name": author.name, "identifier": str(author.uuid)}
-    return crate.add(Person(crate, person_id, properties=properties))
+    if author.is_organisation():
+        properties[RO_TYPE] = "Organization"
+        return crate.add(ContextEntity(crate, author_id, properties=properties))
+    return crate.add(Person(crate, author_id, properties=properties))
 
 
 def _add_data_extraction_action(
@@ -605,7 +609,7 @@ def _get_code_run(crate, code_run, registry_url):
             )
         )
     else:
-        agent = _add_person(crate, user_authors[0].author)
+        agent = _add_author(crate, user_authors[0].author)
 
     crate_code_run["agent"] = agent
 

@@ -155,7 +155,9 @@ def _add_author_agents(authors, doc, entity, reg_uri_prefix, vocab_namespaces):
                 {
                     QualifiedName(
                         vocab_namespaces[RDF_VOCAB_PREFIX], "type"
-                    ): QualifiedName(PROV, "Person"),
+                    ): QualifiedName(
+                        PROV, "Organization" if author.is_organisation() else "Person"
+                    ),
                     QualifiedName(
                         vocab_namespaces[FOAF_VOCAB_PREFIX], "name"
                     ): author.name,
