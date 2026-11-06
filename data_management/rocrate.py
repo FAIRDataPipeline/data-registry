@@ -93,7 +93,6 @@ from datetime import datetime
 import json
 import mimetypes
 import os
-import tempfile
 from urllib.parse import quote
 
 from django.conf import settings as django_settings
@@ -1116,13 +1115,6 @@ def generate_ro_crate(data_products, depth, request, choice):
 
 
 def serialize_ro_crate(crate, format_):
-    if format_ == "zip":
-        # built in a directory of its own, removed with the zip once its bytes are
-        # read, so that no download leaves a file on the server's disk
-        with tempfile.TemporaryDirectory() as directory:
-            file_name = crate.write_zip(os.path.join(directory, "ro-crate.zip"))
-            with open(file_name, "rb") as zip_file:
-                return zip_file.read()
     if format_ == "json-ld":
         return json.dumps(crate.metadata.generate())
     return crate.metadata.generate()

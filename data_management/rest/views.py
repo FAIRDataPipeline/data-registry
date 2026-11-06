@@ -1,4 +1,5 @@
 from copy import deepcopy
+import re
 
 from django import forms, db
 from rest_framework.authentication import (
@@ -26,7 +27,7 @@ from django_filters.rest_framework import DjangoFilterBackend, filterset
 from django_filters import constants, filters
 from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
-from django.http import Http404, JsonResponse
+from django.http import Http404, JsonResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.conf import settings as conf_settings
 
@@ -364,7 +365,7 @@ class CodeRunROCrateView(views.APIView):
         choice = _crate_choice(request, code_run_roots(code_run))
         crate = generate_ro_crate_from_cr(code_run, _crate_depth(request), request, choice)
 
-        return Response(serialize_ro_crate(crate, request.accepted_renderer.format))
+        return _crate_response(request, crate, f"code_run_{code_run.uuid}")
 
 
 class DataProductROCrateView(views.APIView):
@@ -474,7 +475,25 @@ class DataProductROCrateView(views.APIView):
 def _ro_crate_response(request, data_products):
     choice = _crate_choice(request, (dp.id for dp in data_products))
     crate = generate_ro_crate(data_products, _crate_depth(request), request, choice)
-    return Response(serialize_ro_crate(crate, request.accepted_renderer.format))
+    if len(data_products) == 1:
+        product = data_products[0]
+        name = f"{product.namespace.name}_{product.name}_{product.version}"
+    else:
+        name = "data_products"
+    return _crate_response(request, crate, name)
+
+
+# A crate in the format the request asks for. A zip is streamed as it is built, so
+# that no packed file is held whole in memory or on disk, and is named for what it
+# holds, every character a header or a file system might not take made "_"
+def _crate_response(request, crate, name):
+    format_ = request.accepted_renderer.format
+    if format_ != "zip":
+        return Response(serialize_ro_crate(crate, format_))
+    response = StreamingHttpResponse(crate.stream_zip(), content_type="application/zip")
+    file_name = re.sub(r"[^A-Za-z0-9._-]", "_", name) + "_ro-crate.zip"
+    response["Content-Disposition"] = f'attachment; filename="{file_name}"'
+    return response
 
 
 class ROCrateView(views.APIView):

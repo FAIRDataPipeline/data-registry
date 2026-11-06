@@ -2781,7 +2781,7 @@ class RoCrateSharedAncestryTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
 
-        with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+        with zipfile.ZipFile(io.BytesIO(b"".join(response.streaming_content))) as archive:
             names = set(archive.namelist())
             self.assertEqual(archive.read("shared/raw/1.0.0.txt"), b"raw\n")
             self.assertEqual(archive.read("shared/twin/1.0.0.txt"), b"second\n")
@@ -2809,8 +2809,41 @@ class RoCrateSharedAncestryTests(TestCase):
                         url, data={"pack": pack}, HTTP_ACCEPT="application/zip"
                     )
                     self.assertEqual(response.status_code, 200)
-                    zipfile.ZipFile(io.BytesIO(response.content)).testzip()
+                    zipfile.ZipFile(io.BytesIO(b"".join(response.streaming_content))).testzip()
             self.assertEqual(os.listdir(directory), [])
+
+    def test_zip_is_streamed_under_the_crates_name(self):
+        # sent as it is built, so that no packed file is held whole in memory, and
+        # named for what it holds, with nothing in the name a header cannot carry
+        end = models.DataProduct.objects.get(name="end")
+        odd = models.DataProduct.objects.create(
+            updated_by=end.updated_by,
+            object=end.object,
+            namespace=end.namespace,
+            name='odd/"name"',
+            version="1.0.0",
+        )
+        run = models.CodeRun.objects.get(description="final")
+        client = APIClient()
+        expected = {
+            reverse("data_product_ro_crate", kwargs={"pk": end.id}): "shared_end_1.0.0",
+            reverse("data_product_ro_crate", kwargs={"pk": odd.id}): "shared_odd__name__1.0.0",
+            reverse("code_run_ro_crate", kwargs={"pk": run.id}): f"code_run_{run.uuid}",
+            reverse("ro_crate") + f"?data_product={end.id}&data_product={odd.id}": "data_products",
+        }
+        for url, name in expected.items():
+            with self.subTest(url=url):
+                response = client.get(url, HTTP_ACCEPT="application/zip")
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(response.streaming)
+                self.assertEqual(response["Content-Type"], "application/zip")
+                self.assertEqual(
+                    response["Content-Disposition"],
+                    f'attachment; filename="{name}_ro-crate.zip"',
+                )
+                archive = zipfile.ZipFile(io.BytesIO(b"".join(response.streaming_content)))
+                self.assertIsNone(archive.testzip())
+                self.assertIn("ro-crate-metadata.json", archive.namelist())
 
     def _zip_names(self, view="data_product_ro_crate", pk=None, **params):
         """The paths a zip of a crate holds, end's unless told otherwise."""
@@ -2826,7 +2859,7 @@ class RoCrateSharedAncestryTests(TestCase):
             HTTP_ACCEPT="application/zip",
         )
         self.assertEqual(response.status_code, 200)
-        with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+        with zipfile.ZipFile(io.BytesIO(b"".join(response.streaming_content))) as archive:
             return set(archive.namelist())
 
     def test_zip_packing(self):
@@ -2882,7 +2915,7 @@ class RoCrateSharedAncestryTests(TestCase):
         params = {"data_product": [end.id, extra.id], "depth": 100}
         response = client.get(url, data=params, format="zip", HTTP_ACCEPT="application/zip")
         self.assertEqual(response.status_code, 200)
-        with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+        with zipfile.ZipFile(io.BytesIO(b"".join(response.streaming_content))) as archive:
             names = set(archive.namelist())
             self.assertEqual(archive.read("shared/extra/1.0.0.txt"), b"extra\n")
             self.assertEqual(archive.read("shared/end/1.0.0.txt"), b"end\n")
