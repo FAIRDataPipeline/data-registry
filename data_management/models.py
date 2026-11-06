@@ -442,6 +442,9 @@ class CodeRun(BaseModel):
 
     `outputs`: List of `ObjectComponent` that the `CodeRun` produced as outputs
 
+    An `Object` has one producing `CodeRun`, and a `CodeRun` may not read anything downstream of its own outputs: a
+    create or update whose new inputs or outputs would break either is refused with a 400 saying why.
+
     `uuid` (*optional*): UUID of the `CodeRun`. If not specified a UUID is generated automatically.
 
     ### Read-only Fields:
@@ -638,6 +641,9 @@ class DataProduct(BaseModel):
     `object`: API URL of the associated `Object`
 
     `namespace`: API URL of the `Namespace` of the `DataProduct`
+
+    An update may change `external_object` only: `name`, `version`, `object` and `namespace` are fixed once the
+    `DataProduct` is registered, and a change to any of them is refused with a 400.
 
     ### Read-only Fields:
     `url`: Reference to the instance of the `DataProduct`, final integer is the `DataProduct` id

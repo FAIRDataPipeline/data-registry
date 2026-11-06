@@ -544,6 +544,178 @@ class IssueAPITests(TestCase):
         self.assertEqual(response.json()["results"], [])
 
 
+class ProvenanceRuleTests(TestCase):
+    """
+    The rules a code run's inputs and outputs are held to: each object has one
+    producing run, and no run reads anything downstream of its own outputs. A write
+    breaking either is refused with a 400 saying why; the checks look at the links a
+    write adds, not at what is stored already.
+    """
+
+    def setUp(self):
+        self.user = get_user_model().objects.create(username="Test User")
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.config = models.Object.objects.create(updated_by=self.user)
+        self.script = models.Object.objects.create(updated_by=self.user)
+        self.objects = {
+            name: models.Object.objects.create(updated_by=self.user, description=name)
+            for name in ("w", "x", "y", "z")
+        }
+        # a second component of x, written by whichever run writes x
+        models.ObjectComponent.objects.create(
+            updated_by=self.user, object=self.objects["x"], name="part"
+        )
+
+    def _url(self, view, pk):
+        return f"http://testserver{reverse(view, kwargs={'pk': pk})}"
+
+    def _component(self, name, component="whole_object"):
+        part = self.objects[name].components.get(name=component)
+        return self._url("objectcomponent-detail", part.pk)
+
+    def _links(self, names):
+        return [self._component(*name.split(".")) for name in names]
+
+    def _post(self, inputs=(), outputs=()):
+        return self.client.post(
+            reverse("coderun-list"),
+            {
+                "run_date": "2026-11-06T12:00:00Z",
+                "description": "a run",
+                "model_config": self._url("object-detail", self.config.pk),
+                "submission_script": self._url("object-detail", self.script.pk),
+                "inputs": self._links(inputs),
+                "outputs": self._links(outputs),
+            },
+            format="json",
+        )
+
+    def _run(self, inputs=(), outputs=()):
+        response = self._post(inputs, outputs)
+        self.assertEqual(response.status_code, 201, response.content)
+        return models.CodeRun.objects.get(uuid=response.json()["uuid"])
+
+    def _patch(self, run, inputs=None, outputs=None):
+        data = {}
+        if inputs is not None:
+            data["inputs"] = self._links(inputs)
+        if outputs is not None:
+            data["outputs"] = self._links(outputs)
+        url = reverse("coderun-detail", kwargs={"pk": run.pk})
+        return self.client.patch(url, data, format="json")
+
+    def assertRefused(self, response, words):
+        self.assertEqual(response.status_code, 400, response.content)
+        self.assertIn(words, response.json()["detail"])
+
+    def test_an_object_has_one_producing_run(self):
+        first = self._run(outputs=["x"])
+        self.assertRefused(self._post(outputs=["x"]), "one producing run")
+        # another component of the same object is the same object
+        self.assertRefused(self._post(outputs=["x.part"]), "one producing run")
+        second = self._run(inputs=["w"])
+        self.assertRefused(self._patch(second, outputs=["x"]), str(first.uuid))
+        # the producer itself may name the object's other components
+        self.assertEqual(self._patch(first, outputs=["x", "x.part"]).status_code, 200)
+
+    def test_a_run_may_not_read_its_own_output(self):
+        self.assertRefused(self._post(inputs=["x"], outputs=["x"]), "loop")
+        self.assertRefused(self._post(inputs=["x.part"], outputs=["x"]), "loop")
+        run = self._run(inputs=["x"])
+        self.assertRefused(self._patch(run, outputs=["x"]), "loop")
+
+    def test_a_loop_through_several_runs_is_refused(self):
+        # by an input added: c writes x, b reads x and writes y, then c reads y
+        c = self._run(outputs=["x"])
+        self._run(inputs=["x"], outputs=["y"])
+        self.assertRefused(self._patch(c, inputs=["y"]), "loop")
+        # by an output added, where nothing else writes the object: a reads w and
+        # writes z, d reads z, then d writes w
+        self._run(inputs=["w"], outputs=["z"])
+        d = self._run(inputs=["z"])
+        self.assertRefused(self._patch(d, outputs=["w"]), "loop")
+
+    def test_chains_and_shared_inputs_are_accepted(self):
+        self._run(inputs=["w"], outputs=["x"])
+        self._run(inputs=["x"], outputs=["y"])
+        self._run(inputs=["x", "y"], outputs=["z"])
+
+    def test_a_push_may_build_a_run_up_piecemeal(self):
+        # as fair push writes a chain to a remote: the run reading y first, then
+        # y's producer with one output at a time, each PATCH naming every link again
+        reader = self._run(inputs=["y"])
+        producer = self._run(inputs=["w"], outputs=["y"])
+        response = self._patch(producer, inputs=["w"], outputs=["y", "z"])
+        self.assertEqual(response.status_code, 200, response.content)
+        response = self._patch(reader, inputs=["y"], outputs=[])
+        self.assertEqual(response.status_code, 200, response.content)
+
+    def test_a_breach_already_stored_does_not_block_other_changes(self):
+        # rows made before the rules, straight into the database: two producers of
+        # x, and a run reading its own output y
+        def stored(inputs, outputs):
+            run = models.CodeRun.objects.create(
+                updated_by=self.user,
+                run_date="2026-11-06T12:00:00Z",
+                description="stored",
+                model_config=self.config,
+                submission_script=self.script,
+            )
+            run.inputs.set([self.objects[n].components.get(name="whole_object") for n in inputs])
+            run.outputs.set([self.objects[n].components.get(name="whole_object") for n in outputs])
+            return run
+
+        stored([], ["x"])
+        second = stored([], ["x"])
+        looped = stored(["y"], ["y"])
+        response = self._patch(second, outputs=["x", "z"])
+        self.assertEqual(response.status_code, 200, response.content)
+        response = self._patch(looped, outputs=["y", "w"])
+        self.assertEqual(response.status_code, 200, response.content)
+
+    def test_a_data_products_identity_is_fixed(self):
+        namespace = models.Namespace.objects.create(updated_by=self.user, name="ns")
+        other = models.Namespace.objects.create(updated_by=self.user, name="other")
+        product = models.DataProduct.objects.create(
+            updated_by=self.user,
+            object=self.objects["x"],
+            namespace=namespace,
+            name="product",
+            version="1.0.0",
+        )
+        source = models.ExternalObject.objects.create(
+            updated_by=self.user,
+            identifier="https://doi.org/10.5281/zenodo.1",
+            title="A source",
+            release_date="2020-07-10T18:38:00Z",
+        )
+        url = reverse("dataproduct-detail", kwargs={"pk": product.pk})
+        changes = {
+            "object": self._url("object-detail", self.objects["y"].pk),
+            "namespace": self._url("namespace-detail", other.pk),
+            "name": "renamed",
+            "version": "2.0.0",
+        }
+        for field, value in changes.items():
+            with self.subTest(field=field):
+                response = self.client.patch(url, {field: value}, format="json")
+                self.assertRefused(response, field)
+        product.refresh_from_db()
+        self.assertEqual(
+            (product.object, product.namespace, product.name, product.version),
+            (self.objects["x"], namespace, "product", "1.0.0"),
+        )
+        # the same values again, and a source attached, are accepted
+        same = {"name": "product", "version": "1.0.0"}
+        self.assertEqual(self.client.patch(url, same, format="json").status_code, 200)
+        attach = {"external_object": self._url("externalobject-detail", source.pk)}
+        response = self.client.patch(url, attach, format="json")
+        self.assertEqual(response.status_code, 200, response.content)
+        product.refresh_from_db()
+        self.assertEqual(product.external_object, source)
+
+
 class FilterFieldsTests(TestCase):
 
     def test_every_query_key_has_a_filter(self):

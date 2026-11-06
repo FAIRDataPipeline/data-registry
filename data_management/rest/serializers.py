@@ -2,10 +2,87 @@ from uuid import uuid4
 
 from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
-from rest_framework import serializers
+from rest_framework import exceptions, serializers
 from rest_framework.reverse import reverse
 
 from data_management import models
+
+
+class ProvenanceRefused(exceptions.APIException):
+    """
+    A write refused because it would break a rule the provenance rests on: an
+    object has one producing run, no run reads anything downstream of its own
+    outputs, and a data product's identity does not change.
+    """
+
+    status_code = 400
+    default_code = "provenance_refused"
+
+
+# The ids of the objects of some ObjectComponents
+def _object_ids(components):
+    return {component.object_id for component in components}
+
+
+# A name for an object in a refusal: its data products, else its id
+def _describe(object_id):
+    products = models.DataProduct.objects.filter(object_id=object_id)
+    names = [f"{p.namespace.name}:{p.name}@{p.version}" for p in products]
+    return ", ".join(names) if names else f"object {object_id}"
+
+
+# The ids of the given objects and of every object downstream of them: each object
+# is followed to the runs that read a component of it, other than `run`, and on to
+# the objects those runs wrote
+def _downstream(object_ids, run):
+    found = set(object_ids)
+    frontier = set(object_ids)
+    while frontier:
+        readers = models.CodeRun.objects.filter(inputs__object__in=frontier)
+        if run is not None:
+            readers = readers.exclude(pk=run.pk)
+        written = models.ObjectComponent.objects.filter(outputs_of__in=readers)
+        frontier = set(written.values_list("object_id", flat=True)) - found
+        found |= frontier
+    return found
+
+
+def check_code_run_links(run, inputs, outputs):
+    """
+    Refuse a code run's inputs and outputs if the links they add break a rule.
+
+    `run` is the CodeRun being changed, or None for one being created; `inputs` and
+    `outputs` are its ObjectComponents after the write. Each object an added output
+    belongs to must be no other run's output, and no added link may close a loop:
+    none of the run's inputs downstream of an added output, and no added input
+    downstream of its outputs. Links the run has already are not checked again, so a
+    breach stored before these rules does not block another change.
+    """
+    inputs, outputs = _object_ids(inputs), _object_ids(outputs)
+    if run is None:
+        added_inputs, added_outputs = inputs, outputs
+    else:
+        added_inputs = inputs - _object_ids(run.inputs.all())
+        added_outputs = outputs - _object_ids(run.outputs.all())
+
+    producers = models.CodeRun.objects.filter(outputs__object__in=added_outputs)
+    if run is not None:
+        producers = producers.exclude(pk=run.pk)
+    for producer in producers.distinct():
+        produced = _object_ids(producer.outputs.all()) & added_outputs
+        raise ProvenanceRefused(
+            f"{_describe(min(produced))} is an output of code run {producer.uuid} "
+            "already, and an object has one producing run."
+        )
+
+    looped = (_downstream(added_outputs, run) & inputs) | (
+        _downstream(outputs, run) & added_inputs
+    )
+    if looped:
+        raise ProvenanceRefused(
+            f"{_describe(min(looped))} would be both an input of this code run and "
+            "downstream of its outputs, which would make a loop in the provenance."
+        )
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
@@ -63,6 +140,14 @@ class CodeRunSerializer(BaseSerializer):
 
     uuid = serializers.UUIDField(initial=uuid4, default=uuid4)
 
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        run = self.instance
+        inputs = attrs.get("inputs", run.inputs.all() if run else [])
+        outputs = attrs.get("outputs", run.outputs.all() if run else [])
+        check_code_run_links(run, inputs, outputs)
+        return attrs
+
     def get_ro_crate(self, obj):
         request = self.context.get("request")
         if request:
@@ -79,6 +164,24 @@ class DataProductSerializer(BaseSerializer):
         model = models.DataProduct
         fields = "__all__"
         read_only_fields = model.EXTRA_DISPLAY_FIELDS
+
+    # What makes a data product the one it is; its source may change
+    IDENTITY = ("object", "namespace", "name", "version")
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if self.instance is not None:
+            changed = [
+                field
+                for field in self.IDENTITY
+                if field in attrs and attrs[field] != getattr(self.instance, field)
+            ]
+            if changed:
+                raise ProvenanceRefused(
+                    f"A data product's {', '.join(changed)} cannot be changed once it "
+                    "is registered; register a new version instead."
+                )
+        return attrs
 
     def get_internal_format(self, obj):
         internal_format = serializers.BooleanField()
