@@ -45,6 +45,40 @@ jobs:
           files: ./coverage.xml
           flags: unittests
           verbose: true
+  test-postgres:
+    name: Test on PostgreSQL with Python 3.x
+    # The jobs above run the suite on SQLite; a remote registry runs PostgreSQL, whose
+    # engine reads some queries differently (a name filter's regular expression).
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: scrc
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: scrc
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: setup-python 3.x
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+      - name: Install graphviz and libpq
+        run: sudo apt-get install -y graphviz libpq5
+      - name: Run Tests
+        run: |
+          python -m pip install -r requirements.txt
+          # PostgreSQL cannot build the test database without the migrations, which an
+          # install makes and the repository does not hold
+          DJANGO_SETTINGS_MODULE=drams.test-postgres-settings python manage.py makemigrations custom_user data_management
+          DJANGO_SETTINGS_MODULE=drams.test-postgres-settings python manage.py test --noinput
   deploy-local-registry:
     name: Deploy local registry on ${{ matrix.os }} with Python ${{ matrix.python }}
     # The installer clones a branch by name, which a pull request's merge ref is
