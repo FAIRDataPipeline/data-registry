@@ -1117,10 +1117,12 @@ def generate_ro_crate(data_products, depth, request, choice):
 
 def serialize_ro_crate(crate, format_):
     if format_ == "zip":
-        tmp = tempfile.NamedTemporaryFile()
-        file_name = crate.write_zip(f"{tmp.name}.zip")
-        zip_file = open(file_name, "rb")
-        return zip_file
+        # built in a directory of its own, removed with the zip once its bytes are
+        # read, so that no download leaves a file on the server's disk
+        with tempfile.TemporaryDirectory() as directory:
+            file_name = crate.write_zip(os.path.join(directory, "ro-crate.zip"))
+            with open(file_name, "rb") as zip_file:
+                return zip_file.read()
     if format_ == "json-ld":
         return json.dumps(crate.metadata.generate())
     return crate.metadata.generate()

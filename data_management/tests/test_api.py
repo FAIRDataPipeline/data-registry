@@ -1,4 +1,6 @@
 import io
+import os
+import tempfile
 from unittest import mock
 import zipfile
 
@@ -2794,6 +2796,21 @@ class RoCrateSharedAncestryTests(TestCase):
         # extra is outside end's provenance: described, not packaged
         self.assertNotIn("shared/extra/1.0.0.txt", names)
         self.assertIn("shared/source/1.0.0.txt", names)
+
+    def test_zip_leaves_no_file_behind(self):
+        # every download builds a zip; none may stay on the server's disk after it
+        end = models.DataProduct.objects.get(name="end")
+        client = APIClient()
+        url = reverse("data_product_ro_crate", kwargs={"pk": end.id})
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch.object(tempfile, "tempdir", directory):
+                for pack in ("roots", "all"):
+                    response = client.get(
+                        url, data={"pack": pack}, HTTP_ACCEPT="application/zip"
+                    )
+                    self.assertEqual(response.status_code, 200)
+                    zipfile.ZipFile(io.BytesIO(response.content)).testzip()
+            self.assertEqual(os.listdir(directory), [])
 
     def _zip_names(self, view="data_product_ro_crate", pk=None, **params):
         """The paths a zip of a crate holds, end's unless told otherwise."""
