@@ -14,6 +14,18 @@ from .init_prov_db import init_db as init_prov_db
 from .init_shared_ancestry_db import init_db as init_shared_ancestry_db
 
 
+def ids(model):
+    """
+    Return the ids of the rows of a model, keyed by the order they were made in, from 1.
+
+    A test takes the ids of the rows it made from here rather than writing them out:
+    SQLite gives the ids of a rolled-back test out again, PostgreSQL does not.
+
+    """
+    pks = model.objects.order_by("pk").values_list("pk", flat=True)
+    return dict(enumerate(pks, start=1))
+
+
 class UsersAPITests(TestCase):
 
     def setUp(self):
@@ -60,7 +72,7 @@ class UsersAPITests(TestCase):
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("user-detail", kwargs={"pk": 1})
+        url = reverse("user-detail", kwargs={"pk": self.user.pk})
         response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
@@ -139,7 +151,7 @@ class StorageRootAPITests(TestCase):
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("storageroot-detail", kwargs={"pk": 1})
+        url = reverse("storageroot-detail", kwargs={"pk": ids(models.StorageRoot)[1]})
         response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
@@ -179,7 +191,9 @@ class StorageLocationAPITests(TestCase):
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("storagelocation-detail", kwargs={"pk": 1})
+        url = reverse(
+            "storagelocation-detail", kwargs={"pk": ids(models.StorageLocation)[1]}
+        )
         response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
@@ -352,22 +366,26 @@ class ObjectAPITests(TestCase):
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("object-detail", kwargs={"pk": 3})
+        url = reverse("object-detail", kwargs={"pk": ids(models.Object)[3]})
         response = client.get(url, format="json", HTTP_HOST="localhost")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/json")
         self.assertEqual(
             response.json()["storage_location"],
-            "http://localhost/api/storage_location/2/",
+            f"http://localhost/api/storage_location/{ids(models.StorageLocation)[2]}/",
         )
 
     def test_filter_by_storage_location(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
         url = reverse("object-list")
+        location = ids(models.StorageLocation)[3]
         response = client.get(
-            url, data={"storage_location": "3"}, format="json", HTTP_HOST="localhost"
+            url,
+            data={"storage_location": str(location)},
+            format="json",
+            HTTP_HOST="localhost",
         )
 
         self.assertEqual(response.status_code, 200)
@@ -375,7 +393,8 @@ class ObjectAPITests(TestCase):
         results = response.json()["results"]
         self.assertEqual(len(results), 1)
         self.assertEqual(
-            results[0]["storage_location"], "http://localhost/api/storage_location/3/"
+            results[0]["storage_location"],
+            f"http://localhost/api/storage_location/{location}/",
         )
 
 
@@ -399,7 +418,9 @@ class ObjectComponentAPITests(TestCase):
     def test_get_detail_whole_object(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("objectcomponent-detail", kwargs={"pk": 1})
+        url = reverse(
+            "objectcomponent-detail", kwargs={"pk": ids(models.ObjectComponent)[1]}
+        )
         response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
@@ -409,7 +430,9 @@ class ObjectComponentAPITests(TestCase):
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("objectcomponent-detail", kwargs={"pk": 18})
+        url = reverse(
+            "objectcomponent-detail", kwargs={"pk": ids(models.ObjectComponent)[18]}
+        )
         response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
@@ -452,7 +475,8 @@ class ObjectComponentAPITests(TestCase):
         client = APIClient()
         client.force_authenticate(user=self.user)
         url = reverse("objectcomponent-list")
-        response = client.get(url, data={"outputs_of": "99999"}, format="json")
+        unknown = max(ids(models.CodeRun).values()) + 1
+        response = client.get(url, data={"outputs_of": str(unknown)}, format="json")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["results"], [])
@@ -478,7 +502,7 @@ class IssueAPITests(TestCase):
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("issue-detail", kwargs={"pk": 1})
+        url = reverse("issue-detail", kwargs={"pk": ids(models.Issue)[1]})
         response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
@@ -559,7 +583,7 @@ class CodeRunAPITests(TestCase):
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("coderun-detail", kwargs={"pk": 1})
+        url = reverse("coderun-detail", kwargs={"pk": ids(models.CodeRun)[1]})
         response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
@@ -628,7 +652,9 @@ class ExternalObjectAPITests(TestCase):
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("externalobject-detail", kwargs={"pk": 1})
+        url = reverse(
+            "externalobject-detail", kwargs={"pk": ids(models.ExternalObject)[1]}
+        )
         response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
@@ -698,11 +724,14 @@ class ExternalObjectAPITests(TestCase):
         # registration fills what the first left empty, and both are 201
         client = APIClient()
         client.force_authenticate(user=self.user)
+        products = ids(models.DataProduct)
         before = models.ExternalObject.objects.count()
-        first = self._register(client, 1)
+        first = self._register(client, products[1])
         self.assertEqual(first.status_code, 201, first.content)
-        store = self._url("storagelocation-detail", 1)
-        second = self._register(client, 2, original_store=store, description="found")
+        store = self._url("storagelocation-detail", ids(models.StorageLocation)[1])
+        second = self._register(
+            client, products[2], original_store=store, description="found"
+        )
         self.assertEqual(second.status_code, 201, second.content)
         self.assertEqual(first.json()["url"], second.json()["url"])
         self.assertEqual(models.ExternalObject.objects.count(), before + 1)
@@ -711,22 +740,31 @@ class ExternalObjectAPITests(TestCase):
         self.assertEqual(row["original_store"], store)
         self.assertEqual(row["description"], "found")
         # read, data_product is the first linked data product; data_products all of them
-        self.assertEqual(row["data_product"], self._url("dataproduct-detail", 1))
+        self.assertEqual(
+            row["data_product"], self._url("dataproduct-detail", products[1])
+        )
         self.assertEqual(
             set(row["data_products"]),
-            {self._url("dataproduct-detail", 1), self._url("dataproduct-detail", 2)},
+            {
+                self._url("dataproduct-detail", products[1]),
+                self._url("dataproduct-detail", products[2]),
+            },
         )
-        for pk in (1, 2):
+        for pk in (products[1], products[2]):
             product = client.get(reverse("dataproduct-detail", kwargs={"pk": pk}))
             self.assertEqual(product.json()["external_object"], row["url"])
 
     def test_first_registration_wins(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        store = self._url("storagelocation-detail", 1)
-        self._register(client, 1, original_store=store, description="first")
-        other = self._url("storagelocation-detail", 2)
-        second = self._register(client, 2, original_store=other, description="second")
+        products = ids(models.DataProduct)
+        locations = ids(models.StorageLocation)
+        store = self._url("storagelocation-detail", locations[1])
+        self._register(client, products[1], original_store=store, description="first")
+        other = self._url("storagelocation-detail", locations[2])
+        second = self._register(
+            client, products[2], original_store=other, description="second"
+        )
         row = second.json()
         self.assertEqual(row["original_store"], store)
         self.assertEqual(row["description"], "first")
@@ -736,12 +774,13 @@ class ExternalObjectAPITests(TestCase):
         # with another version too; and a direct duplicate is merged, not refused
         client = APIClient()
         client.force_authenticate(user=self.user)
+        products = ids(models.DataProduct)
         before = models.ExternalObject.objects.count()
-        self._register(client, 1)
-        self._register(client, 2, title="One file of the deposit")
-        self._register(client, 2, version="2.0.0")
+        self._register(client, products[1])
+        self._register(client, products[2], title="One file of the deposit")
+        self._register(client, products[2], version="2.0.0")
         self.assertEqual(models.ExternalObject.objects.count(), before + 3)
-        plain = {k: v for k, v in self._register(client, 1).json().items()}
+        plain = {k: v for k, v in self._register(client, products[1]).json().items()}
         self.assertEqual(models.ExternalObject.objects.count(), before + 3)
         self.assertEqual(plain["version"], "1.0.0")
 
@@ -749,17 +788,22 @@ class ExternalObjectAPITests(TestCase):
         # a released CLI looks a registration up by the data product and its version
         client = APIClient()
         client.force_authenticate(user=self.user)
-        self._register(client, 1)
-        product = models.DataProduct.objects.get(pk=1)
+        product = models.DataProduct.objects.get(pk=ids(models.DataProduct)[1])
+        self._register(client, product.pk)
         url = reverse("externalobject-list")
-        found = client.get(url, {"data_product": 1, "version": product.version}).json()
+        found = client.get(
+            url, {"data_product": product.pk, "version": product.version}
+        ).json()
         self.assertEqual(len(found["results"]), 1)
         self.assertEqual(
-            found["results"][0]["data_product"], self._url("dataproduct-detail", 1)
+            found["results"][0]["data_product"],
+            self._url("dataproduct-detail", product.pk),
         )
-        wrong = client.get(url, {"data_product": 1, "version": "9.9.9"}).json()
+        wrong = client.get(url, {"data_product": product.pk, "version": "9.9.9"}).json()
         self.assertEqual(len(wrong["results"]), 0)
-        self.assertEqual(len(client.get(url, {"data_product": 1}).json()["results"]), 1)
+        self.assertEqual(
+            len(client.get(url, {"data_product": product.pk}).json()["results"]), 1
+        )
         unlinked = models.DataProduct.objects.filter(external_object=None).first()
         self.assertEqual(
             len(client.get(url, {"data_product": unlinked.pk}).json()["results"]), 0
@@ -801,13 +845,20 @@ class QualityControlledAPITests(TestCase):
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("qualitycontrolled-detail", kwargs={"pk": 1})
+        url = reverse(
+            "qualitycontrolled-detail", kwargs={"pk": ids(models.QualityControlled)[1]}
+        )
         response = client.get(url, format="json", HTTP_HOST="localhost")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/json")
-        self.assertEqual(response.json()["object"], "http://localhost/api/object/16/")
-        self.assertEqual(response.json()["document"], "http://localhost/api/object/18/")
+        objects = ids(models.Object)
+        self.assertEqual(
+            response.json()["object"], f"http://localhost/api/object/{objects[16]}/"
+        )
+        self.assertEqual(
+            response.json()["document"], f"http://localhost/api/object/{objects[18]}/"
+        )
 
 
 class KeywordAPITests(TestCase):
@@ -830,7 +881,7 @@ class KeywordAPITests(TestCase):
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("keyword-detail", kwargs={"pk": 1})
+        url = reverse("keyword-detail", kwargs={"pk": ids(models.Keyword)[1]})
         response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
@@ -867,6 +918,7 @@ class KeywordAPITests(TestCase):
         client = APIClient()
         client.force_authenticate(user=self.user)
         term = "http://purl.obolibrary.org/obo/NCIT_C16960"
+        objects = ids(models.Object)
 
         def post(pk):
             obj = reverse("object-detail", kwargs={"pk": pk})
@@ -880,9 +932,9 @@ class KeywordAPITests(TestCase):
                 format="json",
             )
 
-        self.assertEqual(post(1).status_code, 201)
-        self.assertEqual(post(2).status_code, 201)
-        self.assertEqual(post(1).status_code, 409)
+        self.assertEqual(post(objects[1]).status_code, 201)
+        self.assertEqual(post(objects[2]).status_code, 201)
+        self.assertEqual(post(objects[1]).status_code, 409)
 
 
 class AuthorAPITests(TestCase):
@@ -905,7 +957,7 @@ class AuthorAPITests(TestCase):
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("author-detail", kwargs={"pk": 1})
+        url = reverse("author-detail", kwargs={"pk": ids(models.Author)[1]})
         response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
@@ -968,7 +1020,7 @@ class LicenceAPITests(TestCase):
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("licence-detail", kwargs={"pk": 1})
+        url = reverse("licence-detail", kwargs={"pk": ids(models.Licence)[1]})
         response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
@@ -980,6 +1032,7 @@ class LicenceAPITests(TestCase):
         client = APIClient()
         client.force_authenticate(user=self.user)
         cc_by = "https://creativecommons.org/licenses/by/4.0/"
+        objects = ids(models.Object)
 
         def post(pk):
             obj = reverse("object-detail", kwargs={"pk": pk})
@@ -993,9 +1046,9 @@ class LicenceAPITests(TestCase):
                 format="json",
             )
 
-        self.assertEqual(post(1).status_code, 201)
-        self.assertEqual(post(2).status_code, 201)
-        self.assertEqual(post(1).status_code, 409)
+        self.assertEqual(post(objects[1]).status_code, 201)
+        self.assertEqual(post(objects[2]).status_code, 201)
+        self.assertEqual(post(objects[1]).status_code, 409)
 
 
 class NamespaceAPITests(TestCase):
@@ -1018,7 +1071,7 @@ class NamespaceAPITests(TestCase):
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("namespace-detail", kwargs={"pk": 1})
+        url = reverse("namespace-detail", kwargs={"pk": ids(models.Namespace)[1]})
         response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
@@ -1069,7 +1122,7 @@ class DataProductAPITests(TestCase):
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("dataproduct-detail", kwargs={"pk": 3})
+        url = reverse("dataproduct-detail", kwargs={"pk": ids(models.DataProduct)[3]})
         response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
@@ -1082,7 +1135,8 @@ class DataProductAPITests(TestCase):
         client = APIClient()
         client.force_authenticate(user=self.user)
         url = reverse("dataproduct-list")
-        response = client.get(url, data={"namespace": "1"}, format="json")
+        namespace = ids(models.Namespace)[1]
+        response = client.get(url, data={"namespace": str(namespace)}, format="json")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/json")
@@ -1150,7 +1204,9 @@ class CodeRepoReleaseAPITests(TestCase):
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("codereporelease-detail", kwargs={"pk": 1})
+        url = reverse(
+            "codereporelease-detail", kwargs={"pk": ids(models.CodeRepoRelease)[1]}
+        )
         response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
@@ -1204,7 +1260,7 @@ class KeyvalueAPITests(TestCase):
     def test_get_detail(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("keyvalue-detail", kwargs={"pk": 1})
+        url = reverse("keyvalue-detail", kwargs={"pk": ids(models.KeyValue)[1]})
         response = client.get(url, format="json")
 
         self.assertEqual(response.status_code, 200)
@@ -1270,10 +1326,16 @@ class ProvAPITests(TestCase):
         init_prov_db()
 
     def test_get_json(self):
+        products = ids(models.DataProduct)
+        objects = ids(models.Object)
+        runs = ids(models.CodeRun)
+        authors = ids(models.Author)
+        sources = ids(models.ExternalObject)
+        releases = ids(models.CodeRepoRelease)
         client = APIClient()
         client.force_authenticate(user=self.user)
 
-        url = reverse("prov_report", kwargs={"pk": 2})
+        url = reverse("prov_report", kwargs={"pk": products[2]})
         response = client.get(url, format="json", HTTP_ACCEPT=self.APPLICATION_JSON)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], self.APPLICATION_JSON)
@@ -1289,7 +1351,7 @@ class ProvAPITests(TestCase):
             self.DCTERMS_TITLE: "this/is/cr/test/input/1",
             self.DCAT_HAS_VERSION: "0.2.0",
         }
-        prov_out = results["entity"][f"{self.LREG_DATA_PRODUCT}1"]
+        prov_out = results["entity"][f"{self.LREG_DATA_PRODUCT}{products[1]}"]
         del prov_out[self.DCTERMS_MODIFIED]
         self.assertEqual(prov_out, expected_result)
 
@@ -1302,7 +1364,7 @@ class ProvAPITests(TestCase):
             self.DCTERMS_TITLE: "this/is/cr/test/output/1",
             self.DCAT_HAS_VERSION: "0.2.0",
         }
-        prov_out = results["entity"][f"{self.LREG_DATA_PRODUCT}2"]
+        prov_out = results["entity"][f"{self.LREG_DATA_PRODUCT}{products[2]}"]
         del prov_out[self.DCTERMS_MODIFIED]
         self.assertEqual(prov_out, expected_result)
 
@@ -1316,7 +1378,7 @@ class ProvAPITests(TestCase):
             self.DCTERMS_TITLE: "this/is/cr/test/input/2",
             self.DCAT_HAS_VERSION: "0.2.0",
         }
-        prov_out = results["entity"][f"{self.LREG_DATA_PRODUCT}4"]
+        prov_out = results["entity"][f"{self.LREG_DATA_PRODUCT}{products[4]}"]
         del prov_out[self.DCTERMS_MODIFIED]
         self.assertEqual(prov_out, expected_result)
 
@@ -1330,7 +1392,7 @@ class ProvAPITests(TestCase):
             self.DCTERMS_TITLE: "this/is/cr/test/input/3",
             self.DCAT_HAS_VERSION: "0.2.0",
         }
-        prov_out = results["entity"][f"{self.LREG_DATA_PRODUCT}5"]
+        prov_out = results["entity"][f"{self.LREG_DATA_PRODUCT}{products[5]}"]
         del prov_out[self.DCTERMS_MODIFIED]
         self.assertEqual(prov_out, expected_result)
 
@@ -1348,7 +1410,7 @@ class ProvAPITests(TestCase):
             self.DCTERMS_DESCRIPTION: "this is code run test input 1",
         }
         self.assertEqual(
-            results["entity"]["lreg:api/external_object/1"], expected_result
+            results["entity"][f"lreg:api/external_object/{sources[1]}"], expected_result
         )
 
         expected_result = {
@@ -1366,7 +1428,7 @@ class ProvAPITests(TestCase):
             self.DCTERMS_IDENTIFIER: "this_is_cr_test_output_1_id",
         }
         self.assertEqual(
-            results["entity"]["lreg:api/external_object/2"], expected_result
+            results["entity"][f"lreg:api/external_object/{sources[2]}"], expected_result
         )
 
         expected_result = {
@@ -1380,7 +1442,7 @@ class ProvAPITests(TestCase):
                 "type": self.XSD_QNAME,
             },
         }
-        prov_out = results["entity"]["lreg:api/code_repo_release/1"]
+        prov_out = results["entity"][f"lreg:api/code_repo_release/{releases[1]}"]
         del prov_out[self.DCTERMS_MODIFIED]
         self.assertEqual(prov_out, expected_result)
 
@@ -1388,7 +1450,7 @@ class ProvAPITests(TestCase):
             self.PROV_AT_LOCATION: "https://data.fairdatapipeline.org/api/text_file/15/?format=text",
             self.FAIR_HASH: "5b6fafc594cdb619104ceeef7a4802f4086e90e8",
         }
-        prov_out = results["entity"][f"{self.LREG_OBJECT}3"]
+        prov_out = results["entity"][f"{self.LREG_OBJECT}{objects[3]}"]
         del prov_out[self.DCTERMS_MODIFIED]
         self.assertEqual(prov_out, expected_result)
 
@@ -1401,12 +1463,12 @@ class ProvAPITests(TestCase):
                 "type": self.XSD_QNAME,
             },
         }
-        prov_out = results["entity"][f"{self.LREG_OBJECT}4"]
+        prov_out = results["entity"][f"{self.LREG_OBJECT}{objects[4]}"]
         del prov_out[self.DCTERMS_MODIFIED]
         self.assertEqual(prov_out, expected_result)
 
         expected_result = {
-            f"{self.LREG_CODE_RUN}1": {
+            f"{self.LREG_CODE_RUN}{runs[1]}": {
                 "prov:startTime": "2021-07-17T18:21:11+00:00",
                 self.RDF_TYPE: {"$": "fair:Run", "type": self.XSD_QNAME},
                 self.DCTERMS_DESCRIPTION: "Test run",
@@ -1414,28 +1476,28 @@ class ProvAPITests(TestCase):
         }
         self.assertEqual(results["activity"], expected_result)
         expected_result = {
-            f"{self.LREG_AUTHOR}3": {
+            f"{self.LREG_AUTHOR}{authors[3]}": {
                 self.RDF_TYPE: {
                     "$": self.PROV_PERSON,
                     "type": self.XSD_QNAME,
                 },
                 self.FOAF_NAME: "Rosanna Massabeti",
             },
-            f"{self.LREG_USER}1": {
+            f"{self.LREG_USER}{self.user.pk}": {
                 self.RDF_TYPE: {
                     "$": self.PROV_PERSON,
                     "type": self.XSD_QNAME,
                 },
                 self.FOAF_NAME: "User Not Found",
             },
-            f"{self.LREG_AUTHOR}1": {
+            f"{self.LREG_AUTHOR}{authors[1]}": {
                 self.RDF_TYPE: {
                     "$": self.PROV_PERSON,
                     "type": self.XSD_QNAME,
                 },
                 self.FOAF_NAME: "Ivana Valenti",
             },
-            f"{self.LREG_AUTHOR}2": {
+            f"{self.LREG_AUTHOR}{authors[2]}": {
                 self.RDF_TYPE: {
                     "$": self.PROV_PERSON,
                     "type": self.XSD_QNAME,
@@ -1447,60 +1509,60 @@ class ProvAPITests(TestCase):
 
         expected_result = {
             "_:id2": {
-                self.PROV_SPECIFIC_ENTITY: f"{self.LREG_DATA_PRODUCT}2",
-                self.PROV_GENERAL_ENTITY: "lreg:api/external_object/2",
+                self.PROV_SPECIFIC_ENTITY: f"{self.LREG_DATA_PRODUCT}{products[2]}",
+                self.PROV_GENERAL_ENTITY: f"lreg:api/external_object/{sources[2]}",
             },
             "_:id8": {
-                self.PROV_SPECIFIC_ENTITY: f"{self.LREG_DATA_PRODUCT}1",
-                self.PROV_GENERAL_ENTITY: "lreg:api/external_object/1",
+                self.PROV_SPECIFIC_ENTITY: f"{self.LREG_DATA_PRODUCT}{products[1]}",
+                self.PROV_GENERAL_ENTITY: f"lreg:api/external_object/{sources[1]}",
             },
         }
         self.assertEqual(results["specializationOf"], expected_result)
 
         expected_result = {
             "_:id5": {
-                self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}1",
-                self.PROV_ENTITY: "lreg:api/code_repo_release/1",
+                self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}{runs[1]}",
+                self.PROV_ENTITY: f"lreg:api/code_repo_release/{releases[1]}",
                 self.PROV_ROLE: {
                     "$": "fair:software",
                     "type": self.XSD_QNAME,
                 },
             },
             "_:id6": {
-                self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}1",
-                self.PROV_ENTITY: f"{self.LREG_OBJECT}3",
+                self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}{runs[1]}",
+                self.PROV_ENTITY: f"{self.LREG_OBJECT}{objects[3]}",
                 self.PROV_ROLE: {
                     "$": "fair:model_configuration",
                     "type": self.XSD_QNAME,
                 },
             },
             "_:id7": {
-                self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}1",
-                self.PROV_ENTITY: f"{self.LREG_OBJECT}4",
+                self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}{runs[1]}",
+                self.PROV_ENTITY: f"{self.LREG_OBJECT}{objects[4]}",
                 self.PROV_ROLE: {
                     "$": "fair:submission_script",
                     "type": self.XSD_QNAME,
                 },
             },
             "_:id10": {
-                self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}1",
-                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}1",
+                self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}{runs[1]}",
+                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}{products[1]}",
                 self.PROV_ROLE: {
                     "$": self.FAIR_INPUT_DATA,
                     "type": self.XSD_QNAME,
                 },
             },
             "_:id13": {
-                self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}1",
-                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}4",
+                self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}{runs[1]}",
+                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}{products[4]}",
                 self.PROV_ROLE: {
                     "$": self.FAIR_INPUT_DATA,
                     "type": self.XSD_QNAME,
                 },
             },
             "_:id16": {
-                self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}1",
-                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}5",
+                self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}{runs[1]}",
+                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}{products[5]}",
                 self.PROV_ROLE: {
                     "$": self.FAIR_INPUT_DATA,
                     "type": self.XSD_QNAME,
@@ -1511,32 +1573,32 @@ class ProvAPITests(TestCase):
 
         expected_result = {
             "_:id1": {
-                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}2",
-                self.PROV_AGENT: f"{self.LREG_AUTHOR}3",
+                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}{products[2]}",
+                self.PROV_AGENT: f"{self.LREG_AUTHOR}{authors[3]}",
                 self.PROV_ROLE: {
                     "$": self.DCTERMS_CREATOR,
                     "type": self.XSD_QNAME,
                 },
             },
             self.ID9: {
-                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}1",
-                self.PROV_AGENT: f"{self.LREG_AUTHOR}1",
+                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}{products[1]}",
+                self.PROV_AGENT: f"{self.LREG_AUTHOR}{authors[1]}",
                 self.PROV_ROLE: {
                     "$": self.DCTERMS_CREATOR,
                     "type": self.XSD_QNAME,
                 },
             },
             "_:id12": {
-                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}4",
-                self.PROV_AGENT: f"{self.LREG_AUTHOR}2",
+                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}{products[4]}",
+                self.PROV_AGENT: f"{self.LREG_AUTHOR}{authors[2]}",
                 self.PROV_ROLE: {
                     "$": self.DCTERMS_CREATOR,
                     "type": self.XSD_QNAME,
                 },
             },
             "_:id15": {
-                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}5",
-                self.PROV_AGENT: f"{self.LREG_AUTHOR}3",
+                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}{products[5]}",
+                self.PROV_AGENT: f"{self.LREG_AUTHOR}{authors[3]}",
                 self.PROV_ROLE: {
                     "$": self.DCTERMS_CREATOR,
                     "type": self.XSD_QNAME,
@@ -1547,32 +1609,32 @@ class ProvAPITests(TestCase):
 
         expected_result = {
             self.ID11: {
-                self.PROV_GENERATED_ENTITY: f"{self.LREG_DATA_PRODUCT}2",
-                self.PROV_USED_ENTITY: f"{self.LREG_DATA_PRODUCT}1",
+                self.PROV_GENERATED_ENTITY: f"{self.LREG_DATA_PRODUCT}{products[2]}",
+                self.PROV_USED_ENTITY: f"{self.LREG_DATA_PRODUCT}{products[1]}",
             },
             "_:id14": {
-                self.PROV_GENERATED_ENTITY: f"{self.LREG_DATA_PRODUCT}2",
-                self.PROV_USED_ENTITY: f"{self.LREG_DATA_PRODUCT}4",
+                self.PROV_GENERATED_ENTITY: f"{self.LREG_DATA_PRODUCT}{products[2]}",
+                self.PROV_USED_ENTITY: f"{self.LREG_DATA_PRODUCT}{products[4]}",
             },
             "_:id17": {
-                self.PROV_GENERATED_ENTITY: f"{self.LREG_DATA_PRODUCT}2",
-                self.PROV_USED_ENTITY: f"{self.LREG_DATA_PRODUCT}5",
+                self.PROV_GENERATED_ENTITY: f"{self.LREG_DATA_PRODUCT}{products[2]}",
+                self.PROV_USED_ENTITY: f"{self.LREG_DATA_PRODUCT}{products[5]}",
             },
         }
         self.assertEqual(results["wasDerivedFrom"], expected_result)
 
         expected_result = {
             "_:id3": {
-                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}2",
-                self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}1",
+                self.PROV_ENTITY: f"{self.LREG_DATA_PRODUCT}{products[2]}",
+                self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}{runs[1]}",
             },
         }
         self.assertEqual(results["wasGeneratedBy"], expected_result)
 
         expected_result = {
             self.ID4: {
-                self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}1",
-                "prov:trigger": f"{self.LREG_USER}1",
+                self.PROV_ACTIVITY: f"{self.LREG_CODE_RUN}{runs[1]}",
+                "prov:trigger": f"{self.LREG_USER}{self.user.pk}",
                 "prov:time": "2021-07-17T18:21:11+00:00",
                 self.PROV_ROLE: {
                     "$": "fair:code_runner",
@@ -1583,9 +1645,12 @@ class ProvAPITests(TestCase):
         self.assertEqual(results["wasStartedBy"], expected_result)
 
     def test_get_provn(self):
+        products = ids(models.DataProduct)
+        authors = ids(models.Author)
+        sources = ids(models.ExternalObject)
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("prov_report", kwargs={"pk": 1})
+        url = reverse("prov_report", kwargs={"pk": products[1]})
         response = client.get(
             url,
             format="provn",
@@ -1600,7 +1665,7 @@ class ProvAPITests(TestCase):
         result_bits = response.data.split(self.DCTERMS_MODIFIED)
         result_end = result_bits[1].split("xsd:dateTime, ", 1)[1]
         result = result_bits[0] + result_end
-        expected_result = """document
+        expected_result = f"""document
   prefix lreg <http://localhost/>
   prefix fair <https://data.fairdatapipeline.org/vocab/#>
   prefix dcat <http://www.w3.org/ns/dcat#>
@@ -1609,129 +1674,143 @@ class ProvAPITests(TestCase):
   prefix foaf <http://xmlns.com/foaf/spec/#>
   prefix rdf <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
   
-  entity(lreg:api/data_product/1, [rdf:type='dcat:Dataset', prov:atLocation="https://data.fairdatapipeline.org/api/text_file/input/1", fair:hash="5b6fafc594cdb619104ceeef7a4802f4086e90a1", dcterms:description="input 1 object", fair:namespace="prov", dcterms:title="this/is/cr/test/input/1", dcat:hasVersion="0.2.0"])
-  agent(lreg:api/author/1, [rdf:type='prov:Person', foaf:name="Ivana Valenti"])
-  wasAttributedTo(lreg:api/data_product/1, lreg:api/author/1, [prov:role='dcterms:creator'])
-  entity(lreg:api/external_object/1, [rdf:type='dcat:Dataset', dcterms:title="this is cr test input 1", dcterms:issued="2020-07-10T18:38:00+00:00" %% xsd:dateTime, dcat:hasVersion="0.2.0", fair:alternate_identifier="this_is_cr_test_input_1", fair:alternate_identifier_type="text", dcterms:description="this is code run test input 1", prov:atLocation="https://example.org/file_strore/1.txt"])
-  specializationOf(lreg:api/data_product/1, lreg:api/external_object/1)
+  entity(lreg:api/data_product/{products[1]}, [rdf:type='dcat:Dataset', prov:atLocation="https://data.fairdatapipeline.org/api/text_file/input/1", fair:hash="5b6fafc594cdb619104ceeef7a4802f4086e90a1", dcterms:description="input 1 object", fair:namespace="prov", dcterms:title="this/is/cr/test/input/1", dcat:hasVersion="0.2.0"])
+  agent(lreg:api/author/{authors[1]}, [rdf:type='prov:Person', foaf:name="Ivana Valenti"])
+  wasAttributedTo(lreg:api/data_product/{products[1]}, lreg:api/author/{authors[1]}, [prov:role='dcterms:creator'])
+  entity(lreg:api/external_object/{sources[1]}, [rdf:type='dcat:Dataset', dcterms:title="this is cr test input 1", dcterms:issued="2020-07-10T18:38:00+00:00" %% xsd:dateTime, dcat:hasVersion="0.2.0", fair:alternate_identifier="this_is_cr_test_input_1", fair:alternate_identifier_type="text", dcterms:description="this is code run test input 1", prov:atLocation="https://example.org/file_strore/1.txt"])
+  specializationOf(lreg:api/data_product/{products[1]}, lreg:api/external_object/{sources[1]})
 endDocument"""
         self.assertEqual(result, expected_result)
 
     def test_get_json_ld(self):
+        products = ids(models.DataProduct)
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("prov_report", kwargs={"pk": 1})
+        url = reverse("prov_report", kwargs={"pk": products[1]})
         response = client.get(url, format="json-ld", HTTP_ACCEPT="application/ld+json")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/ld+json; charset=utf8")
 
     def test_get_xml(self):
+        products = ids(models.DataProduct)
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("prov_report", kwargs={"pk": 1})
+        url = reverse("prov_report", kwargs={"pk": products[1]})
         response = client.get(url, format="xml", HTTP_ACCEPT="text/xml")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "text/xml; charset=utf8")
 
     def test_get_jpg(self):
+        products = ids(models.DataProduct)
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("prov_report", kwargs={"pk": 1})
+        url = reverse("prov_report", kwargs={"pk": products[1]})
         response = client.get(url, format="jpg", HTTP_ACCEPT="image/jpeg")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "image/jpeg")
 
     def test_get_svg(self):
+        products = ids(models.DataProduct)
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("prov_report", kwargs={"pk": 1})
+        url = reverse("prov_report", kwargs={"pk": products[1]})
         response = client.get(url, format="svg", HTTP_ACCEPT="image/svg+xml")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "image/svg+xml")
 
     def test_get_no_repo(self):
+        products = ids(models.DataProduct)
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("prov_report", kwargs={"pk": 7})
+        url = reverse("prov_report", kwargs={"pk": products[7]})
         response = client.get(url, format="xml", HTTP_ACCEPT="text/xml")
         self.assertEqual(response["Content-Type"], "text/xml; charset=utf8")
         self.assertNotContains(response, "lreg:api/code_repo/", 200)
         self.assertNotContains(response, "lreg:api/code_repo_release/", 200)
 
     def test_get_no_repo_release(self):
+        products = ids(models.DataProduct)
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("prov_report", kwargs={"pk": 6})
+        url = reverse("prov_report", kwargs={"pk": products[6]})
         response = client.get(url, format="xml", HTTP_ACCEPT="text/xml")
         self.assertEqual(response["Content-Type"], "text/xml; charset=utf8")
         self.assertContains(response, f"{self.LREG_OBJECT}", status_code=200)
 
     def test_get_multi_run(self):
+        products = ids(models.DataProduct)
+        runs = ids(models.CodeRun)
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("prov_report", kwargs={"pk": 9})
+        url = reverse("prov_report", kwargs={"pk": products[9]})
         response = client.get(
             url, data={"depth": 5}, format="json", HTTP_ACCEPT=self.APPLICATION_JSON
         )
         results = response.json()
 
         for dp in [
-            f"{self.LREG_DATA_PRODUCT}1",
-            f"{self.LREG_DATA_PRODUCT}6",
-            f"{self.LREG_DATA_PRODUCT}7",
-            f"{self.LREG_DATA_PRODUCT}8",
-            f"{self.LREG_DATA_PRODUCT}9",
+            f"{self.LREG_DATA_PRODUCT}{products[1]}",
+            f"{self.LREG_DATA_PRODUCT}{products[6]}",
+            f"{self.LREG_DATA_PRODUCT}{products[7]}",
+            f"{self.LREG_DATA_PRODUCT}{products[8]}",
+            f"{self.LREG_DATA_PRODUCT}{products[9]}",
         ]:
             self.assertIn(dp, results["entity"].keys())
 
         for cr in [
-            f"{self.LREG_CODE_RUN}2",
-            f"{self.LREG_CODE_RUN}3",
-            f"{self.LREG_CODE_RUN}4",
-            f"{self.LREG_CODE_RUN}5",
+            f"{self.LREG_CODE_RUN}{runs[2]}",
+            f"{self.LREG_CODE_RUN}{runs[3]}",
+            f"{self.LREG_CODE_RUN}{runs[4]}",
+            f"{self.LREG_CODE_RUN}{runs[5]}",
         ]:
             self.assertIn(cr, results["activity"].keys())
 
         self.assertIn(
-            results["used"][self.ID19][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}2"
+            results["used"][self.ID19][self.PROV_ACTIVITY],
+            f"{self.LREG_CODE_RUN}{runs[2]}",
         )
         self.assertIn(
-            results["used"][self.ID19][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}1"
+            results["used"][self.ID19][self.PROV_ENTITY],
+            f"{self.LREG_DATA_PRODUCT}{products[1]}",
         )
 
         self.assertIn(
-            results["used"][self.ID24][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}3"
+            results["used"][self.ID24][self.PROV_ACTIVITY],
+            f"{self.LREG_CODE_RUN}{runs[3]}",
         )
         self.assertIn(
-            results["used"][self.ID24][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}1"
+            results["used"][self.ID24][self.PROV_ENTITY],
+            f"{self.LREG_DATA_PRODUCT}{products[1]}",
         )
 
         self._check_code_runs_present(results)
 
     def test_get_multi_run_limited(self):
+        products = ids(models.DataProduct)
+        runs = ids(models.CodeRun)
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("prov_report", kwargs={"pk": 9})
+        url = reverse("prov_report", kwargs={"pk": products[9]})
         response = client.get(
             url, data={"depth": 2}, format="json", HTTP_ACCEPT=self.APPLICATION_JSON
         )
         results = response.json()
 
         for dp in [
-            f"{self.LREG_DATA_PRODUCT}6",
-            f"{self.LREG_DATA_PRODUCT}7",
-            f"{self.LREG_DATA_PRODUCT}8",
-            f"{self.LREG_DATA_PRODUCT}9",
+            f"{self.LREG_DATA_PRODUCT}{products[6]}",
+            f"{self.LREG_DATA_PRODUCT}{products[7]}",
+            f"{self.LREG_DATA_PRODUCT}{products[8]}",
+            f"{self.LREG_DATA_PRODUCT}{products[9]}",
         ]:
             self.assertIn(dp, results["entity"].keys())
 
-        for dp in [f"{self.LREG_DATA_PRODUCT}1"]:
+        for dp in [f"{self.LREG_DATA_PRODUCT}{products[1]}"]:
             self.assertNotIn(dp, results["entity"].keys())
 
-        for cr in [f"{self.LREG_CODE_RUN}4", f"{self.LREG_CODE_RUN}5"]:
+        for cr in [f"{self.LREG_CODE_RUN}{runs[4]}", f"{self.LREG_CODE_RUN}{runs[5]}"]:
             self.assertIn(cr, results["activity"].keys())
 
-        for cr in [f"{self.LREG_CODE_RUN}2", f"{self.LREG_CODE_RUN}3"]:
+        for cr in [f"{self.LREG_CODE_RUN}{runs[2]}", f"{self.LREG_CODE_RUN}{runs[3]}"]:
             self.assertNotIn(cr, results["activity"].keys())
 
         self.assertNotIn(self.ID19, results["used"].keys())
@@ -1740,25 +1819,33 @@ endDocument"""
         self._check_code_runs_present(results)
 
     def _check_code_runs_present(self, results):
+        products = ids(models.DataProduct)
+        runs = ids(models.CodeRun)
         self.assertIn(
-            results["used"][self.ID9][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}4"
+            results["used"][self.ID9][self.PROV_ACTIVITY],
+            f"{self.LREG_CODE_RUN}{runs[4]}",
         )
         self.assertIn(
-            results["used"][self.ID9][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}6"
-        )
-
-        self.assertIn(
-            results["used"][self.ID11][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}4"
-        )
-        self.assertIn(
-            results["used"][self.ID11][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}7"
+            results["used"][self.ID9][self.PROV_ENTITY],
+            f"{self.LREG_DATA_PRODUCT}{products[6]}",
         )
 
         self.assertIn(
-            results["used"][self.ID4][self.PROV_ACTIVITY], f"{self.LREG_CODE_RUN}5"
+            results["used"][self.ID11][self.PROV_ACTIVITY],
+            f"{self.LREG_CODE_RUN}{runs[4]}",
         )
         self.assertIn(
-            results["used"][self.ID4][self.PROV_ENTITY], f"{self.LREG_DATA_PRODUCT}8"
+            results["used"][self.ID11][self.PROV_ENTITY],
+            f"{self.LREG_DATA_PRODUCT}{products[7]}",
+        )
+
+        self.assertIn(
+            results["used"][self.ID4][self.PROV_ACTIVITY],
+            f"{self.LREG_CODE_RUN}{runs[5]}",
+        )
+        self.assertIn(
+            results["used"][self.ID4][self.PROV_ENTITY],
+            f"{self.LREG_DATA_PRODUCT}{products[8]}",
         )
 
 
@@ -2097,7 +2184,7 @@ class RoCrateAPITest(TestCase):
     def test_get_json_ld_cr(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("code_run_ro_crate", kwargs={"pk": 1})
+        url = reverse("code_run_ro_crate", kwargs={"pk": ids(models.CodeRun)[1]})
         response = client.get(
             url, format="json-ld", HTTP_ACCEPT=self.APPLICATION_JSON_LD
         )
@@ -2109,7 +2196,7 @@ class RoCrateAPITest(TestCase):
     def test_get_json_ld_cr2(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("code_run_ro_crate", kwargs={"pk": 6})
+        url = reverse("code_run_ro_crate", kwargs={"pk": ids(models.CodeRun)[6]})
         response = client.get(
             url, format="json-ld", HTTP_ACCEPT=self.APPLICATION_JSON_LD
         )
@@ -2121,7 +2208,7 @@ class RoCrateAPITest(TestCase):
     def test_get_json_ld_cr_with_depth(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("code_run_ro_crate", kwargs={"pk": 6})
+        url = reverse("code_run_ro_crate", kwargs={"pk": ids(models.CodeRun)[6]})
         response = client.get(
             url,
             data={"depth": 5},
@@ -2136,7 +2223,7 @@ class RoCrateAPITest(TestCase):
     def test_get_zip_cr(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("code_run_ro_crate", kwargs={"pk": 1})
+        url = reverse("code_run_ro_crate", kwargs={"pk": ids(models.CodeRun)[1]})
         response = client.get(url, format="zip", HTTP_ACCEPT="application/zip")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/zip")
@@ -2144,7 +2231,9 @@ class RoCrateAPITest(TestCase):
     def test_get_json_ld_dp(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("data_product_ro_crate", kwargs={"pk": 2})
+        url = reverse(
+            "data_product_ro_crate", kwargs={"pk": ids(models.DataProduct)[2]}
+        )
         response = client.get(
             url, format="json-ld", HTTP_ACCEPT=self.APPLICATION_JSON_LD
         )
@@ -2156,7 +2245,9 @@ class RoCrateAPITest(TestCase):
     def test_get_json_ld_dp_with_depth(self):
         client = APIClient()
         client.force_authenticate(user=self.user)
-        url = reverse("data_product_ro_crate", kwargs={"pk": 2})
+        url = reverse(
+            "data_product_ro_crate", kwargs={"pk": ids(models.DataProduct)[2]}
+        )
         response = client.get(
             url,
             data={"depth": 5},
