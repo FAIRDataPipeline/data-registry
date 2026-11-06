@@ -1094,12 +1094,86 @@ class NamespaceAPITests(TestCase):
         client = APIClient()
         client.force_authenticate(user=self.user)
         url = reverse("namespace-list")
-        response = client.get(url, data={"name": "[fF]*"}, format="json")
+        response = client.get(url, data={"name": "F*"}, format="json")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/json")
         results = response.json()["results"]
         self.assertEqual(len(results), 1)
+
+
+class NameFilterTests(TestCase):
+    """
+    The glob a name filter takes: `*` stands for any characters and `?` for any one,
+    every other character for itself, and the pattern matches the whole name.
+
+    The database evaluates the filter's regular expression, so these tests mean most
+    on PostgreSQL, whose engine is not Python's `re`, which SQLite uses.
+    """
+
+    def setUp(self):
+        self.user = get_user_model().objects.create(username="Test User")
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def _names(self, pattern):
+        response = self.client.get(reverse("namespace-list"), {"name": pattern})
+        self.assertEqual(response.status_code, 200, response.content)
+        return sorted(result["name"] for result in response.json()["results"])
+
+    def test_expression(self):
+        # the registry writes the expression itself, so it is the same on every Python
+        self.assertEqual(
+            views.glob_to_regex("SEIRS_model/parameters"),
+            "(?s)\\ASEIRS\\_model\\/parameters\\Z",
+        )
+        self.assertEqual(
+            views.glob_to_regex("CaseStudy/*/State_?"),
+            "(?s)\\ACaseStudy\\/.*\\/State\\_.\\Z",
+        )
+        self.assertEqual(views.glob_to_regex("a**b"), "(?s)\\Aa.*b\\Z")
+
+    def test_every_character_stands_for_itself(self):
+        # each name is found by itself and by nothing else, so no character in a
+        # query is read as part of the expression's syntax
+        names = [
+            f"a{char}b"
+            for char in [chr(code) for code in range(32, 127)] + ["\n", "\t", "é"]
+            if char not in "[]?*"
+        ]
+        for name in names:
+            models.Namespace.objects.create(updated_by=self.user, name=name)
+        for name in names:
+            with self.subTest(name=name):
+                self.assertEqual(self._names(name), [name])
+
+    def test_wildcards(self):
+        for name in ("AIR", "FAIR", "FAIRER", "fair", "a\nb"):
+            models.Namespace.objects.create(updated_by=self.user, name=name)
+        expected = {
+            "F*": ["FAIR", "FAIRER"],
+            "*AIR": ["AIR", "FAIR"],
+            "?AIR": ["FAIR"],
+            "??AIR": [],
+            "AIR": ["AIR"],
+            "FAI": [],
+            "a*b": ["a\nb"],
+            "a?b": ["a\nb"],
+            "*": ["AIR", "FAIR", "FAIRER", "a\nb", "fair"],
+        }
+        for pattern, names in expected.items():
+            with self.subTest(pattern=pattern):
+                self.assertEqual(self._names(pattern), names)
+
+    def test_brackets_are_refused(self):
+        models.Namespace.objects.create(updated_by=self.user, name="FAIR")
+        for pattern in ("[fF]*", "F[", "]"):
+            with self.subTest(pattern=pattern):
+                response = self.client.get(
+                    reverse("namespace-list"), {"name": pattern}
+                )
+                self.assertEqual(response.status_code, 400)
+                self.assertIn("name", response.json())
 
 
 class DataProductAPITests(TestCase):
