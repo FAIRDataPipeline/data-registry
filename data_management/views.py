@@ -24,6 +24,9 @@ from . import settings
 from . import version
 from . import vocab
 
+# The scheme of a storage root on a local file system
+FILE_SCHEME = "file://"
+
 
 def index(request):
     """
@@ -276,8 +279,8 @@ def file_size(location):
     where it cannot be found.
     """
     uri = location.full_uri()
-    if uri.startswith("file://"):
-        path = uri[len("file://"):]
+    if uri.startswith(FILE_SCHEME):
+        path = uri[len(FILE_SCHEME):]
         return os.path.getsize(path) if os.path.isfile(path) else None
     if settings.REMOTE_REGISTRY:
         domain = Site.objects.get_current().domain
@@ -439,7 +442,7 @@ def serve_file(full_uri):
     if settings.REMOTE_REGISTRY:
         return HttpResponse(status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-    full_uri = full_uri.replace("file://", "")
+    full_uri = full_uri.replace(FILE_SCHEME, "")
 
     if os.path.isfile(full_uri):
         return FileResponse(open(full_uri, "rb"))
@@ -453,7 +456,7 @@ def get_data_product(data_product):
     """
     full_uri = data_product.object.storage_location.full_uri()
 
-    if full_uri.startswith("/") or full_uri.startswith("file://"):
+    if full_uri.startswith("/") or full_uri.startswith(FILE_SCHEME):
         return serve_file(full_uri)
 
     return redirect(full_uri)

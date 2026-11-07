@@ -783,31 +783,34 @@ def _label_elements(doc):
             roles[entity] = next(iter(role)).localpart
 
     for record in doc.get_records(prov.model.ProvElement):
-        values = {name.localpart: str(value) for name, value in record.extra_attributes}
-        if isinstance(record, prov.model.ProvActivity):
-            label = values.get("description", record.identifier.localpart)
-            if record.get_startTime() is not None:
-                label = f"{label} ({record.get_startTime().date().isoformat()})"
-        elif "name" in values:
-            label = values["name"]
-        elif {"namespace", "title", "hasVersion"} <= values.keys():
-            label = f"{values['namespace']}:{values['title']}@{values['hasVersion']}"
-        elif {"title", "hasVersion"} <= values.keys():
-            label = f"{values['title']} ({values['hasVersion']})"
-        elif roles.get(record.identifier) in ROLE_LABELS:
-            label = ROLE_LABELS[roles[record.identifier]]
-        elif roles.get(record.identifier) == "software" and "atLocation" in values:
-            label = values["atLocation"]
-        elif "title" in values:
-            label = values["title"]
-        elif "description" in values:
-            label = values["description"]
-        elif "atLocation" in values:
-            label = values["atLocation"]
-        else:
-            label = record.identifier.localpart
-        record.add_attributes({PROV_LABEL: label})
+        role = roles.get(record.identifier)
+        record.add_attributes({PROV_LABEL: _label(record, role)})
     return doc
+
+
+# The label of an element, by the rules _label_elements gives; `role` is the role in
+# which a run used it, if any
+def _label(record, role):
+    values = {name.localpart: str(value) for name, value in record.extra_attributes}
+    if isinstance(record, prov.model.ProvActivity):
+        label = values.get("description", record.identifier.localpart)
+        if record.get_startTime() is not None:
+            label = f"{label} ({record.get_startTime().date().isoformat()})"
+        return label
+    if "name" in values:
+        return values["name"]
+    if {"namespace", "title", "hasVersion"} <= values.keys():
+        return f"{values['namespace']}:{values['title']}@{values['hasVersion']}"
+    if {"title", "hasVersion"} <= values.keys():
+        return f"{values['title']} ({values['hasVersion']})"
+    if role in ROLE_LABELS:
+        return ROLE_LABELS[role]
+    if role == "software" and "atLocation" in values:
+        return values["atLocation"]
+    for key in ("title", "description", "atLocation"):
+        if key in values:
+            return values[key]
+    return record.identifier.localpart
 
 
 def generate_prov_document(data_product, depth, request):

@@ -46,7 +46,7 @@ jobs:
           flags: unittests
           verbose: true
   test-postgres:
-    name: Test on PostgreSQL with Python 3.x
+    name: Test on PostgreSQL with Python 3.14
     # The jobs above run the suite on SQLite; a remote registry runs PostgreSQL, whose
     # engine reads some queries differently (a name filter's regular expression).
     runs-on: ubuntu-latest
@@ -60,16 +60,18 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U scrc"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     steps:
       - uses: actions/checkout@v7
-      - name: setup-python 3.x
+      # 3.14, not 3.x: the packages are installed as wheels only, and a new Python can
+      # come out before some of its wheels; move it on once every requirement has one
+      - name: setup-python 3.14
         uses: actions/setup-python@v7
         with:
-          python-version: '3.x'
+          python-version: '3.14'
       - name: Install graphviz and libpq
         run: sudo apt-get install -y graphviz libpq5
       - name: Run Tests
