@@ -29,8 +29,10 @@
       <dt class="col-sm-3">Object</dt>
       <dd class="col-sm-9"><a href="/object/{{ dataproduct.object.pk }}">{{ request.get_host }}/object/{{ dataproduct.object.pk }}</a></dd>
 
+      {% if dataproduct.object.storage_location %}
       <dt class="col-sm-3">Download</dt>
       <dd class="col-sm-9"><a href="{{ request.META.HTTP_NAME }}/data_product/{{ dataproduct.namespace }}:{{ dataproduct.name }}@{{ dataproduct.version }}">link</a></dd>
+      {% endif %}
 
     </dl>
   </div>

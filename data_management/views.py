@@ -195,9 +195,25 @@ class ExternalObjectListView(generic.ListView):
         return context
 
 
+# The address the registry serves a data product's file from
+def data_product_download(data_product):
+    return reverse(
+        "get_data_product",
+        kwargs={
+            "namespace": data_product.namespace.name,
+            "data_product_name": data_product.name,
+            "version": data_product.version,
+        },
+    )
+
+
 class ExternalObjectDetailView(generic.DetailView):
     """
     View for displaying details about a specific ExternalObject.
+
+    Its `download` is the registry's own copy, through the first data product
+    registered from it that has a file (a source is one file), or None where the
+    registry holds no file of it.
     """
 
     model = models.ExternalObject
@@ -206,6 +222,10 @@ class ExternalObjectDetailView(generic.DetailView):
         context = super().get_context_data(**kwargs)
         context["list_name"] = "externalobjects"
         context["list_display_name"] = "External Objects"
+        products = self.object.data_products.order_by("pk")
+        context["data_products"] = products
+        held = products.filter(object__storage_location__isnull=False).first()
+        context["download"] = None if held is None else data_product_download(held)
         return context
 
 

@@ -124,3 +124,101 @@ class RecordPageTests(TestCase):
             for product in component.object.data_products.all():
                 self.assertIn(f'href="{reverse("dataproduct", args=[product.pk])}"', page)
                 self.assertIn(f"{product.namespace.name}:{product.name}@{product.version}", page)
+
+
+@override_settings(
+    CACHES={"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}
+)
+class SourceAndTablePageTests(TestCase):
+    """
+    A source's page links what it names: the data products registered from it, its
+    identifier, its origin (the original store), and the registry's own copy, which
+    only a source whose file the registry holds has. The index's tables link each
+    row from its name and show free text as text.
+    """
+
+    def setUp(self):
+        self.user = get_user_model().objects.create(username="Test User")
+        init_shared_ancestry_db(self)
+
+    def _page(self, view, pk):
+        response = self.client.get(reverse(view, args=[pk]))
+        self.assertEqual(response.status_code, 200)
+        return response.content.decode()
+
+    def _download(self, product):
+        return reverse(
+            "get_data_product",
+            kwargs={
+                "namespace": product.namespace.name,
+                "data_product_name": product.name,
+                "version": product.version,
+            },
+        )
+
+    def test_a_source_links_its_products_identifier_origin_and_copy(self):
+        source = models.ExternalObject.objects.get(title="The source data")
+        page = self._page("externalobject", source.pk)
+        for product in source.data_products.all():
+            self.assertIn(f'href="{reverse("dataproduct", args=[product.pk])}"', page)
+        self.assertIn(f'href="{source.identifier}"', page)
+        self.assertIn(f'href="{source.original_store.full_uri()}"', page)
+        first = source.data_products.order_by("pk").first()
+        self.assertIn(f'href="{self._download(first)}"', page)
+        self.assertNotIn('href="/data_product/"', page)
+        self.assertNotIn("<dt class=\"col-sm-3\">Source</dt>", page)
+
+    def test_a_source_whose_file_the_registry_lacks_has_no_download(self):
+        deposit = models.ExternalObject.objects.get(title="The deposit")
+        page = self._page("externalobject", deposit.pk)
+        self.assertIn(f'href="{deposit.identifier}"', page)
+        self.assertNotIn("Download", page)
+        self.assertNotIn("None", page)
+        extract = models.ExternalObject.objects.get(title="An extract of the deposit")
+        page = self._page("externalobject", extract.pk)
+        product = extract.data_products.get()
+        self.assertIn(f'href="{self._download(product)}"', page)
+
+    def test_a_sources_description_links_its_addresses(self):
+        source = models.ExternalObject.objects.get(title="The source data")
+        source.description = "Fetched from https://example.org/fetched as described"
+        source.save()
+        page = self._page("externalobject", source.pk)
+        self.assertIn('href="https://example.org/fetched"', page)
+
+    def test_a_data_product_with_no_file_offers_no_download(self):
+        deposit = models.DataProduct.objects.get(name="deposit")
+        page = self._page("dataproduct", deposit.pk)
+        self.assertNotIn(self._download(deposit), page)
+        raw = models.DataProduct.objects.get(name="raw")
+        self.assertIn(self._download(raw), self._page("dataproduct", raw.pk))
+
+    def test_the_index_tables_link_each_row_by_name_and_escape_text(self):
+        markup = models.ExternalObject.objects.create(
+            updated_by=self.user,
+            identifier="https://doi.org/10.5281/zenodo.42",
+            title="<b>bold</b> title",
+            release_date="2020-07-10T18:38:00Z",
+        )
+        rows = self.client.get(
+            "/tables/externalobjects", {"limit": 100, "offset": 0}
+        ).json()["rows"]
+        self.assertEqual(len(rows), models.ExternalObject.objects.count())
+        for row in rows:
+            self.assertNotIn("None", str(row))
+            self.assertIn('<a href="https://doi.org/', row["identifier"])
+        titles = {row["title"] for row in rows}
+        for source in models.ExternalObject.objects.exclude(pk=markup.pk):
+            link = f'<a href="{reverse("externalobject", args=[source.pk])}">{source.title}</a>'
+            self.assertIn(link, titles)
+        escaped = f'<a href="{reverse("externalobject", args=[markup.pk])}">&lt;b&gt;bold&lt;/b&gt; title</a>'
+        self.assertIn(escaped, titles)
+
+        product = models.DataProduct.objects.get(name="raw")
+        product.name = "<i>raw</i>"
+        product.save()
+        rows = self.client.get(
+            "/tables/dataproducts", {"limit": 100, "offset": 0}
+        ).json()["rows"]
+        names = {row["name"] for row in rows}
+        self.assertIn(f'<a href="/data_product/{product.pk}">&lt;i&gt;raw&lt;/i&gt;</a>', names)
