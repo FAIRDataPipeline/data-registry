@@ -41,9 +41,9 @@
       <dt class="col-sm-3">Release Date</dt>
       <dd class="col-sm-9">{{ externalobject.release_date|date:"j F Y" }}</dd>
 
-      {% if externalobject.original_store %}
+      {% if origin %}
       <dt class="col-sm-3">Origin</dt>
-      <dd class="col-sm-9"><a href="{{ externalobject.original_store.full_uri }}">{{ externalobject.original_store.full_uri }}</a></dd>
+      <dd class="col-sm-9">{% if origin_link %}<a href="{{ origin_link }}">{{ origin }}</a>{% else %}{{ origin }}{% endif %}</dd>
       {% endif %}
 
       {% if download %}

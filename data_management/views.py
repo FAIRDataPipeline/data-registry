@@ -93,6 +93,12 @@ class BaseListView(generic.ListView):
         return context
 
 
+# An address a page may link: a web address. Anything else is shown as text, since a
+# storage root may hold any scheme, javascript: and data: among them
+def _web_address(uri):
+    return uri if uri.lower().startswith(("http://", "https://", "ftp://", "ftps://")) else None
+
+
 # The records a page lists besides its own fields, by model: (heading, relation)
 RELATED_ROWS = {
     "Namespace": (("Data products", "data_products"),),
@@ -105,7 +111,7 @@ RELATED_ROWS = {
 def _shown(value):
     if isinstance(value, models.ObjectComponent):
         part = "" if value.whole_object else f" ({value.name})"
-        products = value.object.data_products.all()
+        products = value.object.data_products.select_related("namespace")
         if products:
             return [
                 (
@@ -119,18 +125,15 @@ def _shown(value):
     if isinstance(value, datetime.datetime):
         return [(localize(value), None)]
     text = str(value)
-    if text.startswith(("http://", "https://")):
-        return [(text, text)]
-    return [(text, None)]
+    return [(text, _web_address(text))]
 
 
 # The heading of a record's page: an object by the names of its data products, where
 # it has any, rather than by where its file is; any other record by its own name
 def _title(record):
     if isinstance(record, models.Object):
-        names = [
-            f"{p.namespace.name}:{p.name}@{p.version}" for p in record.data_products.all()
-        ]
+        products = record.data_products.select_related("namespace")
+        names = [f"{p.namespace.name}:{p.name}@{p.version}" for p in products]
         if names:
             return ", ".join(names)
     return str(record)
@@ -182,6 +185,8 @@ class BaseDetailView(generic.DetailView):
         context["model_name"] = self.model_name.lower()
         context["title"] = _title(self.object)
         context["rows"] = _rows(self.object)
+        location = getattr(self.object, "storage_location", None)
+        context["download"] = None if location is None else _web_address(str(location))
         return context
 
 
@@ -234,8 +239,11 @@ class ExternalObjectDetailView(generic.DetailView):
         context = super().get_context_data(**kwargs)
         context["list_name"] = "externalobjects"
         context["list_display_name"] = "External Objects"
-        products = self.object.data_products.order_by("pk")
+        products = self.object.data_products.select_related("namespace").order_by("pk")
         context["data_products"] = products
+        store = self.object.original_store
+        context["origin"] = None if store is None else store.full_uri()
+        context["origin_link"] = None if store is None else _web_address(store.full_uri())
         held = products.filter(object__storage_location__isnull=False).first()
         context["download"] = None if held is None else data_product_download(held)
         return context
@@ -298,7 +306,11 @@ class DataProductDetailView(generic.DetailView):
         context["list_display_name"] = "Data Products"
         product = self.object
         obj = product.object
-        made_by = models.CodeRun.objects.filter(outputs__object=obj).distinct()
+        made_by = (
+            models.CodeRun.objects.filter(outputs__object=obj)
+            .distinct()
+            .prefetch_related("inputs")
+        )
         inputs = []
         for run in made_by:
             for component in run.inputs.all():

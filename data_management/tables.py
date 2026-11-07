@@ -19,7 +19,9 @@ def data_product_table_data(request):
     sort = request.GET.get("sort", "") or "name"
     order = request.GET.get("order", "") or "asc"
     sign = "-" if order == "desc" else ""
-    all_objects = models.DataProduct.objects.all().order_by(sign + sort)
+    all_objects = models.DataProduct.objects.select_related("namespace").order_by(
+        sign + sort
+    )
     if search:
         filtered_objects = all_objects.filter(
             Q(namespace__name__icontains=search)
@@ -111,7 +113,7 @@ def code_repo_release_table_data(request):
             "totalNotFiltered": all_objects.count(),
             "rows": [
                 {
-                    "name": _link(f"/object/{obj.object.id}", obj.name),
+                    "name": _link(f"/object/{obj.object_id}", obj.name),
                     "version": escape(obj.version),
                     "website": _link(obj.website, obj.website),
                 }

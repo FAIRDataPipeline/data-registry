@@ -27,7 +27,10 @@ def _object_ids(components):
 # A name for an object in a refusal: its data products, else its id
 def _describe(object_id):
     products = models.DataProduct.objects.filter(object_id=object_id)
-    names = [f"{p.namespace.name}:{p.name}@{p.version}" for p in products]
+    names = [
+        f"{p.namespace.name}:{p.name}@{p.version}"
+        for p in products.select_related("namespace")
+    ]
     return ", ".join(names) if names else f"object {object_id}"
 
 
@@ -68,7 +71,7 @@ def check_code_run_links(run, inputs, outputs):
     producers = models.CodeRun.objects.filter(outputs__object__in=added_outputs)
     if run is not None:
         producers = producers.exclude(pk=run.pk)
-    for producer in producers.distinct():
+    for producer in producers.distinct().prefetch_related("outputs"):
         produced = _object_ids(producer.outputs.all()) & added_outputs
         raise ProvenanceRefused(
             f"{_describe(min(produced))} is an output of code run {producer.uuid} "

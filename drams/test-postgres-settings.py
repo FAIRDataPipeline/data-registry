@@ -1,4 +1,4 @@
-from .base_settings import *
+from .base_settings import *  # NOSONAR: a settings module takes every setting of the one it extends
 import os
 
 DEBUG = True

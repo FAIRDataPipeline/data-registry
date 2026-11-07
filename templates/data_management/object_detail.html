@@ -45,9 +45,9 @@
         <dd class="col-sm-9">{{ object.file_type.name }}</dd>
       {% endif %}
       
-    {% if object.storage_location %}
+    {% if download %}
     <dt class="col-sm-3">Download</dt>
-    <dd class="col-sm-9"><a href="{{ object.storage_location }}">link</a></dd>
+    <dd class="col-sm-9"><a href="{{ download }}">link</a></dd>
     {% endif %}      
       
     </dl>

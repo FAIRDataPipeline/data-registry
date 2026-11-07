@@ -179,6 +179,25 @@ class SourceAndTablePageTests(TestCase):
         product = extract.data_products.get()
         self.assertIn(f'href="{self._download(product)}"', page)
 
+    def test_only_a_web_address_is_linked(self):
+        # a storage root may hold any scheme; a page links only http, https and ftp
+        root = models.StorageRoot.objects.create(
+            updated_by=self.user, root="javascript:alert(1)//"
+        )
+        location = models.StorageLocation.objects.create(
+            updated_by=self.user, path="x", hash="0" * 40, storage_root=root
+        )
+        source = models.ExternalObject.objects.get(title="The source data")
+        source.original_store = location
+        source.save()
+        obj = models.Object.objects.create(updated_by=self.user, storage_location=location)
+        for page in (
+            self._page("externalobject", source.pk),
+            self._page("object", obj.pk),
+            self._page("storagelocation", location.pk),
+        ):
+            self.assertNotIn('href="javascript:', page)
+
     def test_a_sources_description_links_its_addresses(self):
         source = models.ExternalObject.objects.get(title="The source data")
         source.description = "Fetched from https://example.org/fetched as described"

@@ -74,7 +74,7 @@ jobs:
         run: sudo apt-get install -y graphviz libpq5
       - name: Run Tests
         run: |
-          python -m pip install -r requirements.txt
+          python -m pip install --only-binary :all: -r requirements.txt
           # PostgreSQL cannot build the test database without the migrations, which an
           # install makes and the repository does not hold
           DJANGO_SETTINGS_MODULE=drams.test-postgres-settings python manage.py makemigrations custom_user data_management
@@ -113,17 +113,18 @@ jobs:
       - name: Test registry scripts
         run: |
           scripts=$INSTALL_DIR/registry/scripts
-          # Wait up to 60 s for port $1 to answer ($2 = up) or to stop answering ($2 = down)
+          # wait_for <port> up|down: wait up to 60 s for the port to answer, or to stop answering
           wait_for() {
+            local port=$1 state=$2
             for i in $(seq 60); do
-              if curl -sf -m 5 -o /dev/null http://127.0.0.1:$1/api/; then
-                [ $2 = up ] && return 0
+              if curl -sf -m 5 -o /dev/null http://127.0.0.1:$port/api/; then
+                [ $state = up ] && return 0
               else
-                [ $2 = down ] && return 0
+                [ $state = down ] && return 0
               fi
               sleep 1
             done
-            echo "Port $1 is not $2 after 60 s. Registry processes:"
+            echo "Port $port is not $state after 60 s. Registry processes:"
             ps -ef | grep "[m]anage.py" || true
             tail -20 $INSTALL_DIR/registry/output.log
             return 1
