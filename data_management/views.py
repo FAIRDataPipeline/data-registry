@@ -244,9 +244,38 @@ class DataProductListView(generic.ListView):
         return context
 
 
+# The size of file above which a data product's page offers its crate without the
+# file first: a zip packing it is built and sent through the registry
+PACK_LIMIT = 100 * 1024 * 1024
+
+
+def file_size(location):
+    """
+    Return the size in bytes of a storage location's file - from the object store
+    for one in this registry's own store, from the disk for a local file - or None
+    where it cannot be found.
+    """
+    uri = location.full_uri()
+    if uri.startswith("file://"):
+        path = uri[len("file://"):]
+        return os.path.getsize(path) if os.path.isfile(path) else None
+    if settings.REMOTE_REGISTRY:
+        domain = Site.objects.get_current().domain
+        if domain in location.storage_root.root:
+            return object_storage.size(location.path)
+    return None
+
+
 class DataProductDetailView(generic.DetailView):
     """
-    View for displaying details about a specific DataProduct.
+    View for displaying details about a specific DataProduct: what it is, who made
+    it, where it came from, the run that made it and from what, the runs that used
+    it, its provenance drawn and its report and RO-Crate offered.
+
+    `?depth=all` draws and offers the whole history rather than one step back. The
+    crate's zip is offered with the product's file and without it, with it chosen
+    unless the file is larger than PACK_LIMIT; a product with no public file is
+    offered without.
     """
 
     model = models.DataProduct
@@ -255,6 +284,38 @@ class DataProductDetailView(generic.DetailView):
         context = super().get_context_data(**kwargs)
         context["list_name"] = "dataproducts"
         context["list_display_name"] = "Data Products"
+        product = self.object
+        obj = product.object
+        made_by = models.CodeRun.objects.filter(outputs__object=obj).distinct()
+        inputs = []
+        for run in made_by:
+            for component in run.inputs.all():
+                for shown in _shown(component):
+                    if shown not in inputs:
+                        inputs.append(shown)
+        location = obj.storage_location
+        size = None if location is None else file_size(location)
+        whole = self.request.GET.get("depth") == "all"
+        context.update(
+            {
+                "authors": obj.authors.all(),
+                "licences": obj.licences.all(),
+                "issues": models.Issue.objects.filter(
+                    component_issues__object=obj
+                ).distinct(),
+                "made_by": made_by,
+                "inputs": inputs,
+                "used_by": models.CodeRun.objects.filter(inputs__object=obj).distinct(),
+                "download": None if location is None else data_product_download(product),
+                "size": size,
+                "packable": location is not None and location.public,
+                "pack_file": size is None or size <= PACK_LIMIT,
+                "whole_history": whole,
+                "depth": 100 if whole else 1,
+                "report": reverse("prov_report", args=[product.pk]),
+                "crate": reverse("data_product_ro_crate", args=[product.pk]),
+            }
+        )
         return context
 
 

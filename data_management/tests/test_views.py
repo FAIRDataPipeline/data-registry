@@ -222,3 +222,113 @@ class SourceAndTablePageTests(TestCase):
         ).json()["rows"]
         names = {row["name"] for row in rows}
         self.assertIn(f'<a href="/data_product/{product.pk}">&lt;i&gt;raw&lt;/i&gt;</a>', names)
+
+
+@override_settings(
+    CACHES={"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}
+)
+class DataProductPageTests(TestCase):
+    """
+    A data product's page is where a reader starts: it says what the product is, who
+    made it, where it came from, the run that made it from which inputs and the runs
+    that used it, draws its provenance and offers its report and its RO-Crate - the
+    crate's zip with the product's file or without, with it unless the file is over
+    100 MB.
+    """
+
+    def setUp(self):
+        self.user = get_user_model().objects.create(username="Test User")
+        init_shared_ancestry_db(self)
+
+    def _page(self, name, **params):
+        product = models.DataProduct.objects.get(name=name)
+        response = self.client.get(reverse("dataproduct", args=[product.pk]), params)
+        self.assertEqual(response.status_code, 200)
+        return product, response.content.decode()
+
+    def _href(self, view, pk):
+        return f'href="{reverse(view, args=[pk])}"'
+
+    def test_what_it_is_and_who_made_it(self):
+        product, page = self._page("end")
+        obj = product.object
+        if obj.description:
+            self.assertIn(obj.description, page)
+        for author in obj.authors.all():
+            self.assertIn(author.name, page)
+        for licence in obj.licences.all():
+            self.assertIn(licence.licence_info, page)
+        self.assertIn(self._href("namespace", product.namespace.pk), page)
+        self.assertNotIn("None", page)
+
+    def test_its_source_and_issues(self):
+        product, page = self._page("source")
+        self.assertIn(self._href("externalobject", product.external_object.pk), page)
+        self.assertIn(product.external_object.title, page)
+        raw, page = self._page("raw")
+        issues = models.Issue.objects.filter(component_issues__object=raw.object)
+        self.assertTrue(issues)
+        for issue in issues:
+            self.assertIn(self._href("issue", issue.pk), page)
+            self.assertIn(issue.description, page)
+
+    def test_the_run_that_made_it_its_inputs_and_the_runs_that_used_it(self):
+        product, page = self._page("raw")
+        made_by = models.CodeRun.objects.get(outputs__object=product.object)
+        self.assertIn(self._href("coderun", made_by.pk), page)
+        for component in made_by.inputs.all():
+            for source in component.object.data_products.all():
+                self.assertIn(self._href("dataproduct", source.pk), page)
+        for run in models.CodeRun.objects.filter(inputs__object=product.object):
+            self.assertIn(self._href("coderun", run.pk), page)
+
+    def test_its_provenance_drawn_and_offered(self):
+        product, page = self._page("end")
+        report = reverse("prov_report", args=[product.pk])
+        self.assertIn(f'src="{report}?format=svg&amp;depth=1&amp;attributes=False"', page)
+        for format_ in ("json-ld", "provn", "xml"):
+            self.assertIn(f'href="{report}?format={format_}&amp;depth=1"', page)
+        _, page = self._page("end", depth="all")
+        self.assertIn(f'src="{report}?format=svg&amp;depth=100&amp;attributes=False"', page)
+
+    def test_its_crate_with_the_file_below_100_mb(self):
+        product, page = self._page("end")
+        crate = reverse("data_product_ro_crate", args=[product.pk])
+        self.assertIn(f'href="{crate}?format=json-ld&amp;depth=1"', page)
+        self.assertIn(f'action="{crate}"', page)
+        self.assertRegex(page, r'name="pack" value="roots"[^>]*checked')
+        self.assertNotRegex(page, r'name="pack" value="none"[^>]*checked')
+
+    def test_its_crate_without_the_file_above_100_mb(self):
+        with mock.patch("data_management.views.file_size", return_value=101 * 1024**2):
+            product, page = self._page("end")
+        self.assertRegex(page, r'name="pack" value="none"[^>]*checked')
+        self.assertNotRegex(page, r'name="pack" value="roots"[^>]*checked')
+        self.assertIn("101.0", page)
+
+    def test_the_size_of_a_file_in_the_registrys_store_comes_from_the_store(self):
+        from django.contrib.sites.models import Site
+        from data_management import views
+
+        domain = Site.objects.get_current().domain
+        root = models.StorageRoot.objects.create(
+            updated_by=self.user, root=f"https://{domain}/data/"
+        )
+        held = models.StorageLocation.objects.create(
+            updated_by=self.user, path="abc123", hash="abc123", storage_root=root
+        )
+        elsewhere = models.StorageLocation.objects.get(
+            path="downloads/source.txt"
+        )
+        with mock.patch.object(views.settings, "REMOTE_REGISTRY", True):
+            with mock.patch.object(views.object_storage, "size", return_value=42) as size:
+                self.assertEqual(views.file_size(held), 42)
+                self.assertIsNone(views.file_size(elsewhere))
+        size.assert_called_once_with("abc123")
+        local = models.DataProduct.objects.get(name="end").object.storage_location
+        self.assertEqual(views.file_size(local), len(b"end\n"))
+
+    def test_a_product_with_no_file_offers_its_crate_without_one(self):
+        product, page = self._page("deposit")
+        self.assertNotIn('value="roots"', page)
+        self.assertIn('value="none"', page)
