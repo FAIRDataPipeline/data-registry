@@ -1,7 +1,7 @@
 # Component Checker
 
 A script for processing data product files to display their components and check if they are registered in the
-data registry is available [here](https://github.com/FAIRDataPipeline/data-registry/tree/master/tools).
+data registry is available [here](https://github.com/FAIRDataPipeline/data-registry/tree/main/tools).
 
 ## Installing
 

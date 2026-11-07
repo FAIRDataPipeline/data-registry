@@ -124,6 +124,18 @@ def _shown(value):
     return [(text, None)]
 
 
+# The heading of a record's page: an object by the names of its data products, where
+# it has any, rather than by where its file is; any other record by its own name
+def _title(record):
+    if isinstance(record, models.Object):
+        names = [
+            f"{p.namespace.name}:{p.name}@{p.version}" for p in record.data_products.all()
+        ]
+        if names:
+            return ", ".join(names)
+    return str(record)
+
+
 # The rows of a record's page: each field that has a value, by its name, with the
 # values shown, then the related records its model lists
 def _rows(record):
@@ -168,7 +180,7 @@ class BaseDetailView(generic.DetailView):
         context["list_name"] = self.model_name.lower() + "s"
         context["list_display_name"] = camel_case_to_spaces(self.model_name) + "s"
         context["model_name"] = self.model_name.lower()
-        context["title"] = str(self.object)
+        context["title"] = _title(self.object)
         context["rows"] = _rows(self.object)
         return context
 
@@ -330,10 +342,20 @@ class IssueListView(generic.ListView):
 
 class IssueDetailView(generic.DetailView):
     """
-    View for displaying details about a specific Issue.
+    View for displaying details about a specific Issue, and what it applies to: each
+    object component it was raised on, by the data products of its object.
     """
 
     model = models.Issue
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["applies_to"] = [
+            shown
+            for component in self.object.component_issues.all()
+            for shown in _shown(component)
+        ]
+        return context
 
 
 def docs(request, name):

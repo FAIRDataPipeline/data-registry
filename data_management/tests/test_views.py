@@ -332,3 +332,58 @@ class DataProductPageTests(TestCase):
         product, page = self._page("deposit")
         self.assertNotIn('value="roots"', page)
         self.assertIn('value="none"', page)
+
+
+@override_settings(
+    CACHES={"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}
+)
+class SmallerPageTests(TestCase):
+    """
+    The pages say nothing empty or out of date: an object is named by its data
+    products and an author without an identifier shows none; an issue names what it
+    applies to by data product; the index and the documentation say what the
+    registry is.
+    """
+
+    DESCRIPTION = "The FAIR Data Registry records where research data came from"
+
+    def setUp(self):
+        self.user = get_user_model().objects.create(username="Test User")
+        init_shared_ancestry_db(self)
+
+    def _get(self, url):
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        return response.content.decode()
+
+    def test_an_object_is_named_by_its_data_products(self):
+        product = models.DataProduct.objects.get(name="raw")
+        product.object.authors.add(models.Author.objects.create(updated_by=self.user, name="No Identifier"))
+        page = self._get(reverse("object", args=[product.object.pk]))
+        self.assertIn(f"<h3>{product.namespace.name}:{product.name}@{product.version}", page)
+        self.assertIn("No Identifier", page)
+        self.assertNotIn("None", page)
+
+    def test_an_issue_names_what_it_applies_to(self):
+        issue = models.Issue.objects.get(description="raw has a bad row")
+        page = self._get(reverse("issue", args=[issue.pk]))
+        raw = models.DataProduct.objects.get(name="raw")
+        self.assertIn(f'href="{reverse("dataproduct", args=[raw.pk])}"', page)
+        self.assertIn("shared:raw@1.0.0", page)
+        self.assertNotIn("Associated Objects", page)
+        self.assertIn(f"{issue.short_desc()}</li>", page)
+
+    def test_the_index_and_the_docs_say_what_the_registry_is(self):
+        self.assertIn(self.DESCRIPTION, self._get(reverse("index")))
+        docs = self._get(reverse("docs_index"))
+        self.assertIn(self.DESCRIPTION, docs)
+        self.assertNotIn("epidemiological", docs)
+        self.assertIn("Component Checker", docs)
+
+    def test_the_docs_link_nothing_that_is_gone(self):
+        naming = self._get("/docs/data_product_naming.md")
+        self.assertNotIn("teams.microsoft.com", naming)
+        self.assertNotIn('href="SCRC/', naming)
+        self.assertIn("https://www.fairdatapipeline.org/docs/api/", naming)
+        checker = self._get("/docs/component_checker.md")
+        self.assertIn("data-registry/tree/main/tools", checker)
