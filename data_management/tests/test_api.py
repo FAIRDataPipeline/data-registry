@@ -1560,6 +1560,7 @@ class ProvAPITests(TestCase):
     PROV_ENTITY = "prov:entity"
     PROV_GENERAL_ENTITY = "prov:generalEntity"
     PROV_GENERATED_ENTITY = "prov:generatedEntity"
+    PROV_LABEL = "prov:label"
     PROV_PERSON = "prov:Person"
     PROV_SPECIFIC_ENTITY = "prov:specificEntity"
     PROV_ROLE = "prov:role"
@@ -1598,6 +1599,7 @@ class ProvAPITests(TestCase):
             self.FAIR_NAMESPACE: "prov",
             self.DCTERMS_TITLE: "this/is/cr/test/input/1",
             self.DCAT_HAS_VERSION: "0.2.0",
+            self.PROV_LABEL: "prov:this/is/cr/test/input/1@0.2.0",
         }
         prov_out = results["entity"][f"{self.LREG_DATA_PRODUCT}{products[1]}"]
         del prov_out[self.DCTERMS_MODIFIED]
@@ -1611,6 +1613,7 @@ class ProvAPITests(TestCase):
             self.FAIR_NAMESPACE: "prov",
             self.DCTERMS_TITLE: "this/is/cr/test/output/1",
             self.DCAT_HAS_VERSION: "0.2.0",
+            self.PROV_LABEL: "prov:this/is/cr/test/output/1@0.2.0",
         }
         prov_out = results["entity"][f"{self.LREG_DATA_PRODUCT}{products[2]}"]
         del prov_out[self.DCTERMS_MODIFIED]
@@ -1625,6 +1628,7 @@ class ProvAPITests(TestCase):
             self.FAIR_NAMESPACE: "prov",
             self.DCTERMS_TITLE: "this/is/cr/test/input/2",
             self.DCAT_HAS_VERSION: "0.2.0",
+            self.PROV_LABEL: "prov:this/is/cr/test/input/2@0.2.0",
         }
         prov_out = results["entity"][f"{self.LREG_DATA_PRODUCT}{products[4]}"]
         del prov_out[self.DCTERMS_MODIFIED]
@@ -1639,6 +1643,7 @@ class ProvAPITests(TestCase):
             self.FAIR_NAMESPACE: "prov",
             self.DCTERMS_TITLE: "this/is/cr/test/input/3",
             self.DCAT_HAS_VERSION: "0.2.0",
+            self.PROV_LABEL: "prov:this/is/cr/test/input/3@0.2.0",
         }
         prov_out = results["entity"][f"{self.LREG_DATA_PRODUCT}{products[5]}"]
         del prov_out[self.DCTERMS_MODIFIED]
@@ -1656,6 +1661,7 @@ class ProvAPITests(TestCase):
             "fair:alternate_identifier": "this_is_cr_test_input_1",
             "fair:alternate_identifier_type": "text",
             self.DCTERMS_DESCRIPTION: "this is code run test input 1",
+            self.PROV_LABEL: "this is cr test input 1 (0.2.0)",
         }
         self.assertEqual(
             results["entity"][f"lreg:api/external_object/{sources[1]}"], expected_result
@@ -1674,6 +1680,7 @@ class ProvAPITests(TestCase):
             "fair:alternate_identifier_type": "text",
             self.DCTERMS_DESCRIPTION: "this is code run test output 1",
             self.DCTERMS_IDENTIFIER: "this_is_cr_test_output_1_id",
+            self.PROV_LABEL: "this is cr test output 1 (0.2.0)",
         }
         self.assertEqual(
             results["entity"][f"lreg:api/external_object/{sources[2]}"], expected_result
@@ -1685,6 +1692,7 @@ class ProvAPITests(TestCase):
             self.DCAT_HAS_VERSION: "0.1.0",
             "fair:commit": "b98782baaaea3bf6cc2882ad7d1c5de7aece362a",
             "fair:website": "https://github.com/ScottishCovidResponse/SCRCdata",
+            self.PROV_LABEL: "ScottishCovidResponse/SCRCdata (0.1.0)",
             self.RDF_TYPE: {
                 "$": "dcmitype:Software",
                 "type": self.XSD_QNAME,
@@ -1697,6 +1705,7 @@ class ProvAPITests(TestCase):
         expected_result = {
             self.PROV_AT_LOCATION: "https://data.fairdatapipeline.org/api/text_file/15/?format=text",
             self.FAIR_HASH: "5b6fafc594cdb619104ceeef7a4802f4086e90e8",
+            self.PROV_LABEL: "model configuration",
         }
         prov_out = results["entity"][f"{self.LREG_OBJECT}{objects[3]}"]
         del prov_out[self.DCTERMS_MODIFIED]
@@ -1706,6 +1715,7 @@ class ProvAPITests(TestCase):
             self.DCTERMS_FORMAT: self.TEXT_FILE,
             self.PROV_AT_LOCATION: "https://data.fairdatapipeline.org/api/text_file/16/?format=text",
             self.FAIR_HASH: "5b6fafc594cdb619104ceeef7a4802f4086e90e9",
+            self.PROV_LABEL: "submission script",
             self.RDF_TYPE: {
                 "$": "dcmitype:Software",
                 "type": self.XSD_QNAME,
@@ -1720,6 +1730,7 @@ class ProvAPITests(TestCase):
                 "prov:startTime": "2021-07-17T18:21:11+00:00",
                 self.RDF_TYPE: {"$": "fair:Run", "type": self.XSD_QNAME},
                 self.DCTERMS_DESCRIPTION: "Test run",
+                self.PROV_LABEL: "Test run (2021-07-17)",
             }
         }
         self.assertEqual(results["activity"], expected_result)
@@ -1730,6 +1741,7 @@ class ProvAPITests(TestCase):
                     "type": self.XSD_QNAME,
                 },
                 self.FOAF_NAME: "Rosanna Massabeti",
+                self.PROV_LABEL: "Rosanna Massabeti",
             },
             f"{self.LREG_USER}{self.user.pk}": {
                 self.RDF_TYPE: {
@@ -1737,6 +1749,7 @@ class ProvAPITests(TestCase):
                     "type": self.XSD_QNAME,
                 },
                 self.FOAF_NAME: "User Not Found",
+                self.PROV_LABEL: "User Not Found",
             },
             f"{self.LREG_AUTHOR}{authors[1]}": {
                 self.RDF_TYPE: {
@@ -1744,6 +1757,7 @@ class ProvAPITests(TestCase):
                     "type": self.XSD_QNAME,
                 },
                 self.FOAF_NAME: "Ivana Valenti",
+                self.PROV_LABEL: "Ivana Valenti",
             },
             f"{self.LREG_AUTHOR}{authors[2]}": {
                 self.RDF_TYPE: {
@@ -1751,6 +1765,7 @@ class ProvAPITests(TestCase):
                     "type": self.XSD_QNAME,
                 },
                 self.FOAF_NAME: "Maria Cipriani",
+                self.PROV_LABEL: "Maria Cipriani",
             },
         }
         self.assertEqual(results["agent"], expected_result)
@@ -1922,10 +1937,10 @@ class ProvAPITests(TestCase):
   prefix foaf <http://xmlns.com/foaf/spec/#>
   prefix rdf <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
   
-  entity(lreg:api/data_product/{products[1]}, [rdf:type='dcat:Dataset', prov:atLocation="https://data.fairdatapipeline.org/api/text_file/input/1", fair:hash="5b6fafc594cdb619104ceeef7a4802f4086e90a1", dcterms:description="input 1 object", fair:namespace="prov", dcterms:title="this/is/cr/test/input/1", dcat:hasVersion="0.2.0"])
-  agent(lreg:api/author/{authors[1]}, [rdf:type='prov:Person', foaf:name="Ivana Valenti"])
+  entity(lreg:api/data_product/{products[1]}, [rdf:type='dcat:Dataset', prov:atLocation="https://data.fairdatapipeline.org/api/text_file/input/1", fair:hash="5b6fafc594cdb619104ceeef7a4802f4086e90a1", dcterms:description="input 1 object", fair:namespace="prov", dcterms:title="this/is/cr/test/input/1", dcat:hasVersion="0.2.0", prov:label="prov:this/is/cr/test/input/1@0.2.0"])
+  agent(lreg:api/author/{authors[1]}, [rdf:type='prov:Person', foaf:name="Ivana Valenti", prov:label="Ivana Valenti"])
   wasAttributedTo(lreg:api/data_product/{products[1]}, lreg:api/author/{authors[1]}, [prov:role='dcterms:creator'])
-  entity(lreg:api/external_object/{sources[1]}, [rdf:type='dcat:Dataset', dcterms:title="this is cr test input 1", dcterms:issued="2020-07-10T18:38:00+00:00" %% xsd:dateTime, dcat:hasVersion="0.2.0", fair:alternate_identifier="this_is_cr_test_input_1", fair:alternate_identifier_type="text", dcterms:description="this is code run test input 1", prov:atLocation="https://example.org/file_strore/1.txt"])
+  entity(lreg:api/external_object/{sources[1]}, [rdf:type='dcat:Dataset', dcterms:title="this is cr test input 1", dcterms:issued="2020-07-10T18:38:00+00:00" %% xsd:dateTime, dcat:hasVersion="0.2.0", fair:alternate_identifier="this_is_cr_test_input_1", fair:alternate_identifier_type="text", dcterms:description="this is code run test input 1", prov:atLocation="https://example.org/file_strore/1.txt", prov:label="this is cr test input 1 (0.2.0)"])
   specializationOf(lreg:api/data_product/{products[1]}, lreg:api/external_object/{sources[1]})
 endDocument"""
         self.assertEqual(result, expected_result)
@@ -2387,6 +2402,54 @@ class ProvSharedAncestryTests(TestCase):
         repo = results["entity"][self._object("FAIRDataPipeline/shared")]
         self.assertNotIn("fair:hash", repo)
         self.assertIn("fair:commit", repo)
+
+    def test_every_element_is_labelled_by_its_name(self):
+        # each element carries a prov:label naming it, which the graph shows
+        results = self._get(100)
+        labels = {
+            identifier: description["prov:label"]
+            for kind in ("entity", "activity", "agent")
+            for identifier, description in results[kind].items()
+        }
+        for name in ("end", "first", "second", "twin", "raw", "alias", "source"):
+            self.assertEqual(labels[self._data_product(name)], f"shared:{name}@1.0.0")
+        for run in models.CodeRun.objects.all():
+            date = run.run_date.date().isoformat()
+            self.assertEqual(labels[self._code_run(run.description)], f"{run.description} ({date})")
+        for author in models.Author.objects.all():
+            self.assertEqual(labels[f"lreg:api/author/{author.id}"], author.name)
+        self.assertEqual(labels[self._object("model_config")], "model configuration")
+        self.assertEqual(labels[self._object("script")], "submission script")
+        repo = models.Object.objects.get(storage_location__path="FAIRDataPipeline/shared")
+        self.assertEqual(labels[self._object("FAIRDataPipeline/shared")], str(repo.storage_location))
+        source = models.ExternalObject.objects.get(title="The source data")
+        self.assertEqual(
+            labels[f"lreg:api/external_object/{source.id}"], "The source data (1.0.0)"
+        )
+        self.assertEqual(set(labels), {*results["entity"], *results["activity"], *results["agent"]})
+
+    def test_graph_shows_names(self):
+        # without the attribute boxes, which print every attribute, a name can only
+        # be on the graph as a node's label
+        client = APIClient()
+        end = models.DataProduct.objects.get(name="end")
+        url = reverse("prov_report", kwargs={"pk": end.id})
+        for attributes in ("True", "False"):
+            with self.subTest(attributes=attributes):
+                response = client.get(
+                    url,
+                    data={"depth": 100, "attributes": attributes},
+                    HTTP_ACCEPT="image/svg+xml",
+                )
+                self.assertEqual(response.status_code, 200)
+                svg = response.content.decode()
+                for name in (
+                    "shared:end@1.0.0",
+                    "shared:raw@1.0.0",
+                    "model configuration",
+                    "Ivana Valenti",
+                ):
+                    self.assertIn(name, svg)
 
     def test_names_paired(self):
         # an object with two names is two entities, each with its own name alone
