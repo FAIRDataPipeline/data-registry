@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% load django_bootstrap_breadcrumbs %}
+
+{% block breadcrumbs %}
+{{ block.super }}
+{% breadcrumb list_display_name|title list_name %}
+{% breadcrumb title model_name object.pk %}
+{% endblock %}
+
+{% block content %}
+{{ block.super }}
+<div class="card">
+  <div class="card-body">
+    <h3>{{ title }}</h3>
+    <dl class="row">
+      {% for label, values in rows %}
+      <dt class="col-sm-3">{{ label }}</dt>
+      <dd class="col-sm-9">
+        {% for text, link in values %}
+        {% if link %}<a href="{{ link }}">{{ text }}</a>{% else %}{{ text }}{% endif %}{% if not forloop.last %}<br />{% endif %}
+        {% endfor %}
+      </dd>
+      {% endfor %}
+    </dl>
+  </div>
+</div>
+{% endblock %}

@@ -6,7 +6,9 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 
+from data_management import models
 from .initdb import init_db
+from .init_shared_ancestry_db import init_db as init_shared_ancestry_db
 
 
 class IndexViewTests(TestCase):
@@ -73,3 +75,52 @@ class SocialLoginTests(TestCase):
         self.assertTrue(response["Location"].startswith("https://github.com/login/oauth/authorize"))
         # where to return to after GitHub sends the user back
         self.assertEqual(client.session["next"], reverse("index"))
+
+
+# The detail pages are cached by address, and SQLite gives a rolled-back test's ids
+# out again, so a cached page could be another test's
+@override_settings(
+    CACHES={"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}
+)
+class RecordPageTests(TestCase):
+    """
+    Every kind of record has a page, listed and on its own, and a page shows a
+    record's related records as links: a namespace its data products, a code run
+    its inputs and outputs by the data products they belong to.
+    """
+
+    def setUp(self):
+        self.user = get_user_model().objects.create(username="Test User")
+
+    def _assert_every_page_answers(self):
+        for name, model in models.all_models.items():
+            with self.subTest(model=name):
+                response = self.client.get(reverse(name.lower() + "s"))
+                self.assertEqual(response.status_code, 200)
+                for pk in model.objects.values_list("pk", flat=True):
+                    response = self.client.get(reverse(name.lower(), args=[pk]))
+                    self.assertEqual(response.status_code, 200, f"{name} {pk}")
+
+    def test_every_record_of_the_shared_ancestry_has_a_page(self):
+        init_shared_ancestry_db(self)
+        self._assert_every_page_answers()
+
+    def test_every_record_of_the_original_example_has_a_page(self):
+        init_db()
+        self._assert_every_page_answers()
+
+    def test_a_namespace_lists_its_data_products(self):
+        init_shared_ancestry_db(self)
+        namespace = models.Namespace.objects.get(name="shared")
+        page = self.client.get(reverse("namespace", args=[namespace.pk])).content.decode()
+        for product in namespace.data_products.all():
+            self.assertIn(f'href="{reverse("dataproduct", args=[product.pk])}"', page)
+
+    def test_a_code_run_names_its_inputs_and_outputs_by_data_product(self):
+        init_shared_ancestry_db(self)
+        run = models.CodeRun.objects.get(description="final")
+        page = self.client.get(reverse("coderun", args=[run.pk])).content.decode()
+        for component in (*run.inputs.all(), *run.outputs.all()):
+            for product in component.object.data_products.all():
+                self.assertIn(f'href="{reverse("dataproduct", args=[product.pk])}"', page)
+                self.assertIn(f"{product.namespace.name}:{product.name}@{product.version}", page)

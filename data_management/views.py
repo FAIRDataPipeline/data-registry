@@ -1,10 +1,13 @@
 from configparser import ConfigParser
+import datetime
 import os
 
 from django.http import HttpResponseNotFound, FileResponse
 from django.shortcuts import render, HttpResponse, redirect
+from django.urls import reverse
 from django.views import generic
-from django.utils.text import camel_case_to_spaces
+from django.utils.formats import localize
+from django.utils.text import camel_case_to_spaces, capfirst
 from django.contrib.auth import get_user_model
 from django.contrib.auth import logout as auth_logout
 from django.db.models import Q
@@ -90,18 +93,83 @@ class BaseListView(generic.ListView):
         return context
 
 
+# The records a page lists besides its own fields, by model: (heading, relation)
+RELATED_ROWS = {
+    "Namespace": (("Data products", "data_products"),),
+}
+
+
+# A value on a record's page as (text, link) pairs, the link None where there is none:
+# a record by its own page, an object component by the data products of its object
+# (the name a reader knows it by), a web address by itself
+def _shown(value):
+    if isinstance(value, models.ObjectComponent):
+        part = "" if value.whole_object else f" ({value.name})"
+        products = value.object.data_products.all()
+        if products:
+            return [
+                (
+                    f"{p.namespace.name}:{p.name}@{p.version}{part}",
+                    reverse("dataproduct", args=[p.pk]),
+                )
+                for p in products
+            ]
+    if type(value).__name__ in models.all_models:
+        return [(str(value), reverse(type(value).__name__.lower(), args=[value.pk]))]
+    if isinstance(value, datetime.datetime):
+        return [(localize(value), None)]
+    text = str(value)
+    if text.startswith(("http://", "https://")):
+        return [(text, text)]
+    return [(text, None)]
+
+
+# The rows of a record's page: each field that has a value, by its name, with the
+# values shown, then the related records its model lists
+def _rows(record):
+    rows = []
+    for field in record._meta.get_fields():
+        if field.auto_created:
+            continue
+        if field.many_to_many:
+            items = getattr(record, field.name).all()
+        else:
+            value = getattr(record, field.name)
+            items = [] if value is None or value == "" else [value]
+        values = [shown for item in items for shown in _shown(item)]
+        if values:
+            rows.append((capfirst(field.verbose_name), values))
+    for heading, relation in RELATED_ROWS.get(type(record).__name__, ()):
+        items = getattr(record, relation).all()
+        values = [shown for item in items for shown in _shown(item)]
+        if values:
+            rows.append((heading, values))
+    return rows
+
+
 class BaseDetailView(generic.DetailView):
     """
     Base class for views for displaying details about a specific database object.
+
+    A model with a template of its own is shown by it; any other by
+    `record_detail.html`, which lists the record's fields and related records.
     """
 
     context_object_name = "object"
+
+    def get_template_names(self):
+        return [
+            *super().get_template_names(),
+            os.path.join("data_management", "record_detail.html"),
+        ]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["list_name"] = self.model_name.lower() + "s"
         context["list_display_name"] = camel_case_to_spaces(self.model_name) + "s"
         context["model_name"] = self.model_name.lower()
+        context["title"] = str(self.object)
+        context["rows"] = _rows(self.object)
         return context
 
 
