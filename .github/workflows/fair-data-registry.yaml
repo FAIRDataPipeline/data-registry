@@ -52,7 +52,8 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        # the PostgreSQL that data.fairdatapipeline.org runs
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: scrc
           POSTGRES_PASSWORD: password
