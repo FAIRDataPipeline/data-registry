@@ -13,26 +13,144 @@
 <div class="card">
   <div class="card-body">
     <h3>{{ dataproduct.name }}</h3>
+    <p class="text-muted">{{ dataproduct.namespace.name }}:{{ dataproduct.name }}@{{ dataproduct.version }}</p>
     <dl class="row">
-      <dt class="col-sm-3">Updated By</dt>
-      <dd class="col-sm-9">{{ dataproduct.updated_by }}</dd>
-
-      <dt class="col-sm-3">Last Updated On</dt>
-      <dd class="col-sm-9">{{ dataproduct.last_updated }}</dd>
+      {% if dataproduct.object.description %}
+      <dt class="col-sm-3">Description</dt>
+      <dd class="col-sm-9">{{ dataproduct.object.description|urlize }}</dd>
+      {% endif %}
 
       <dt class="col-sm-3">Namespace</dt>
-      <dd class="col-sm-9">{{ dataproduct.namespace }}</dd>
+      <dd class="col-sm-9"><a href="{% url 'namespace' dataproduct.namespace.pk %}">{{ dataproduct.namespace.name }}</a></dd>
 
       <dt class="col-sm-3">Version</dt>
       <dd class="col-sm-9">{{ dataproduct.version }}</dd>
 
-      <dt class="col-sm-3">Object</dt>
-      <dd class="col-sm-9"><a href="/object/{{ dataproduct.object.pk }}">{{ request.get_host }}/object/{{ dataproduct.object.pk }}</a></dd>
+      {% if authors %}
+      <dt class="col-sm-3">Authors</dt>
+      <dd class="col-sm-9">
+        {% for author in authors %}
+        {% if author.identifier %}<a href="{{ author.identifier }}">{{ author.name }}</a>{% else %}{{ author.name }}{% endif %}{% if not forloop.last %}<br />{% endif %}
+        {% endfor %}
+      </dd>
+      {% endif %}
+
+      {% if dataproduct.external_object %}
+      <dt class="col-sm-3">Source</dt>
+      <dd class="col-sm-9"><a href="{% url 'externalobject' dataproduct.external_object.pk %}">{{ dataproduct.external_object.title }} ({{ dataproduct.external_object.version }})</a></dd>
+      {% endif %}
+
+      {% if licences %}
+      <dt class="col-sm-3">Licence</dt>
+      <dd class="col-sm-9">
+        {% for licence in licences %}
+        {% if licence.identifier %}<a href="{{ licence.identifier }}">{{ licence.licence_info }}</a>{% else %}{{ licence.licence_info }}{% endif %}{% if not forloop.last %}<br />{% endif %}
+        {% endfor %}
+      </dd>
+      {% endif %}
+
+      {% if dataproduct.object.storage_location %}
+      <dt class="col-sm-3">File</dt>
+      <dd class="col-sm-9">
+        {% if dataproduct.object.file_type %}{{ dataproduct.object.file_type.name }}, {% endif %}{% if size is not None %}{{ size|filesizeformat }}, {% endif %}SHA-1 <code>{{ dataproduct.object.storage_location.hash }}</code>
+      </dd>
 
       <dt class="col-sm-3">Download</dt>
-      <dd class="col-sm-9"><a href="{{ request.META.HTTP_NAME }}/data_product/{{ dataproduct.namespace }}:{{ dataproduct.name }}@{{ dataproduct.version }}">link</a></dd>
+      <dd class="col-sm-9"><a href="{{ download }}">link</a></dd>
+      {% endif %}
 
+      {% if issues %}
+      <dt class="col-sm-3">Issues</dt>
+      <dd class="col-sm-9">
+        {% for issue in issues %}
+        <a href="{% url 'issue' issue.pk %}">Severity {{ issue.severity }}: {{ issue.description }}</a>{% if not forloop.last %}<br />{% endif %}
+        {% endfor %}
+      </dd>
+      {% endif %}
+
+      {% if made_by %}
+      <dt class="col-sm-3">Made by</dt>
+      <dd class="col-sm-9">
+        {% for run in made_by %}
+        <a href="{% url 'coderun' run.pk %}">{{ run.description }}</a>, {{ run.run_date|date:"j F Y" }}{% if not forloop.last %}<br />{% endif %}
+        {% endfor %}
+      </dd>
+      {% endif %}
+
+      {% if inputs %}
+      <dt class="col-sm-3">From</dt>
+      <dd class="col-sm-9">
+        {% for text, link in inputs %}
+        {% if link %}<a href="{{ link }}">{{ text }}</a>{% else %}{{ text }}{% endif %}{% if not forloop.last %}<br />{% endif %}
+        {% endfor %}
+      </dd>
+      {% endif %}
+
+      {% if used_by %}
+      <dt class="col-sm-3">Used by</dt>
+      <dd class="col-sm-9">
+        {% for run in used_by %}
+        <a href="{% url 'coderun' run.pk %}">{{ run.description }}</a>, {{ run.run_date|date:"j F Y" }}{% if not forloop.last %}<br />{% endif %}
+        {% endfor %}
+      </dd>
+      {% endif %}
+
+      <dt class="col-sm-3">Registry record</dt>
+      <dd class="col-sm-9"><a href="{% url 'object' dataproduct.object.pk %}">object {{ dataproduct.object.pk }}</a>, updated by {{ dataproduct.updated_by }} on {{ dataproduct.last_updated|date:"j F Y" }}</dd>
     </dl>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <h4>Provenance</h4>
+    <p>
+      {% if whole_history %}
+      <a href="?">One step back</a> | <strong>The whole history</strong>
+      {% else %}
+      <strong>One step back</strong> | <a href="?depth=all">The whole history</a>
+      {% endif %}
+    </p>
+    <div style="border: 1px solid #dee2e6;">
+      <a href="{{ report }}?format=svg&amp;depth={{ depth }}&amp;attributes=False" title="Open the graph at full size"><img src="{{ report }}?format=svg&amp;depth={{ depth }}&amp;attributes=False" class="img-fluid" alt="The provenance of {{ dataproduct.namespace.name }}:{{ dataproduct.name }}@{{ dataproduct.version }}" /></a>
+    </div>
+    <p class="small text-muted">Click the graph to open it at full size.</p>
+    <p class="mt-2">
+      The W3C PROV report, as
+      <a href="{{ report }}?format=json-ld&amp;depth={{ depth }}">JSON-LD</a>,
+      <a href="{{ report }}?format=provn&amp;depth={{ depth }}">PROV-N</a>,
+      <a href="{{ report }}?format=xml&amp;depth={{ depth }}">PROV-XML</a>
+      or <a href="{{ report }}?format=json&amp;depth={{ depth }}">PROV-JSON</a>; the graph with every attribute,
+      <a href="{{ report }}?format=svg&amp;depth={{ depth }}">as SVG</a>.
+    </p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <h4>RO-Crate</h4>
+    <p>
+      The same provenance as a Research Object Crate: its
+      <a href="{{ crate }}?format=json-ld&amp;depth={{ depth }}">metadata (JSON-LD)</a>, or a zip holding
+      the metadata, each run's configuration and script and, if chosen, this data product's file.
+    </p>
+    <form method="get" action="{{ crate }}" class="form-inline">
+      <input type="hidden" name="format" value="zip" />
+      <input type="hidden" name="depth" value="{{ depth }}" />
+      {% if packable %}
+      <div class="form-check mr-3">
+        <input class="form-check-input" type="radio" name="pack" value="roots" id="pack-roots"{% if pack_file %} checked{% endif %} />
+        <label class="form-check-label" for="pack-roots">with the file{% if size is not None %} ({{ size|filesizeformat }}){% endif %}</label>
+      </div>
+      <div class="form-check mr-3">
+        <input class="form-check-input" type="radio" name="pack" value="none" id="pack-none"{% if not pack_file %} checked{% endif %} />
+        <label class="form-check-label" for="pack-none">without it</label>
+      </div>
+      {% else %}
+      <input type="hidden" name="pack" value="none" />
+      {% endif %}
+      <button type="submit" class="btn btn-primary btn-sm">Download the zip</button>
+    </form>
   </div>
 </div>
 {% endblock %}

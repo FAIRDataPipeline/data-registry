@@ -14,52 +14,57 @@
   <div class="card-body">
     <h3>{{ externalobject.title }}</h3>
     <dl class="row">
+      <dt class="col-sm-3">Title</dt>
+      <dd class="col-sm-9">{{ externalobject.title }}</dd>
+
+      <dt class="col-sm-3">Version</dt>
+      <dd class="col-sm-9">{{ externalobject.version }}</dd>
+
+      {% if externalobject.description %}
+      <dt class="col-sm-3">Description</dt>
+      <dd class="col-sm-9">{{ externalobject.description|urlize }}</dd>
+      {% endif %}
+
+      {% if externalobject.identifier %}
+      <dt class="col-sm-3">Identifier</dt>
+      <dd class="col-sm-9"><a href="{{ externalobject.identifier }}">{{ externalobject.identifier }}</a></dd>
+      {% endif %}
+
+      {% if externalobject.alternate_identifier %}
+      <dt class="col-sm-3">Alternate Identifier</dt>
+      <dd class="col-sm-9">{{ externalobject.alternate_identifier }}{% if externalobject.alternate_identifier_type %} ({{ externalobject.alternate_identifier_type }}){% endif %}</dd>
+      {% endif %}
+
+      <dt class="col-sm-3">Primary Source</dt>
+      <dd class="col-sm-9">{{ externalobject.primary_not_supplement|yesno:"Yes,No - a supplement, requested or derived from the source" }}</dd>
+
+      <dt class="col-sm-3">Release Date</dt>
+      <dd class="col-sm-9">{{ externalobject.release_date|date:"j F Y" }}</dd>
+
+      {% if origin %}
+      <dt class="col-sm-3">Origin</dt>
+      <dd class="col-sm-9">{% if origin_link %}<a href="{{ origin_link }}">{{ origin }}</a>{% else %}{{ origin }}{% endif %}</dd>
+      {% endif %}
+
+      {% if download %}
+      <dt class="col-sm-3">Download</dt>
+      <dd class="col-sm-9"><a href="{{ download }}">link</a></dd>
+      {% endif %}
+
+      {% if data_products %}
+      <dt class="col-sm-3">Data Products</dt>
+      <dd class="col-sm-9">
+        {% for product in data_products %}
+        <a href="{% url 'dataproduct' product.pk %}">{{ product.namespace.name }}:{{ product.name }}@{{ product.version }}</a>{% if not forloop.last %}<br />{% endif %}
+        {% endfor %}
+      </dd>
+      {% endif %}
+
       <dt class="col-sm-3">Updated By</dt>
       <dd class="col-sm-9">{{ externalobject.updated_by }}</dd>
 
       <dt class="col-sm-3">Last Updated On</dt>
       <dd class="col-sm-9">{{ externalobject.last_updated }}</dd>
-
-      <dt class="col-sm-3">Identifier</dt>
-      <dd class="col-sm-9">{{ externalobject.identifier }}</dd>
-
-      <dt class="col-sm-3">Alternate Identifier</dt>
-      <dd class="col-sm-9">{{ externalobject.alternate_identifier }}</dd>
-
-      <dt class="col-sm-3">Alternate Identifier Type</dt>
-      <dd class="col-sm-9">{{ externalobject.alternate_identifier_type}}</dd>
-
-      <dt class="col-sm-3">Primary Source</dt>
-      <dd class="col-sm-9">{{ externalobject.primary_not_supplement }}</dd>
-
-      <dt class="col-sm-3">Release Date</dt>
-      <dd class="col-sm-9">{{ externalobject.release_date }}</dd>
-
-      <dt class="col-sm-3">Title</dt>
-      <dd class="col-sm-9">{{ externalobject.title }}</dd>
-
-      <dt class="col-sm-3">Description</dt>
-      <dd class="col-sm-9">{{ externalobject.description }}</dd>
-
-      <dt class="col-sm-3">Source</dt>
-      <dd class="col-sm-9">{{ externalobject.source }}</dd>
-
-      <dt class="col-sm-3">Original Store</dt>
-      <dd class="col-sm-9">{{ externalobject.original_store }}</dd>
-
-      <dt class="col-sm-3">Version</dt>
-      <dd class="col-sm-9">{{ externalobject.version }}</dd>
-
-      <dt class="col-sm-3">Data Product</dt>
-      <dd class="col-sm-9"><a href="/data_product/{{ externalobject.data_product.pk }}">{{ request.get_host }}/data_product/{{ externalobject.data_product.pk }}</a></dd>
-
-      <dt class="col-sm-3">Download</dt>
-      {% if externalobject.alternate_identifier %}
-      <dd class="col-sm-9"><a href="{{ request.META.HTTP_NAME }}/external_object/{{ externalobject.alternate_identifier }}:{{ externalobject.title }}@{{ externalobject.version }}">link</a></dd>
-      {% else %}
-      <dd class="col-sm-9"><a href="{{ externalobject.identifier }}">link</a></dd>
-      {% endif %}
-
     </dl>
   </div>
 </div>

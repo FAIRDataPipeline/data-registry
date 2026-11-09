@@ -5,14 +5,14 @@
 {% block breadcrumbs %}
 {{ block.super }}
 {% breadcrumb 'Issues' 'issues' %}
-{% breadcrumb object.name 'issue' object.pk %}
+{% breadcrumb object.short_desc 'issue' object.pk %}
 {% endblock %}
 
 {% block content %}
 {{ block.super }}
 <div class="card">
   <div class="card-body">
-    <h2>Issue Details</h2>
+    <h3>Issue: {{ object.short_desc }}</h3>
     <dl class="row">
       <dt class="col-sm-3">Updated By</dt>
       <dd class="col-sm-9">{{ object.updated_by }}</dd>
@@ -27,18 +27,14 @@
       <dd class="col-sm-9">{{ object.description }}</dd>
 
     </dl>
-    <h2>Associated Objects</h2>
+    {% if applies_to %}
+    <h4>Applies to</h4>
     <ul>
-    {% for obj in object.object_issues.all %}
-      <li><a href={% url 'object' obj.id %}>{{ obj.name }}</a></li>
+    {% for text, link in applies_to %}
+      <li>{% if link %}<a href="{{ link }}">{{ text }}</a>{% else %}{{ text }}{% endif %}</li>
     {% endfor %}
     </ul>
-    <h2>Associated Object Components</h2>
-    <ul>
-    {% for obj in object.component_issues.all %}
-      <li><a href={% url 'objectcomponent' obj.id %}>{{ obj.name }}</a></li>
-    {% endfor %}
-    </ul>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

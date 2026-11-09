@@ -32,7 +32,9 @@ id (e.g. `code_run/25/` will return the code run with id=25).
 GET requests also accept filter arguments when not requesting an individual object
 (e.g. `data_product/?name=fixed-parameters/*` will return all the data products with
 name starting with `fixed-parameters/`).  The query arguments that can be used can be
-seen by clicking on the filters button on the web-page for the API endpoint.
+seen by clicking on the filters button on the web-page for the API endpoint. A name
+argument matches the whole name, with `*` standing for any characters and `?` for any
+one; a `[` or `]` in it is refused.
 
 **OPTIONS requests**
 

@@ -1,7 +1,7 @@
 from unittest import mock
 from urllib.parse import parse_qs, urlparse
 
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, EndpointConnectionError
 from django.test import SimpleTestCase, override_settings
 
 from data_management import object_storage
@@ -87,3 +87,22 @@ class HoldsTests(SimpleTestCase):
         with self._store(forbidden):
             with self.assertRaises(ClientError):
                 object_storage.holds("abc123")
+
+    def test_size_of_a_held_file(self):
+        with self._store(lambda **kwargs: {"ContentLength": 12}) as store:
+            self.assertEqual(object_storage.size("abc123"), 12)
+        store.return_value.head_object.assert_called_once_with(Bucket="fair", Key="abc123")
+
+    def test_size_is_none_where_the_store_cannot_say(self):
+        # a page showing a size must not fail for the store: missing, refused or
+        # unreachable, the size is unknown
+        def unreachable(**kwargs):
+            raise EndpointConnectionError(endpoint_url="https://storage.example.org/s3")
+
+        def forbidden(**kwargs):
+            raise ClientError({"Error": {"Code": "403", "Message": "Forbidden"}}, "HeadObject")
+
+        for head_object in (self._missing, forbidden, unreachable):
+            with self.subTest(head_object=head_object.__name__):
+                with self._store(head_object):
+                    self.assertIsNone(object_storage.size("abc123"))

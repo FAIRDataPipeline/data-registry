@@ -1,6 +1,6 @@
 import boto3
 from botocore.config import Config
-from botocore.exceptions import ClientError
+from botocore.exceptions import BotoCoreError, ClientError
 
 from django.conf import settings
 
@@ -39,6 +39,20 @@ def holds(name):
             return False
         raise
     return head["ContentLength"] > 0 or name == EMPTY_FILE_SHA1
+
+
+def size(name):
+    """
+    Return the size in bytes of the file the store holds under the given hash, or
+    None where it holds none or cannot be asked, so that a page showing it never
+    fails for the store.
+    """
+    bucket = settings.BUCKETS["default"]
+    try:
+        head = _client().head_object(Bucket=bucket["bucket_name"], Key=name)
+    except (BotoCoreError, ClientError):
+        return None
+    return head["ContentLength"]
 
 
 def create_url(name, method, filename=None):

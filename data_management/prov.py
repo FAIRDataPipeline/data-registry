@@ -3,7 +3,7 @@ import json
 import xml.etree.ElementTree
 
 from django.conf import settings
-from prov.constants import PROV, PROV_ROLE
+from prov.constants import PROV, PROV_ATTR_ENTITY, PROV_LABEL, PROV_ROLE
 import prov.dot
 from prov.identifier import QualifiedName
 import prov.model
@@ -757,6 +757,62 @@ def _generate_prov_document(doc, data_product, reg_uri_prefix, vocab_namespaces)
     return all_input_files
 
 
+# The label of a file a run uses with no data product of its own, by its role
+ROLE_LABELS = {
+    "model_configuration": "model configuration",
+    "submission_script": "submission script",
+}
+
+
+def _label_elements(doc):
+    """
+    Give every element of the document a `prov:label` naming it, from what it says of
+    itself: a data product's namespace:name@version, a source's or a release's title
+    and version, a run's description and the day it started, an agent's name, a
+    run's model configuration or submission script by that role, the code a run used
+    by where it is, else its description or where it is.
+
+    @param doc: a ProvDocument whose elements are all added
+
+    """
+    roles = {}
+    for usage in doc.get_records(prov.model.ProvUsage):
+        role = usage.get_attribute(PROV_ROLE)
+        if role:
+            entity = dict(usage.formal_attributes)[PROV_ATTR_ENTITY]
+            roles[entity] = next(iter(role)).localpart
+
+    for record in doc.get_records(prov.model.ProvElement):
+        role = roles.get(record.identifier)
+        record.add_attributes({PROV_LABEL: _label(record, role)})
+    return doc
+
+
+# The label of an element, by the rules _label_elements gives; `role` is the role in
+# which a run used it, if any
+def _label(record, role):
+    values = {name.localpart: str(value) for name, value in record.extra_attributes}
+    if isinstance(record, prov.model.ProvActivity):
+        label = values.get("description", record.identifier.localpart)
+        if record.get_startTime() is not None:
+            label = f"{label} ({record.get_startTime().date().isoformat()})"
+        return label
+    if "name" in values:
+        return values["name"]
+    if {"namespace", "title", "hasVersion"} <= values.keys():
+        return f"{values['namespace']}:{values['title']}@{values['hasVersion']}"
+    if {"title", "hasVersion"} <= values.keys():
+        return f"{values['title']} ({values['hasVersion']})"
+    if role in ROLE_LABELS:
+        return ROLE_LABELS[role]
+    if role == "software" and "atLocation" in values:
+        return values["atLocation"]
+    for key in ("title", "description", "atLocation"):
+        if key in values:
+            return values[key]
+    return record.identifier.localpart
+
+
 def generate_prov_document(data_product, depth, request):
     """
     Generate a PROV document for a DataProduct detailing all the input and outputs and
@@ -806,7 +862,7 @@ def generate_prov_document(data_product, depth, request):
     )
 
     if depth == 1:
-        return doc
+        return _label_elements(doc)
 
     # a data product reached by several routes has its provenance added once, at
     # the first level it is reached
@@ -830,7 +886,7 @@ def generate_prov_document(data_product, depth, request):
         input_files = next_level_input_files
         depth = depth - 1
 
-    return doc
+    return _label_elements(doc)
 
 
 def highlight_issues(dot):
@@ -866,7 +922,9 @@ def serialize_prov_document(doc, format_, aspect_ratio, dpi=None, show_attribute
 
     """
     if format_ in ("jpg", "svg"):
-        dot = prov.dot.prov_to_dot(doc, show_element_attributes=show_attributes)
+        dot = prov.dot.prov_to_dot(
+            doc, use_labels=True, show_element_attributes=show_attributes
+        )
         highlight_issues(dot)
         dot.set_ratio(aspect_ratio)
         dot.set_dpi(dpi)

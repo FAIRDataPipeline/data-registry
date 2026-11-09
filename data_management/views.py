@@ -1,10 +1,13 @@
 from configparser import ConfigParser
+import datetime
 import os
 
 from django.http import HttpResponseNotFound, FileResponse
 from django.shortcuts import render, HttpResponse, redirect
+from django.urls import reverse
 from django.views import generic
-from django.utils.text import camel_case_to_spaces
+from django.utils.formats import localize
+from django.utils.text import camel_case_to_spaces, capfirst
 from django.contrib.auth import get_user_model
 from django.contrib.auth import logout as auth_logout
 from django.db.models import Q
@@ -20,6 +23,9 @@ from . import object_storage
 from . import settings
 from . import version
 from . import vocab
+
+# The scheme of a storage root on a local file system
+FILE_SCHEME = "file://"
 
 
 def index(request):
@@ -90,18 +96,100 @@ class BaseListView(generic.ListView):
         return context
 
 
+# An address a page may link: a web address. Anything else is shown as text, since a
+# storage root may hold any scheme, javascript: and data: among them
+def _web_address(uri):
+    return uri if uri.lower().startswith(("http://", "https://", "ftp://", "ftps://")) else None
+
+
+# The records a page lists besides its own fields, by model: (heading, relation)
+RELATED_ROWS = {
+    "Namespace": (("Data products", "data_products"),),
+}
+
+
+# A value on a record's page as (text, link) pairs, the link None where there is none:
+# a record by its own page, an object component by the data products of its object
+# (the name a reader knows it by), a web address by itself
+def _shown(value):
+    if isinstance(value, models.ObjectComponent):
+        part = "" if value.whole_object else f" ({value.name})"
+        products = value.object.data_products.select_related("namespace")
+        if products:
+            return [
+                (
+                    f"{p.namespace.name}:{p.name}@{p.version}{part}",
+                    reverse("dataproduct", args=[p.pk]),
+                )
+                for p in products
+            ]
+    if type(value).__name__ in models.all_models:
+        return [(str(value), reverse(type(value).__name__.lower(), args=[value.pk]))]
+    if isinstance(value, datetime.datetime):
+        return [(localize(value), None)]
+    text = str(value)
+    return [(text, _web_address(text))]
+
+
+# The heading of a record's page: an object by the names of its data products, where
+# it has any, rather than by where its file is; any other record by its own name
+def _title(record):
+    if isinstance(record, models.Object):
+        products = record.data_products.select_related("namespace")
+        names = [f"{p.namespace.name}:{p.name}@{p.version}" for p in products]
+        if names:
+            return ", ".join(names)
+    return str(record)
+
+
+# The rows of a record's page: each field that has a value, by its name, with the
+# values shown, then the related records its model lists
+def _rows(record):
+    rows = []
+    for field in record._meta.get_fields():
+        if field.auto_created:
+            continue
+        if field.many_to_many:
+            items = getattr(record, field.name).all()
+        else:
+            value = getattr(record, field.name)
+            items = [] if value is None or value == "" else [value]
+        values = [shown for item in items for shown in _shown(item)]
+        if values:
+            rows.append((capfirst(field.verbose_name), values))
+    for heading, relation in RELATED_ROWS.get(type(record).__name__, ()):
+        items = getattr(record, relation).all()
+        values = [shown for item in items for shown in _shown(item)]
+        if values:
+            rows.append((heading, values))
+    return rows
+
+
 class BaseDetailView(generic.DetailView):
     """
     Base class for views for displaying details about a specific database object.
+
+    A model with a template of its own is shown by it; any other by
+    `record_detail.html`, which lists the record's fields and related records.
     """
 
     context_object_name = "object"
+
+    def get_template_names(self):
+        return [
+            *super().get_template_names(),
+            os.path.join("data_management", "record_detail.html"),
+        ]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["list_name"] = self.model_name.lower() + "s"
         context["list_display_name"] = camel_case_to_spaces(self.model_name) + "s"
         context["model_name"] = self.model_name.lower()
+        context["title"] = _title(self.object)
+        context["rows"] = _rows(self.object)
+        location = getattr(self.object, "storage_location", None)
+        context["download"] = None if location is None else _web_address(str(location))
         return context
 
 
@@ -127,9 +215,25 @@ class ExternalObjectListView(generic.ListView):
         return context
 
 
+# The address the registry serves a data product's file from
+def data_product_download(data_product):
+    return reverse(
+        "get_data_product",
+        kwargs={
+            "namespace": data_product.namespace.name,
+            "data_product_name": data_product.name,
+            "version": data_product.version,
+        },
+    )
+
+
 class ExternalObjectDetailView(generic.DetailView):
     """
     View for displaying details about a specific ExternalObject.
+
+    Its `download` is the registry's own copy, through the first data product
+    registered from it that has a file (a source is one file), or None where the
+    registry holds no file of it.
     """
 
     model = models.ExternalObject
@@ -138,6 +242,13 @@ class ExternalObjectDetailView(generic.DetailView):
         context = super().get_context_data(**kwargs)
         context["list_name"] = "externalobjects"
         context["list_display_name"] = "External Objects"
+        products = self.object.data_products.select_related("namespace").order_by("pk")
+        context["data_products"] = products
+        store = self.object.original_store
+        context["origin"] = None if store is None else store.full_uri()
+        context["origin_link"] = None if store is None else _web_address(store.full_uri())
+        held = products.filter(object__storage_location__isnull=False).first()
+        context["download"] = None if held is None else data_product_download(held)
         return context
 
 
@@ -156,9 +267,38 @@ class DataProductListView(generic.ListView):
         return context
 
 
+# The size of file above which a data product's page offers its crate without the
+# file first: a zip packing it is built and sent through the registry
+PACK_LIMIT = 100 * 1024 * 1024
+
+
+def file_size(location):
+    """
+    Return the size in bytes of a storage location's file - from the object store
+    for one in this registry's own store, from the disk for a local file - or None
+    where it cannot be found.
+    """
+    uri = location.full_uri()
+    if uri.startswith(FILE_SCHEME):
+        path = uri[len(FILE_SCHEME):]
+        return os.path.getsize(path) if os.path.isfile(path) else None
+    if settings.REMOTE_REGISTRY:
+        domain = Site.objects.get_current().domain
+        if domain in location.storage_root.root:
+            return object_storage.size(location.path)
+    return None
+
+
 class DataProductDetailView(generic.DetailView):
     """
-    View for displaying details about a specific DataProduct.
+    View for displaying details about a specific DataProduct: what it is, who made
+    it, where it came from, the run that made it and from what, the runs that used
+    it, its provenance drawn and its report and RO-Crate offered.
+
+    `?depth=all` draws and offers the whole history rather than one step back. The
+    crate's zip is offered with the product's file and without it, with it chosen
+    unless the file is larger than PACK_LIMIT; a product with no public file is
+    offered without.
     """
 
     model = models.DataProduct
@@ -167,6 +307,42 @@ class DataProductDetailView(generic.DetailView):
         context = super().get_context_data(**kwargs)
         context["list_name"] = "dataproducts"
         context["list_display_name"] = "Data Products"
+        product = self.object
+        obj = product.object
+        made_by = (
+            models.CodeRun.objects.filter(outputs__object=obj)
+            .distinct()
+            .prefetch_related("inputs")
+        )
+        inputs = []
+        for run in made_by:
+            for component in run.inputs.all():
+                for shown in _shown(component):
+                    if shown not in inputs:
+                        inputs.append(shown)
+        location = obj.storage_location
+        size = None if location is None else file_size(location)
+        whole = self.request.GET.get("depth") == "all"
+        context.update(
+            {
+                "authors": obj.authors.all(),
+                "licences": obj.licences.all(),
+                "issues": models.Issue.objects.filter(
+                    component_issues__object=obj
+                ).distinct(),
+                "made_by": made_by,
+                "inputs": inputs,
+                "used_by": models.CodeRun.objects.filter(inputs__object=obj).distinct(),
+                "download": None if location is None else data_product_download(product),
+                "size": size,
+                "packable": location is not None and location.public,
+                "pack_file": size is None or size <= PACK_LIMIT,
+                "whole_history": whole,
+                "depth": 100 if whole else 1,
+                "report": reverse("prov_report", args=[product.pk]),
+                "crate": reverse("data_product_ro_crate", args=[product.pk]),
+            }
+        )
         return context
 
 
@@ -181,10 +357,20 @@ class IssueListView(generic.ListView):
 
 class IssueDetailView(generic.DetailView):
     """
-    View for displaying details about a specific Issue.
+    View for displaying details about a specific Issue, and what it applies to: each
+    object component it was raised on, by the data products of its object.
     """
 
     model = models.Issue
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["applies_to"] = [
+            shown
+            for component in self.object.component_issues.all()
+            for shown in _shown(component)
+        ]
+        return context
 
 
 def docs(request, name):
@@ -256,7 +442,7 @@ def serve_file(full_uri):
     if settings.REMOTE_REGISTRY:
         return HttpResponse(status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-    full_uri = full_uri.replace("file://", "")
+    full_uri = full_uri.replace(FILE_SCHEME, "")
 
     if os.path.isfile(full_uri):
         return FileResponse(open(full_uri, "rb"))
@@ -270,7 +456,7 @@ def get_data_product(data_product):
     """
     full_uri = data_product.object.storage_location.full_uri()
 
-    if full_uri.startswith("/") or full_uri.startswith("file://"):
+    if full_uri.startswith("/") or full_uri.startswith(FILE_SCHEME):
         return serve_file(full_uri)
 
     return redirect(full_uri)
