@@ -296,6 +296,31 @@ class StorageAPITests(TestCase):
         holds.assert_called_once_with("abc123")
         create_url.assert_not_called()
 
+    def test_upload_address_when_the_store_fails(self):
+        # a store that refuses the registry or cannot be reached is the gateway's
+        # failure, not the registry's: a 502 that says so, and the cause in the log
+        from botocore.exceptions import ClientError, EndpointConnectionError
+
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        refused = ClientError(
+            {"Error": {"Code": "SignatureDoesNotMatch", "Message": "..."}}, "HeadObject"
+        )
+        unreachable = EndpointConnectionError(endpoint_url="https://store")
+        for error in (refused, unreachable):
+            with self.subTest(error=type(error).__name__):
+                with mock.patch.object(views.object_storage, "holds", side_effect=error), \
+                     mock.patch.object(views.object_storage, "create_url") as create_url, \
+                     self.assertLogs("data_management.rest.views", "ERROR") as logs:
+                    response = client.post("/api/data/abc123")
+                self.assertEqual(response.status_code, 502)
+                self.assertEqual(
+                    response.json()["detail"],
+                    "The object store could not be reached or refused the registry.",
+                )
+                create_url.assert_not_called()
+                self.assertIn(str(error), "\n".join(logs.output))
+
     def test_get_data(self):
         client = APIClient()
         client.force_authenticate(user=self.user)

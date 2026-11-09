@@ -17,8 +17,11 @@ def _client():
         aws_access_key_id=bucket["access_key"],
         aws_secret_access_key=bucket["secret_key"],
         endpoint_url=bucket["url"],
-        # boto3 presigns S3 URLs with the legacy SigV2 unless told otherwise,
-        # and SigV2 URLs fail behind a proxy that rewrites the path
+        # boto3 presigns S3 URLs with the legacy SigV2 unless told otherwise. Both
+        # versions sign the path and the Host, so a proxy that strips a path prefix
+        # breaks either unless the store rebuilds what was signed: SeaweedFS does so
+        # for SigV4 alone, from X-Forwarded-Prefix and X-Forwarded-Host, and only
+        # when the proxy is in its s3.trusted_proxies white list
         config=Config(signature_version="s3v4"),
     )
 

@@ -15,6 +15,8 @@ If the object store does not yet hold a file with that checksum you will get a 2
 ```
 If the object store already holds a file with that checksum you will get a 409 CONFLICT response, and there is nothing to upload.
 
+If the registry cannot reach the object store, or the store refuses it, you will get a 502 BAD GATEWAY response. The fault is in the registry's deployment, not your request: try again later, or tell the registry's maintainers.
+
 The URL can be used to upload the file with a HTTP PUT; it is valid for a limited time, set by the registry's deployment (a day in the settings template), so request it just before uploading. For example:
 ```
 curl -i --upload-file <filename> "<url>"

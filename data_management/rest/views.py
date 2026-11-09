@@ -1,6 +1,8 @@
 from copy import deepcopy
+import logging
 import re
 
+from botocore.exceptions import BotoCoreError, ClientError
 from django import forms, db
 from rest_framework.authentication import (
     SessionAuthentication,
@@ -44,6 +46,8 @@ from data_management.rocrate import (
     PACKS,
     PACK_ROOTS,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class BadQuery(APIException):
@@ -615,6 +619,17 @@ class APIIntegrityError(exceptions.APIException):
     default_code = "integrity_error"
 
 
+class ObjectStoreError(exceptions.APIException):
+    """
+    API error returned when the object store refuses the registry or cannot be
+    reached: the failure is upstream, and the cause is in the server's log.
+    """
+
+    status_code = status.HTTP_502_BAD_GATEWAY
+    default_detail = "The object store could not be reached or refused the registry."
+    default_code = "object_store_error"
+
+
 def glob_to_regex(pattern):
     r"""
     Return the regular expression matching a whole name against a glob, in which `*`
@@ -784,8 +799,13 @@ class ObjectStorageView(views.APIView):
         if not checksum:
             checksum = request.data["checksum"]
 
+        try:
+            held = object_storage.holds(checksum)
+        except (BotoCoreError, ClientError):
+            logger.exception("object store failed asking for %s", checksum)
+            raise ObjectStoreError()
         # the store already holds the file: a client takes the 409 as "uploaded"
-        if object_storage.holds(checksum):
+        if held:
             return Response(status=status.HTTP_409_CONFLICT)
 
         data = {"url": object_storage.create_url(checksum, "PUT")}
